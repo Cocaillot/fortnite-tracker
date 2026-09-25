@@ -38,23 +38,32 @@ const summary = computed(() => {
     nemesis: mostCommon(eliminators.filter((n) => !isAnonymous(n))),
     hidden: eliminators.filter(isAnonymous).length,
     topThreat: mostCommon(ms.map((m) => m.eliminatorThreat).filter((t): t is Threat => !!t)),
+    withThreat: ms.filter((m) => m.eliminatorThreat).length,
     avgEliminatorKd: kds.length ? kds.reduce((a, b) => a + b, 0) / kds.length : null,
   }
 })
 
-// A named nemesis needs at least two eliminations; otherwise describe the kind of player.
+const threatGroup: Record<Threat, string> = {
+  Sweat: 'Sweats',
+  Skilled: 'Skilled players',
+  Average: 'Average players',
+  Casual: 'Casual players',
+  BotLikely: 'Bots',
+}
+
+// A named nemesis needs at least two eliminations. Otherwise describe the kind of player that
+// eliminates you most, counted only among eliminators whose stats are known.
 const nemesis = computed(() => {
   const s = summary.value
   if (s.nemesis && s.nemesis.count >= 2) return { title: s.nemesis.value, detail: `eliminated you ${s.nemesis.count}×` }
-  if (s.topThreat) {
-    const label = threatLabel[s.topThreat.value]
+  if (s.topThreat && s.topThreat.count >= 2) {
     return {
-      title: s.topThreat.value === 'BotLikely' ? 'Bots' : `${label}s`,
-      detail: `${s.topThreat.count} of ${s.eliminated} eliminations`,
+      title: threatGroup[s.topThreat.value],
+      detail: `${s.topThreat.count} of ${s.withThreat} eliminators with known stats`,
       threat: s.topThreat.value,
     }
   }
-  if (s.hidden) return { title: 'Streamer Mode players', detail: `${s.hidden} of ${s.eliminated} eliminations` }
+  if (s.hidden >= 2) return { title: 'Streamer Mode', detail: `players hidden by Streamer Mode: ${s.hidden} of ${s.eliminated} eliminations` }
   return null
 })
 
