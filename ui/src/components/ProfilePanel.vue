@@ -24,8 +24,21 @@ const selected = computed<ModeStats | null>(() =>
   !stats.value ? null : mode.value === 'overall' ? stats.value.overall : (stats.value.byMode?.[mode.value] ?? null),
 )
 
-const currentRanks = computed(() => props.profile?.ranks.filter((r) => r.isCurrentSeason) ?? [])
-const pastRanks = computed(() => props.profile?.ranks.filter((r) => r.lastUpdatedUtc && !r.isCurrentSeason) ?? [])
+// Every ranked mode: played this season first (best rank first), then earlier seasons (most recent
+// first); modes never played are listed separately.
+const playedRanks = computed(() =>
+  (props.profile?.ranks ?? [])
+    .filter((r) => r.lastUpdatedUtc)
+    .sort((a, b) =>
+      a.isCurrentSeason !== b.isCurrentSeason
+        ? Number(b.isCurrentSeason) - Number(a.isCurrentSeason)
+        : a.isCurrentSeason
+          ? b.current + b.progress - (a.current + a.progress)
+          : Date.parse(b.lastUpdatedUtc!) - Date.parse(a.lastUpdatedUtc!),
+    ),
+)
+const neverPlayed = computed(() => (props.profile?.ranks ?? []).filter((r) => !r.lastUpdatedUtc))
+const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
 
 const statusText: Record<string, string> = {
   Private: 'This player keeps their stats private. They can make them public in Fortnite settings.',
@@ -78,31 +91,33 @@ const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'nume
       </p>
 
       <section>
-        <h3 class="section-title">Ranks</h3>
-        <div v-if="currentRanks.length" class="ranks">
-          <div v-for="r in currentRanks" :key="r.track" class="rank-tile">
-            <span class="track">{{ r.trackName }}</span>
-            <RankBadge :rank="r" size="md" />
-            <span class="best">Best {{ r.highestName }}</span>
-          </div>
-        </div>
+        <h3 class="section-title">Ranked modes</h3>
+        <ul v-if="playedRanks.length" class="rank-table">
+          <li v-for="r in playedRanks" :key="r.track" :class="{ past: !r.isCurrentSeason }">
+            <span class="mode-name">
+              {{ r.trackName }}
+              <span v-if="!r.trackNameConfirmed" class="codename" :title="`Fortnite codename: ${r.track}`">codename</span>
+            </span>
+            <span class="now">
+              <RankBadge v-if="r.isCurrentSeason" :rank="r" size="md" />
+              <span v-else class="faint">Not played this season</span>
+            </span>
+            <span class="meta">
+              Best {{ r.highestName }} · {{ r.isCurrentSeason ? 'updated' : 'last played' }} {{ monthYear(r.lastUpdatedUtc!) }}
+              <template v-if="!r.isCurrentSeason && r.rankName !== r.highestName"> · ended {{ r.rankName }}</template>
+            </span>
+          </li>
+        </ul>
         <p v-else class="hint">
           {{
             profile.relation === 'Opponent' || profile.relation === 'Followed'
               ? "Fortnite only shares ranks for you, your party and your friends."
-              : 'No ranked matches this season.'
+              : 'No ranked matches found.'
           }}
         </p>
-        <details v-if="pastRanks.length" class="past">
-          <summary>Past seasons ({{ pastRanks.length }})</summary>
-          <ul>
-            <li v-for="r in pastRanks" :key="r.track">
-              <span>{{ r.trackName }}</span>
-              <RankBadge :rank="r" />
-              <span class="faint">best {{ r.highestName }} · {{ new Date(r.lastUpdatedUtc!).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) }}</span>
-            </li>
-          </ul>
-        </details>
+        <p v-if="neverPlayed.length" class="never">
+          Never played: {{ neverPlayed.map((r) => r.trackName).join(', ') }}
+        </p>
       </section>
 
       <section>
@@ -218,22 +233,63 @@ header {
   color: var(--danger);
   font-size: 13px;
 }
-.ranks {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
-.rank-tile {
+.rank-table {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px 10px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.rank-table li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'mode now' 'meta meta';
+  gap: 2px 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+}
+.rank-table li:first-child {
+  border-top: none;
+}
+.rank-table li.past .mode-name {
+  color: var(--muted);
+}
+.mode-name {
+  grid-area: mode;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 16px;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
-.track,
+.codename {
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 10px;
+  color: var(--faint);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+.now {
+  grid-area: now;
+  justify-self: end;
+}
+.meta {
+  grid-area: meta;
+  font-size: 11px;
+  color: var(--faint);
+}
+.never {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--faint);
+}
 .label {
   font-family: var(--display);
   font-weight: 700;
@@ -242,35 +298,9 @@ header {
   text-transform: uppercase;
   color: var(--muted);
 }
-.best,
 .faint {
   font-size: 11px;
   color: var(--faint);
-}
-.past {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--muted);
-}
-.past summary {
-  cursor: pointer;
-}
-.past ul {
-  list-style: none;
-  padding: 0;
-  margin: 8px 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.past li {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 2px 8px;
-  align-items: center;
-}
-.past li .faint {
-  grid-column: 1 / -1;
 }
 .stats-head {
   display: flex;

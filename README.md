@@ -53,6 +53,9 @@ From that log it gets:
 your party and friends shown in its social panel, never for opponents. A rank updated in the last
 120 days counts as this season. Ranks run from 0 (Bronze I) to 17 (Unreal); 2026 "combined"
 tracks also show values above 17, which are displayed as "Rank N" because their names aren't known.
+Ranked modes are named from Epic's codenames (BlastBerry = Reload, FeralCorgi = Ballistic,
+SquareClub = Arenas Boxfights, Pimlico = Crown Jam…); unconfirmed ones (e.g. `bling`,
+`RadiantToothpick`) get a readable name derived from the codename and are marked as such.
 Friends whose stats are private show as "Private profile": the log has their rank but not their name.
 
 **Stats for the rest of the lobby, and opponents' ranks, aren't available.** Epic redacts other players' IDs

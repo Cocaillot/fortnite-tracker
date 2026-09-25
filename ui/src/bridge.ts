@@ -20,6 +20,8 @@ export interface RankProgress {
   /** Bronze, Silver, … Unreal; "Beyond" for 2026 values above Unreal; "Unranked". */
   tier: string
   trackName: string
+  /** False when only the codename is known (the name is derived from it). */
+  trackNameConfirmed: boolean
   isCurrentSeason: boolean
 }
 

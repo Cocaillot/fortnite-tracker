@@ -31,7 +31,7 @@ public sealed class RanksAndSessionsTests : IDisposable
 
         Assert.Null(e.Ranks[1].LastUpdatedUtc);           // 1970 = never played
         Assert.Equal("Unranked", e.Ranks[1].RankName);
-        Assert.Equal("ranked-pimlico", e.Ranks[1].TrackName); // unknown codename shown as-is
+        Assert.Equal("Crown Jam", e.Ranks[1].TrackName);
 
         Assert.Equal("Unreal #1234", e.Ranks[2].RankName);
         Assert.False(e.Ranks[2].IsCurrentSeason);
@@ -92,5 +92,23 @@ public sealed class RanksAndSessionsTests : IDisposable
         Assert.Equal(31, sessions[0].Baseline!.Matches); // baseline stays at the first match
         Assert.Equal(7, sessions[0].Delta!.Kills);
         Assert.Null(sessions[1].Latest);
+    }
+}
+
+public class TrackNameTests
+{
+    [Theory]
+    [InlineData("ranked-blastberry-combined", "Reload", true)]
+    [InlineData("ranked-feral", "Ballistic", true)]
+    [InlineData("ranked-squareclub", "Arenas Boxfights", true)]
+    [InlineData("ranked-pimlico", "Crown Jam", true)]
+    [InlineData("ranked-bling", "Bling", false)]
+    [InlineData("ranked-bling-nobuild", "Bling (Zero Build)", false)]
+    [InlineData("ranked-blastberry-nobuild", "Reload (Zero Build)", true)]
+    [InlineData("RadiantToothpick-duos-ranked", "Radiant Toothpick (Duos)", false)]
+    public void Track_names(string track, string name, bool confirmed)
+    {
+        Assert.Equal(name, RankNames.TrackName(track));
+        Assert.Equal(confirmed, RankNames.IsKnownTrack(track));
     }
 }

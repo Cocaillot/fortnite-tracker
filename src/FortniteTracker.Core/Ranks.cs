@@ -23,6 +23,8 @@ public sealed record RankProgress(
     public string HighestName => LastUpdatedUtc is null ? "Unranked" : RankNames.Name(Highest);
     public string Tier => RankNames.Tier(this);
     public string TrackName => RankNames.TrackName(Track);
+    /// <summary>False when the mode is only known by its codename (the name shown is derived from it).</summary>
+    public bool TrackNameConfirmed => RankNames.IsKnownTrack(Track);
     public bool IsCurrentSeason => LastUpdatedUtc is { } at && at > DateTime.UtcNow - RankNames.CurrentSeasonWindow;
 }
 
@@ -53,9 +55,13 @@ public static class RankNames
         : p.Current >= Names.Length ? "Beyond"
         : Name(p.Current).Split(' ')[0];
 
-    // Codenames we can identify. Others (feral, bling, pimlico, squareclub…) are shown as-is.
+    // Codenames with a confirmed name (Epic's codenames, as documented by the Fortnite wiki).
+    // Others (e.g. "bling", "RadiantToothpick") get a readable name derived from the codename.
     private static readonly Dictionary<string, string> Tracks = new(StringComparer.OrdinalIgnoreCase)
     {
+        ["ranked-feral"] = "Ballistic",               // FeralCorgi
+        ["ranked-squareclub"] = "Arenas Boxfights",   // SquareClub
+        ["ranked-pimlico"] = "Crown Jam",             // Pimlico (Fall Guys)
         ["ranked-blastberry-combined"] = "Reload",
         ["ranked_blastberry_build"] = "Reload (Build)",
         ["ranked-br-combined"] = "Battle Royale",
@@ -66,9 +72,57 @@ public static class RankNames
         ["delmar-competitive"] = "Rocket Racing",
     };
 
-    public static bool IsKnownTrack(string track) => Tracks.ContainsKey(track);
+    // Codewords that make up track names, e.g. "ranked-blastberry-nobuild" = Reload (Zero Build).
+    private static readonly Dictionary<string, string> Codewords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["blastberry"] = "Reload",
+        ["br"] = "Battle Royale",
+        ["figment"] = "OG",
+        ["delmar"] = "Rocket Racing",
+        ["feral"] = "Ballistic",
+        ["squareclub"] = "Arenas Boxfights",
+        ["pimlico"] = "Crown Jam",
+    };
 
-    public static string TrackName(string track) => Tracks.TryGetValue(track, out var name) ? name : track;
+    /// <summary>True when the name is confirmed, not just derived from an unknown codename.</summary>
+    public static bool IsKnownTrack(string track) =>
+        Tracks.ContainsKey(track) || Words(track).All(w => Variant(w) is not null || Codewords.ContainsKey(w) || w.Length == 0);
+
+    public static string TrackName(string track) => Tracks.TryGetValue(track, out var name) ? name : FromCodename(track);
+
+    // "ranked-blastberry-nobuild" → "Reload (Zero Build)", "RadiantToothpick-duos-ranked" → "Radiant Toothpick (Duos)".
+    private static string FromCodename(string track)
+    {
+        var variants = new List<string>();
+        var words = new List<string>();
+        foreach (var w in Words(track))
+        {
+            if (Variant(w) is { } v) { if (v.Length > 0) variants.Add(v); }
+            else if (Codewords.TryGetValue(w, out var known)) words.Add(known);
+            // Split CamelCase and capitalise: "RadiantToothpick" → "Radiant Toothpick".
+            else words.Add(Regex.Replace(char.ToUpperInvariant(w[0]) + w[1..], "(?<=[a-z])(?=[A-Z])", " "));
+        }
+        var name = words.Count > 0 ? string.Join(" ", words) : track;
+        return variants.Count > 0 ? $"{name} ({string.Join(" ", variants)})" : name;
+    }
+
+    private static IEnumerable<string> Words(string track) =>
+        Regex.Split(track, "[-_]").Where(p => p.Length > 0
+            && !p.Equals("ranked", StringComparison.OrdinalIgnoreCase)
+            && !p.Equals("competitive", StringComparison.OrdinalIgnoreCase));
+
+    // Words describing a variant of a mode; "" for words that add nothing ("combined").
+    private static string? Variant(string word) => word.ToLowerInvariant() switch
+    {
+        "nobuild" or "zb" => "Zero Build",
+        "build" => "Build",
+        "combined" => "",
+        "solo" => "Solo",
+        "duos" => "Duos",
+        "trios" => "Trios",
+        "squads" => "Squads",
+        _ => null,
+    };
 }
 
 /// <summary>
