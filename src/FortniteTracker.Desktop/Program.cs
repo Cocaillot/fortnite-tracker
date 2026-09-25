@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Threading;
 using Velopack;
 
@@ -14,6 +15,11 @@ public static class Program
         // Must run first: during install/update/uninstall, Velopack launches the exe with hook
         // arguments and this call handles them and exits.
         VelopackApp.Build().Run();
+
+        // The UI is in English, so native text (overlay, notifications, Discord) formats numbers
+        // as "6.80" like the web UI, whatever the Windows region.
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
         using var mutex = new Mutex(initiallyOwned: true, MutexName, out var isFirstInstance);
         using var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);

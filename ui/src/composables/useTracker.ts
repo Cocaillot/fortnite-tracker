@@ -1,5 +1,14 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { on, send, type LobbySnapshot, type MatchRecord, type Platform, type PlayerStats, type Settings } from '../bridge'
+import {
+  on,
+  send,
+  type LobbySnapshot,
+  type MatchRecord,
+  type OverlayCorner,
+  type Platform,
+  type PlayerStats,
+  type Settings,
+} from '../bridge'
 
 export function useTracker() {
   const snapshot = ref<LobbySnapshot | null>(null)
@@ -41,6 +50,8 @@ export function useTracker() {
     lookup,
     saveApiKey: (key: string) => send({ type: 'setApiKey', key }),
     setRichPresence: (enabled: boolean) => send({ type: 'setRichPresence', enabled }),
+    setNotify: (enabled: boolean) => send({ type: 'setNotify', enabled }),
+    setOverlay: (enabled?: boolean, corner?: OverlayCorner) => send({ type: 'setOverlay', enabled, corner }),
     applyUpdate: () => send({ type: 'applyUpdate' }),
   }
 }

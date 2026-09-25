@@ -1,59 +1,62 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue'
-import { isHosted, type Platform } from './bridge'
+import { isHosted } from './bridge'
 import { useTracker } from './composables/useTracker'
-import PlayerCard from './components/PlayerCard.vue'
+import TitleBar from './components/TitleBar.vue'
+import LiveView from './components/LiveView.vue'
 import ApiKeyForm from './components/ApiKeyForm.vue'
 import HistoryView from './components/HistoryView.vue'
 import SettingsView from './components/SettingsView.vue'
 
-const { snapshot, settings, history, lookupResult, lookingUp, lookup, saveApiKey, setRichPresence, applyUpdate } =
-  useTracker()
+const {
+  snapshot,
+  settings,
+  history,
+  lookupResult,
+  lookingUp,
+  lookup,
+  saveApiKey,
+  setRichPresence,
+  setNotify,
+  setOverlay,
+  applyUpdate,
+} = useTracker()
 
-type Tab = 'squad' | 'history' | 'settings'
+type Tab = 'live' | 'history' | 'settings'
 const tabs: { id: Tab; label: string }[] = [
-  { id: 'squad', label: 'Squad' },
+  { id: 'live', label: 'Live' },
   { id: 'history', label: 'History' },
   { id: 'settings', label: 'Settings' },
 ]
-const tab = ref<Tab>('squad')
+const tab = ref<Tab>('live')
 
-const searchName = ref('')
-const platform = ref<Platform>('epic')
-
-// Ticks once a minute so the in-match timer stays current.
+// Ticks every second so the match timer counts up live.
 const now = ref(Date.now())
-const clock = window.setInterval(() => (now.value = Date.now()), 30_000)
+const clock = window.setInterval(() => (now.value = Date.now()), 1000)
 onUnmounted(() => window.clearInterval(clock))
 
-const phase = computed(() => {
+const status = computed(() => {
   const s = snapshot.value
-  if (!s) return { label: 'Waiting for Fortnite', cls: 'idle' }
-  if (!s.gameRunning) return { label: 'Fortnite not running', cls: 'idle' }
-  if (!s.inMatch) return { label: 'In lobby', cls: 'lobby' }
-  const mins = s.matchStartedUtc ? Math.max(0, Math.floor((now.value - Date.parse(s.matchStartedUtc)) / 60_000)) : null
-  return { label: `${s.mode}${mins !== null ? ` · ${mins} min` : ''}`, cls: 'live' }
+  if (!s) return { state: 'idle', label: 'Waiting for Fortnite', timer: null }
+  if (!s.gameRunning) return { state: 'idle', label: 'Fortnite not running', timer: null }
+  if (!s.inMatch) return { state: 'lobby', label: 'In lobby', timer: null }
+  const secs = s.matchStartedUtc ? Math.max(0, Math.floor((now.value - Date.parse(s.matchStartedUtc)) / 1000)) : null
+  const timer = secs === null ? null : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
+  return { state: 'live', label: s.mode, timer }
 })
 
-function submitSearch() {
-  if (searchName.value.trim()) lookup(searchName.value.trim(), platform.value)
-}
+const overlayOn = computed(() => settings.value?.overlay.enabled ?? false)
 </script>
 
 <template>
-  <main>
-    <header class="top">
-      <h1>Fortnite Tracker</h1>
-      <span class="pill" :class="phase.cls">{{ phase.label }}</span>
-    </header>
+  <div class="app">
+    <TitleBar :overlay-on="overlayOn" @toggle-overlay="setOverlay(!overlayOn)" />
 
-    <p v-if="!isHosted" class="notice">
-      This page talks to the desktop app. Run it inside FortniteTracker.exe to see live data.
-    </p>
-
-    <div v-if="settings?.updateVersion" class="update">
-      <span>Version {{ settings.updateVersion }} is ready.</span>
-      <button type="button" @click="applyUpdate">Restart to update</button>
+    <div class="status" :class="status.state">
+      <span class="pulse" aria-hidden="true" />
+      <span class="label">{{ status.label }}</span>
+      <span v-if="status.timer" class="timer">{{ status.timer }}</span>
+      <span v-if="snapshot?.gameRunning" class="bucket">Stats: {{ snapshot.statsLabel }}</span>
     </div>
 
     <nav class="tabs" role="tablist">
@@ -70,209 +73,144 @@ function submitSearch() {
       </button>
     </nav>
 
-    <template v-if="tab === 'squad'">
-      <ApiKeyForm v-if="settings && !settings.hasApiKey" :has-key="false" @save="saveApiKey" />
+    <main>
+      <p v-if="!isHosted" class="notice">
+        This page talks to the desktop app. Run it inside FortniteTracker.exe to see live data.
+      </p>
 
-      <section>
-        <h2>Your squad</h2>
-        <div v-if="snapshot?.squad.length" class="list">
-          <PlayerCard
-            v-for="(p, i) in snapshot.squad"
-            :key="p.accountId ?? i"
-            :player="p"
-            :is-you="i === 0 && !!snapshot.localName"
-            :fallback-name="i === 0 ? snapshot.localName : null"
-          />
-        </div>
-        <p v-else class="empty">Launch Fortnite. Your squad appears here automatically.</p>
-      </section>
+      <div v-if="settings?.updateVersion" class="update">
+        <span>Version {{ settings.updateVersion }} is ready.</span>
+        <button type="button" class="btn-primary" @click="applyUpdate">Restart to update</button>
+      </div>
 
-      <section v-if="snapshot?.eliminatedBy">
-        <h2>Eliminated by</h2>
-        <PlayerCard :player="snapshot.eliminatedBy" />
-      </section>
+      <template v-if="tab === 'live'">
+        <ApiKeyForm v-if="settings && !settings.hasApiKey" :has-key="false" class="key-prompt" @save="saveApiKey" />
+        <LiveView :snapshot="snapshot" :lookup-result="lookupResult" :looking-up="lookingUp" @lookup="lookup" />
+      </template>
 
-      <section v-if="snapshot?.spectated.length">
-        <h2>Also spectated</h2>
-        <div class="list">
-          <PlayerCard v-for="p in snapshot.spectated" :key="p.epicName ?? ''" :player="p" />
-        </div>
-      </section>
+      <HistoryView v-else-if="tab === 'history'" :matches="history" />
 
-      <section>
-        <h2>Look up a player</h2>
-        <form class="row" @submit.prevent="submitSearch">
-          <input v-model="searchName" placeholder="Epic name, e.g. who just eliminated you" />
-          <select v-model="platform" aria-label="Platform">
-            <option value="epic">Epic</option>
-            <option value="psn">PSN</option>
-            <option value="xbl">Xbox</option>
-          </select>
-          <button type="submit" :disabled="lookingUp">{{ lookingUp ? '…' : 'Search' }}</button>
-        </form>
-        <PlayerCard v-if="lookupResult" :player="lookupResult" class="result" />
-      </section>
-    </template>
-
-    <HistoryView v-else-if="tab === 'history'" :matches="history" />
-
-    <SettingsView
-      v-else-if="settings"
-      :settings="settings"
-      @save-key="saveApiKey"
-      @rich-presence="setRichPresence"
-    />
-
-    <footer>Ctrl+Shift+F shows or hides this window. Closing it keeps the app running in the tray.</footer>
-  </main>
+      <SettingsView
+        v-else-if="settings"
+        :settings="settings"
+        @save-key="saveApiKey"
+        @rich-presence="setRichPresence"
+        @notify="setNotify"
+        @overlay="setOverlay"
+      />
+    </main>
+  </div>
 </template>
 
-<style>
-:root {
-  --bg: #0f1115;
-  --surface: #181b22;
-  --border: #262a33;
-  --text: #e8eaf0;
-  --muted: #8b91a0;
-  --accent: #7cc4ff;
-  --accent-ink: #0b1a26;
-  --live: #4ade80;
-  color-scheme: dark;
-  font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
-  font-size: 14px;
-  color: var(--text);
-  background: var(--bg);
-}
-body {
-  margin: 0;
-  background: var(--bg);
-}
-input,
-select,
-button {
-  font: inherit;
-  color: inherit;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 10px;
-}
-input {
-  flex: 1;
-  min-width: 0;
-}
-button {
-  cursor: pointer;
-  background: var(--accent);
-  color: var(--accent-ink);
-  border-color: transparent;
-  font-weight: 600;
-}
-button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-h2 {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  margin: 0 0 8px;
-}
-.panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
-}
-.panel label {
-  font-weight: 600;
-}
-.row {
-  display: flex;
-  gap: 6px;
-}
-.hint,
-.empty {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 4px 0 10px;
-}
-</style>
-
 <style scoped>
-main {
+.app {
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px;
 }
-.top {
+
+.status {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-}
-h1 {
-  font-size: 16px;
-  margin: 0;
-  white-space: nowrap;
-}
-.pill {
-  font-size: 12px;
-  border-radius: 999px;
-  padding: 2px 10px;
+  margin: 0 14px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: var(--surface);
   border: 1px solid var(--border);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
   color: var(--muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.pill.live {
-  color: var(--live);
-  border-color: color-mix(in srgb, var(--live) 40%, transparent);
+.pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--faint);
+  flex: none;
 }
-.pill.lobby {
+.status.lobby .pulse {
+  background: var(--accent);
+}
+.status.lobby .label {
   color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
 }
-.update {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
-  border-radius: 10px;
-  padding: 8px 8px 8px 12px;
+.status.live {
+  border-color: color-mix(in srgb, var(--live) 40%, var(--border));
 }
+.status.live .label {
+  color: var(--live);
+}
+.status.live .pulse {
+  background: var(--live);
+  animation: pulse 1.6s ease-out infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--live) 60%, transparent); }
+  100% { box-shadow: 0 0 0 8px transparent; }
+}
+.timer {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.bucket {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
 .tabs {
+  flex: none;
   display: flex;
   gap: 4px;
+  padding: 10px 14px 0;
   border-bottom: 1px solid var(--border);
 }
 .tabs button {
   background: none;
-  color: var(--muted);
   border: none;
-  border-bottom: 2px solid transparent;
   border-radius: 0;
-  padding: 6px 10px;
+  padding: 6px 12px 8px;
   margin-bottom: -1px;
+  color: var(--muted);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  position: relative;
+}
+.tabs button:hover {
+  color: var(--text);
 }
 .tabs button.active {
   color: var(--text);
-  border-bottom-color: var(--accent);
 }
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* Skewed underline, in the style of Fortnite's menus. */
+.tabs button.active::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 3px;
+  background: var(--accent);
+  transform: skewX(-20deg);
+}
+
+main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 14px 20px;
+}
+.key-prompt {
+  margin-bottom: 18px;
 }
 .notice {
   color: var(--muted);
@@ -280,13 +218,17 @@ h1 {
   border: 1px dashed var(--border);
   border-radius: 8px;
   padding: 8px 10px;
-  margin: 0;
+  margin: 0 0 14px;
 }
-.result {
-  margin-top: 8px;
-}
-footer {
-  color: var(--muted);
-  font-size: 12px;
+.update {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 10px;
+  padding: 8px 8px 8px 12px;
 }
 </style>

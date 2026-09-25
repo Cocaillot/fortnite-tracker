@@ -7,7 +7,12 @@ public sealed record MatchRecord(
     string? Playlist,
     int SquadSize,
     bool Finished,
-    string? EliminatedBy = null);
+    string? EliminatedBy = null,
+    // Filled in later by MatchResultTracker, from stats lookups rather than the log:
+    int? Kills = null,
+    bool? Won = null,
+    double? EliminatorKd = null,
+    Threat? EliminatorThreat = null);
 
 /// <summary>Raised by the log tailer when it starts reading a (new) log file, i.e. a new game session.</summary>
 public sealed record LogFileOpened : GameEvent;
@@ -37,6 +42,9 @@ public sealed class SessionState
     /// <summary>Players spectated after your team was eliminated; the first one eliminated it.</summary>
     public IReadOnlyList<string> Spectated => _spectated;
     public string? EliminatedBy => _spectated.Count > 0 ? _spectated[0] : null;
+
+    /// <summary>The match that just reached placement, until the next one starts.</summary>
+    public MatchRecord? LastFinished => _lastFinished;
 
     private int _squadSizeAtStart;
     private bool _playlistConfirmed;

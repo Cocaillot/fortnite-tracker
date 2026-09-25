@@ -9,7 +9,7 @@ namespace FortniteTracker.Desktop;
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
 /// Host → UI: snapshot, settings, history, lookupResult.
-/// UI → host: ready, lookup, setApiKey, setRichPresence, applyUpdate.
+/// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window.
 /// </summary>
 public sealed class UiBridge
 {
@@ -45,6 +45,9 @@ public sealed class UiBridge
         _history.Changed += () => Post(SendHistory);
         _updates.UpdateReady += () => Post(SendSettings);
     }
+
+    /// <summary>Title bar buttons of the custom window chrome: "drag", "minimize", "close".</summary>
+    public event Action<string>? WindowCommand;
 
     public void Attach(CoreWebView2 web, Dispatcher dispatcher)
     {
@@ -82,8 +85,19 @@ public sealed class UiBridge
             case "setRichPresence" when msg.Enabled is { } enabled:
                 _settings.SetRichPresence(enabled);
                 break;
+            case "setNotify" when msg.Enabled is { } notify:
+                _settings.SetNotifyOnElimination(notify);
+                break;
+            case "setOverlay":
+                _settings.SetOverlay(
+                    msg.Enabled ?? _settings.OverlayEnabled,
+                    Enum.TryParse<OverlayCorner>(msg.Corner, out var corner) ? corner : _settings.OverlayCorner);
+                break;
             case "applyUpdate":
                 _updates.ApplyAndRestart();
+                break;
+            case "window" when msg.Action is "drag" or "minimize" or "close":
+                WindowCommand?.Invoke(msg.Action);
                 break;
         }
     }
@@ -92,6 +106,8 @@ public sealed class UiBridge
     {
         hasApiKey = _settings.HasApiKey,
         richPresence = new { available = _presence.Available, enabled = _settings.RichPresenceEnabled },
+        notifyOnElimination = _settings.NotifyOnElimination,
+        overlay = new { enabled = _settings.OverlayEnabled, corner = _settings.OverlayCorner.ToString() },
         version = _updates.CurrentVersion,
         updateVersion = _updates.ReadyVersion,
     });
@@ -103,5 +119,6 @@ public sealed class UiBridge
     private void Send(string type, object data) =>
         _web?.PostWebMessageAsJson(JsonSerializer.Serialize(new { type, data }, Json));
 
-    private sealed record UiMessage(string Type, string? Name, string? Platform, string? Key, bool? Enabled);
+    private sealed record UiMessage(
+        string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action);
 }

@@ -1,9 +1,12 @@
+using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Windows;
 using FortniteTracker.Core;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace FortniteTracker.Desktop;
 
@@ -13,6 +16,7 @@ public partial class App : Application
     private IHost? _host;
     private TrayIcon? _tray;
     private MainWindow? _window;
+    private OverlayController? _overlay;
 
     public App(EventWaitHandle showRequested)
     {
@@ -27,9 +31,15 @@ public partial class App : Application
             .UseContentRoot(AppContext.BaseDirectory)
             .ConfigureServices((ctx, services) =>
             {
+                var config = ctx.Configuration;
+                // Testing overrides (e.g. --Fortnite:LogPath=demo.log --Fortnite:AssumeRunning=true
+                // --Storage:Directory=C:	empt): a replayed log without touching real data.
+                var storage = config["Storage:Directory"] is { Length: > 0 } dir ? dir : SettingsStore.DefaultDirectory;
+                var logPath = config["Fortnite:LogPath"] is { Length: > 0 } log ? log : FortniteLogTailer.DefaultLogPath;
+
                 services.AddMemoryCache();
-                services.AddSingleton(_ => new SettingsStore(ctx.Configuration["FortniteApi:Key"]));
-                services.AddSingleton(_ => new MatchHistoryStore());
+                services.AddSingleton(_ => new SettingsStore(config["FortniteApi:Key"], Path.Combine(storage, "settings.json")));
+                services.AddSingleton(_ => new MatchHistoryStore(Path.Combine(storage, "history.json")));
                 services.AddHttpClient("fortnite-api", c =>
                 {
                     c.BaseAddress = new Uri("https://fortnite-api.com/");
@@ -39,13 +49,18 @@ public partial class App : Application
                 services.AddSingleton(sp => ActivatorUtilities.CreateInstance<FortniteStatsService>(sp,
                     sp.GetRequiredService<IHttpClientFactory>().CreateClient("fortnite-api")));
                 services.AddSingleton<LobbyTracker>();
-                services.AddSingleton<FortniteLogTailer>();
+                services.AddSingleton(sp => new FortniteLogTailer(sp.GetRequiredService<ILogger<FortniteLogTailer>>()) { LogPath = logPath });
                 services.AddHostedService(sp => sp.GetRequiredService<FortniteLogTailer>());
-                services.AddHostedService<GameProcessWatcher>();
-                services.AddHostedService<MatchHistoryImporter>();
+                if (!config.GetValue<bool>("Fortnite:AssumeRunning")) services.AddHostedService<GameProcessWatcher>();
+                services.AddHostedService(sp => new MatchHistoryImporter(
+                    sp.GetRequiredService<MatchHistoryStore>(), sp.GetRequiredService<ILogger<MatchHistoryImporter>>())
+                {
+                    LogDirectory = Path.GetDirectoryName(logPath)!,
+                });
                 services.AddSingleton<UpdateService>();
                 services.AddHostedService(sp => sp.GetRequiredService<UpdateService>());
                 services.AddSingleton<DiscordPresenceService>();
+                services.AddSingleton<MatchResultTracker>();
                 services.AddSingleton<UiBridge>();
                 services.AddSingleton<MainWindow>();
             })
@@ -65,17 +80,25 @@ public partial class App : Application
             if (FortniteLogParser.Parse(line) is { } gameEvent) tracker.Handle(gameEvent);
         };
         tracker.MatchCompleted += history.Add;
-        services.GetRequiredService<SettingsStore>().Changed += apiKeyChanged =>
+        var settings = services.GetRequiredService<SettingsStore>();
+        var results = services.GetRequiredService<MatchResultTracker>(); // follows the tracker from here on
+        settings.Changed += apiKeyChanged =>
         {
             if (!apiKeyChanged) return;
             stats.ClearCache();
             tracker.Refresh();
+            _ = results.BackfillEliminatorsAsync(CancellationToken.None);
         };
         services.GetRequiredService<DiscordPresenceService>(); // starts following the tracker
 
         _window = services.GetRequiredService<MainWindow>();
-        _tray = new TrayIcon(_window.ToggleVisibility, ApplyUpdate, ExitApp);
+        _overlay = new OverlayController(settings, tracker, Dispatcher);
+        _tray = new TrayIcon(_window.ToggleVisibility, _overlay.Toggle, ApplyUpdate, ExitApp);
+        _tray.SetOverlayChecked(settings.OverlayEnabled);
+        settings.Changed += _ => Dispatcher.InvokeAsync(() => _tray.SetOverlayChecked(settings.OverlayEnabled));
+        _window.OverlayHotkey += _overlay.Toggle;
         _window.HiddenToTray += _tray.ShowStillRunningHint;
+        _ = new EliminationNotifier(tracker, settings, (title, text) => Dispatcher.InvokeAsync(() => _tray.Notify(title, text)));
         updates.UpdateReady += () => Dispatcher.InvokeAsync(() => _tray.ShowUpdateReady(updates.ReadyVersion!));
 
         // A second launch signals this instance to come to the front.
@@ -84,6 +107,13 @@ public partial class App : Application
 
         _window.Show();
         await _host.StartAsync();
+
+        // Once old logs are imported, look up eliminators that have no stats yet (for the dashboard).
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(TimeSpan.FromSeconds(15));
+            await results.BackfillEliminatorsAsync(CancellationToken.None);
+        });
     }
 
     private void ApplyUpdate()
@@ -101,6 +131,7 @@ public partial class App : Application
     protected override async void OnExit(ExitEventArgs e)
     {
         _tray?.Dispose();
+        _overlay?.Close();
         if (_host is not null)
         {
             _host.Services.GetRequiredService<DiscordPresenceService>().Dispose();

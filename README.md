@@ -3,13 +3,24 @@
 A Windows companion app that runs next to Fortnite. It detects you and your party from Fortnite's
 own log file and shows:
 
-- each party member's season stats (K/D, win rate, wins, matches), plus lookup of any player by name
-- the stats of the player who eliminated your team, and of players you spectate afterwards
-- your match history (mode, party size, duration, who eliminated you), including sessions from
-  Fortnite's recent logs
+- each party member's season stats (K/D, win rate, wins, matches) for the mode you're playing,
+  coloured by Fortnite item rarity, plus lookup of any player by name
+- the player who eliminated your team, with a threat level (Casual → Sweat) and how their K/D
+  compares to yours, as a card, a Windows notification and in the in-game overlay
+- a small click-through in-game overlay with your squad's K/D (Ctrl+Shift+O)
+- match history with a session dashboard: time played, most-played mode, your nemesis, and
+  (experimental) kills and wins per match
 - your mode, party and K/D on your Discord profile (Rich Presence)
 
 It lives in the notification area, has a Ctrl+Shift+F show/hide hotkey, and updates itself.
+
+**Per-match kills and wins** aren't in the log. The app reads your season stats when a match
+starts and again after it ends; the difference is that match. If two matches land in your stats
+at once, the result is left blank rather than guessed.
+
+**Stats for the current mode:** fortnite-api has solo, duo, squad and `ltm` buckets. Ranked
+counts as `ltm`, and there is no trio bucket, so Ranked shows "Ranked & LTMs" stats and trios
+show all modes.
 
 ## How it works (and what it can't do)
 
@@ -58,6 +69,11 @@ The Vue UI and the .NET host talk through WebView2 web messages (see `ui/src/bri
 | `%LOCALAPPDATA%\FortniteTracker.WebView2\` | UI browser profile |
 
 ## Development
+
+For testing without touching your real data, the app accepts overrides:
+`--Fortnite:LogPath=<log>` (read another log), `--Fortnite:AssumeRunning=true` (don't check
+for the game process) and `--Storage:Directory=<folder>` (settings and history location).
+
 
 Requirements: .NET 8 SDK, Node 20+, WebView2 runtime (preinstalled on Windows 11).
 

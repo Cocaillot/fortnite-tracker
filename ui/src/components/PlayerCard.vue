@@ -1,13 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { PlayerStats } from '../bridge'
+import { statsFor, threatLabel, type PlayerStats } from '../bridge'
 
-const props = defineProps<{ player: PlayerStats; isYou?: boolean; fallbackName?: string | null }>()
+const props = withDefaults(defineProps<{
+  player: PlayerStats
+  bucket: string | null
+  modeLabel?: string
+  isYou?: boolean
+  fallbackName?: string | null
+  /** Your own stats, to compare an opponent against ("2.3× your K/D"). */
+  you?: PlayerStats | null
+  variant?: 'squad' | 'eliminator' | 'opponent'
+}>(), { variant: 'squad', modeLabel: undefined, fallbackName: null, you: null })
 
-const statusText: Record<Exclude<PlayerStats['status'], 'Ok'>, string> = {
-  Private: 'Stats private: they can enable public stats in Fortnite settings',
-  NotFound: 'No stats found: could be a bot or a name that changed',
-  NoApiKey: 'Add your API key to load stats',
+const statusText: Partial<Record<PlayerStats['status'], string>> = {
+  Private: 'Stats private: they can make them public in Fortnite settings',
+  NotFound: 'No stats found: likely a bot, or a name that changed',
+  NoApiKey: 'Add your API key in Settings to load stats',
   Error: 'Stats unavailable right now',
   Hidden: 'Streamer Mode: Fortnite hides their real name',
 }
@@ -17,72 +26,190 @@ const name = computed(() =>
     ? 'Streamer Mode player'
     : (props.player.epicName ?? props.fallbackName ?? 'Squad member'),
 )
-const fmt = (n: number | null, digits = 0) => (n === null ? '–' : n.toFixed(digits))
+const stats = computed(() => (props.player.status === 'Ok' ? statsFor(props.player, props.bucket) : null))
+const loading = computed(() => props.player.status === 'Loading')
+
+const versus = computed(() => {
+  const mine = props.you && props.you.status === 'Ok' ? statsFor(props.you, props.bucket) : null
+  if (!stats.value || !mine || mine.kd <= 0) return null
+  const ratio = stats.value.kd / mine.kd
+  return ratio >= 1
+    ? { text: `${ratio.toFixed(1)}× your K/D`, worse: true }
+    : { text: `${(1 / ratio).toFixed(1)}× lower K/D than you`, worse: false }
+})
+
+const fmt = (n: number, digits = 0) => n.toFixed(digits)
 </script>
 
 <template>
-  <article class="card">
+  <article class="card" :class="[variant, stats ? `r-${stats.kdRarity}` : 'r-Common']">
     <header>
-      <span class="name">{{ name }}</span>
-      <span v-if="isYou" class="you">You</span>
+      <span v-if="loading" class="skeleton name-skeleton" />
+      <span v-else class="name" :title="name">{{ name }}</span>
+      <span v-if="isYou" class="tag you">You</span>
+      <span v-if="player.threat && variant !== 'squad'" class="tag threat" :class="`t-${player.threat}`">
+        {{ threatLabel[player.threat] }}
+      </span>
+      <span v-if="stats && modeLabel" class="mode">{{ modeLabel }}</span>
     </header>
 
-    <dl v-if="player.status === 'Ok'" class="stats">
-      <div><dt>K/D</dt><dd>{{ fmt(player.kd, 2) }}</dd></div>
-      <div><dt>Win %</dt><dd>{{ fmt(player.winRate, 1) }}</dd></div>
-      <div><dt>Wins</dt><dd>{{ fmt(player.wins) }}</dd></div>
-      <div><dt>Matches</dt><dd>{{ fmt(player.matches) }}</dd></div>
-    </dl>
+    <div v-if="loading" class="stats">
+      <div v-for="i in 4" :key="i" class="tile"><span class="skeleton value-skeleton" /></div>
+    </div>
+
+    <div v-else-if="stats" class="stats">
+      <div class="tile rarity" :class="`r-${stats.kdRarity}`">
+        <span class="label">K/D</span>
+        <span class="value">{{ fmt(stats.kd, 2) }}</span>
+      </div>
+      <div class="tile rarity" :class="`r-${stats.winRateRarity}`">
+        <span class="label">Win %</span>
+        <span class="value">{{ fmt(stats.winRate, 1) }}</span>
+      </div>
+      <div class="tile">
+        <span class="label">Wins</span>
+        <span class="value plain">{{ stats.wins }}</span>
+      </div>
+      <div class="tile">
+        <span class="label">Matches</span>
+        <span class="value plain">{{ stats.matches }}</span>
+      </div>
+    </div>
+
     <p v-else class="status">{{ statusText[player.status] }}</p>
+
+    <p v-if="versus" class="versus" :class="{ worse: versus.worse }">{{ versus.text }}</p>
   </article>
 </template>
 
 <style scoped>
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 12px;
+  padding: 12px 14px 12px 17px;
+  overflow: hidden;
 }
+/* Rarity strip on the left edge, from the player's K/D. */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--r);
+}
+.card.eliminator {
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+  background: linear-gradient(160deg, color-mix(in srgb, var(--danger) 10%, var(--surface)) 0%, var(--surface) 55%);
+}
+
 header {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
+  min-height: 24px;
 }
 .name {
-  font-weight: 600;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: 0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.you {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent-ink);
-  background: var(--accent);
-  border-radius: 999px;
-  padding: 1px 8px;
+.tag {
+  flex: none;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 1px 7px;
+  transform: skewX(-8deg);
 }
+.you {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.threat {
+  border: 1px solid currentColor;
+}
+.t-Sweat { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.t-Skilled { color: var(--rarity-epic); }
+.t-Average { color: var(--rarity-rare); }
+.t-Casual { color: var(--rarity-uncommon); }
+.t-BotLikely { color: var(--rarity-common); }
+.mode {
+  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin: 0;
+  gap: 6px;
 }
-dt {
+.tile {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding: 6px 8px;
+  min-height: 52px;
+  justify-content: center;
+}
+.tile.rarity {
+  background: radial-gradient(120% 120% at 50% 110%, color-mix(in srgb, var(--r) 22%, transparent), var(--surface-2) 70%);
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--r) 70%, transparent);
+}
+.label {
+  font-family: var(--display);
+  font-weight: 700;
   font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
 }
-dd {
-  margin: 2px 0 0;
-  font-size: 18px;
-  font-weight: 600;
+.value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1.05;
+  color: var(--r);
   font-variant-numeric: tabular-nums;
+}
+.value.plain {
+  color: var(--text);
 }
 .status {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
+}
+.versus {
+  margin: 8px 0 0;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: var(--rarity-uncommon);
+}
+.versus.worse {
+  color: var(--danger);
+}
+.name-skeleton {
+  width: 45%;
+  height: 18px;
+}
+.value-skeleton {
+  width: 70%;
+  height: 22px;
 }
 </style>

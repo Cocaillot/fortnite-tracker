@@ -2,6 +2,8 @@ using System.Text.Json;
 
 namespace FortniteTracker.Core;
 
+public enum OverlayCorner { TopLeft, TopRight, BottomLeft, BottomRight }
+
 /// <summary>
 /// User settings in %APPDATA%\FortniteTracker\settings.json. Each user brings their own free
 /// fortnite-api.com key, so no secret ships inside the app.
@@ -26,6 +28,9 @@ public sealed class SettingsStore
     public string? ApiKey => _settings.FortniteApiKey;
     public bool HasApiKey => !string.IsNullOrWhiteSpace(_settings.FortniteApiKey);
     public bool RichPresenceEnabled => _settings.RichPresence;
+    public bool NotifyOnElimination => _settings.NotifyOnElimination;
+    public bool OverlayEnabled => _settings.Overlay;
+    public OverlayCorner OverlayCorner => _settings.OverlayCorner;
 
     /// <summary>Raised after any change; the argument says whether the API key changed.</summary>
     public event Action<bool>? Changed;
@@ -33,6 +38,11 @@ public sealed class SettingsStore
     public void SetApiKey(string key) => Update(s => s with { FortniteApiKey = key.Trim() }, apiKeyChanged: true);
 
     public void SetRichPresence(bool enabled) => Update(s => s with { RichPresence = enabled }, apiKeyChanged: false);
+
+    public void SetNotifyOnElimination(bool enabled) => Update(s => s with { NotifyOnElimination = enabled }, apiKeyChanged: false);
+
+    public void SetOverlay(bool enabled, OverlayCorner corner) =>
+        Update(s => s with { Overlay = enabled, OverlayCorner = corner }, apiKeyChanged: false);
 
     private void Update(Func<Settings, Settings> change, bool apiKeyChanged)
     {
@@ -58,5 +68,10 @@ public sealed class SettingsStore
         }
     }
 
-    private sealed record Settings(string? FortniteApiKey = null, bool RichPresence = true);
+    private sealed record Settings(
+        string? FortniteApiKey = null,
+        bool RichPresence = true,
+        bool NotifyOnElimination = true,
+        bool Overlay = false,
+        OverlayCorner OverlayCorner = OverlayCorner.TopRight);
 }

@@ -7,13 +7,6 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace FortniteTracker.Core;
 
-/// <summary>Hidden: the player uses Streamer Mode, so Fortnite never revealed their real name.</summary>
-public enum StatsStatus { Ok, Private, NotFound, NoApiKey, Error, Hidden }
-
-public sealed record PlayerStats(
-    string? AccountId, string? EpicName, StatsStatus Status,
-    int? Wins = null, double? WinRate = null, double? Kd = null, int? Kills = null, int? Matches = null);
-
 /// <summary>
 /// Season stats from fortnite-api.com, with caching, request de-duplication and rate limiting.
 /// </summary>
@@ -30,7 +23,18 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
     });
 
     public Task<PlayerStats> GetByAccountIdAsync(string accountId, CancellationToken ct) =>
-        GetCachedAsync("id:" + accountId, $"v2/stats/br/v2/{accountId}?timeWindow=season", accountId, null, ct);
+        GetCachedAsync(AccountKey(accountId), AccountUrl(accountId), accountId, null, ct);
+
+    /// <summary>Skips the cache (used to see a match land in your stats); refreshes it on success.</summary>
+    public async Task<PlayerStats> GetFreshByAccountIdAsync(string accountId, CancellationToken ct)
+    {
+        if (!settings.HasApiKey) return new PlayerStats(accountId, null, StatsStatus.NoApiKey);
+        ct.ThrowIfCancellationRequested();
+        return await FetchAndCacheAsync(AccountKey(accountId), AccountUrl(accountId), accountId, null);
+    }
+
+    private static string AccountKey(string accountId) => "id:" + accountId;
+    private static string AccountUrl(string accountId) => $"v2/stats/br/v2/{accountId}?timeWindow=season";
 
     public Task<PlayerStats> GetByNameAsync(string name, string accountType, CancellationToken ct) =>
         GetCachedAsync($"name:{accountType}:{name.ToLowerInvariant()}",
@@ -40,6 +44,7 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
     /// <summary>
     /// Looks up a player by the name shown in-game. Console players show their PSN/Xbox name,
     /// so Epic is tried first, then PSN, then Xbox. Streamer Mode names are not looked up.
+    /// The result keeps the name seen in-game, since a console player's Epic name differs.
     /// </summary>
     public async Task<PlayerStats> GetByDisplayNameAsync(string displayName, CancellationToken ct)
     {
@@ -49,9 +54,9 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
         foreach (var accountType in new[] { "epic", "psn", "xbl" })
         {
             result = await GetByNameAsync(displayName, accountType, ct);
-            if (result.Status != StatsStatus.NotFound) return result;
+            if (result.Status != StatsStatus.NotFound) return result with { EpicName = displayName };
         }
-        return result!;
+        return result! with { EpicName = displayName };
     }
 
     public void ClearCache() => (cache as MemoryCache)?.Clear();
@@ -130,17 +135,25 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
         var id = account.GetProperty("id").GetString() ?? accountId;
         var epicName = account.GetProperty("name").GetString() ?? name;
 
-        // "all" is null when the player has no matches in the time window.
+        // "all" (and each mode inside it) is null when there are no matches in the time window.
         if (!data.TryGetProperty("stats", out var stats)
-            || !stats.TryGetProperty("all", out var all) || all.ValueKind != JsonValueKind.Object
-            || !all.TryGetProperty("overall", out var o) || o.ValueKind != JsonValueKind.Object)
-            return new(id, epicName, StatsStatus.Ok, 0, 0, 0, 0, 0);
+            || !stats.TryGetProperty("all", out var all) || all.ValueKind != JsonValueKind.Object)
+            return new(id, epicName, StatsStatus.Ok, new ModeStats(0, 0, 0, 0, 0), new Dictionary<string, ModeStats>());
+
+        var byMode = new Dictionary<string, ModeStats>();
+        foreach (var mode in all.EnumerateObject())
+            if (mode.Name != "overall" && ParseMode(mode.Value) is { } m) byMode[mode.Name] = m;
 
         return new(id, epicName, StatsStatus.Ok,
-            Wins: o.GetProperty("wins").GetInt32(),
-            WinRate: o.GetProperty("winRate").GetDouble(),
-            Kd: o.GetProperty("kd").GetDouble(),
-            Kills: o.GetProperty("kills").GetInt32(),
-            Matches: o.GetProperty("matches").GetInt32());
+            all.TryGetProperty("overall", out var o) ? ParseMode(o) ?? new ModeStats(0, 0, 0, 0, 0) : new ModeStats(0, 0, 0, 0, 0),
+            byMode);
     }
+
+    private static ModeStats? ParseMode(JsonElement m) =>
+        m.ValueKind != JsonValueKind.Object ? null : new ModeStats(
+            Wins: m.GetProperty("wins").GetInt32(),
+            WinRate: m.GetProperty("winRate").GetDouble(),
+            Kd: m.GetProperty("kd").GetDouble(),
+            Kills: m.GetProperty("kills").GetInt32(),
+            Matches: m.GetProperty("matches").GetInt32());
 }

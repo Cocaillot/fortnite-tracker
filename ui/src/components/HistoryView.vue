@@ -1,23 +1,66 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { MatchRecord } from '../bridge'
+import { computed, ref } from 'vue'
+import { isAnonymous, threatLabel, type MatchRecord, type Threat } from '../bridge'
 
 const props = defineProps<{ matches: MatchRecord[] }>()
 
-const minutes = (m: MatchRecord) =>
-  m.endedUtc ? (Date.parse(m.endedUtc) - Date.parse(m.startedUtc)) / 60_000 : null
+type Range = 'today' | 'all'
+const range = ref<Range>('today')
 
 const dayKey = (iso: string) => new Date(iso).toDateString()
+const minutes = (m: MatchRecord) => (m.endedUtc ? (Date.parse(m.endedUtc) - Date.parse(m.startedUtc)) / 60_000 : null)
 
-const today = computed(() => {
-  const todays = props.matches.filter((m) => dayKey(m.startedUtc) === new Date().toDateString())
-  const played = todays.reduce((sum, m) => sum + (minutes(m) ?? 0), 0)
-  return { count: todays.length, played: Math.round(played) }
+const inRange = computed(() =>
+  range.value === 'all' ? props.matches : props.matches.filter((m) => dayKey(m.startedUtc) === new Date().toDateString()),
+)
+
+function mostCommon<T>(items: T[]): { value: T; count: number } | null {
+  const counts = new Map<T, number>()
+  for (const i of items) counts.set(i, (counts.get(i) ?? 0) + 1)
+  let best: { value: T; count: number } | null = null
+  for (const [value, count] of counts) if (!best || count > best.count) best = { value, count }
+  return best
+}
+
+const summary = computed(() => {
+  const ms = inRange.value
+  const tracked = ms.filter((m) => m.kills !== null)
+  const eliminators = ms.map((m) => m.eliminatedBy).filter((n): n is string => !!n)
+  const kds = ms.map((m) => m.eliminatorKd).filter((k): k is number => k !== null)
+  return {
+    count: ms.length,
+    played: Math.round(ms.reduce((sum, m) => sum + (minutes(m) ?? 0), 0)),
+    kills: tracked.length ? tracked.reduce((sum, m) => sum + (m.kills ?? 0), 0) : null,
+    tracked: tracked.length,
+    wins: ms.filter((m) => m.won).length,
+    topMode: mostCommon(ms.map((m) => m.mode)),
+    eliminated: eliminators.length,
+    nemesis: mostCommon(eliminators.filter((n) => !isAnonymous(n))),
+    hidden: eliminators.filter(isAnonymous).length,
+    topThreat: mostCommon(ms.map((m) => m.eliminatorThreat).filter((t): t is Threat => !!t)),
+    avgEliminatorKd: kds.length ? kds.reduce((a, b) => a + b, 0) / kds.length : null,
+  }
+})
+
+// A named nemesis needs at least two eliminations; otherwise describe the kind of player.
+const nemesis = computed(() => {
+  const s = summary.value
+  if (s.nemesis && s.nemesis.count >= 2) return { title: s.nemesis.value, detail: `eliminated you ${s.nemesis.count}×` }
+  if (s.topThreat) {
+    const label = threatLabel[s.topThreat.value]
+    return {
+      title: s.topThreat.value === 'BotLikely' ? 'Bots' : `${label}s`,
+      detail: `${s.topThreat.count} of ${s.eliminated} eliminations`,
+      threat: s.topThreat.value,
+    }
+  }
+  if (s.hidden) return { title: 'Streamer Mode players', detail: `${s.hidden} of ${s.eliminated} eliminations` }
+  return null
 })
 
 const days = computed(() => {
   const groups = new Map<string, MatchRecord[]>()
-  for (const m of props.matches) {
+  for (const m of inRange.value) {
     const key = dayKey(m.startedUtc)
     groups.set(key, [...(groups.get(key) ?? []), m])
   }
@@ -42,32 +85,69 @@ function duration(m: MatchRecord) {
 
 // Only your own party is known; random teammates filled by matchmaking aren't in the log.
 const party = (size: number) => (size === 1 ? 'No party' : `Party of ${size}`)
-
-// Streamer Mode players appear as e.g. "Anonyme[274]".
-const opponent = (name: string) => (/\[\d+\]$/.test(name) ? 'a Streamer Mode player' : name)
+const opponent = (name: string) => (isAnonymous(name) ? 'a Streamer Mode player' : name)
+const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}` : `${min} min`)
 </script>
 
 <template>
   <section class="history">
-    <dl class="summary">
-      <div><dt>Matches today</dt><dd>{{ today.count }}</dd></div>
-      <div><dt>Time in matches today</dt><dd>{{ today.played }} min</dd></div>
-    </dl>
+    <div class="range" role="tablist" aria-label="Period">
+      <button type="button" role="tab" :aria-selected="range === 'today'" :class="{ on: range === 'today' }" @click="range = 'today'">
+        Today
+      </button>
+      <button type="button" role="tab" :aria-selected="range === 'all'" :class="{ on: range === 'all' }" @click="range = 'all'">
+        All time
+      </button>
+    </div>
 
-    <p v-if="!matches.length" class="empty">
-      Matches appear here as you play. Older sessions are imported from Fortnite's recent logs.
+    <div class="tiles">
+      <div class="tile"><span class="label">Matches</span><span class="value">{{ summary.count }}</span></div>
+      <div class="tile"><span class="label">Time played</span><span class="value">{{ hours(summary.played) }}</span></div>
+      <div class="tile" :title="summary.tracked ? `From ${summary.tracked} matches with tracked results` : 'Kills are tracked from matches played with 0.3.0 or later'">
+        <span class="label">Kills</span><span class="value">{{ summary.kills ?? '–' }}</span>
+      </div>
+      <div class="tile"><span class="label">Wins</span><span class="value" :class="{ gold: summary.wins }">{{ summary.wins }}</span></div>
+    </div>
+
+    <div v-if="summary.topMode || nemesis" class="insights">
+      <div v-if="summary.topMode" class="insight">
+        <span class="label">Most played</span>
+        <span class="big">{{ summary.topMode.value }}</span>
+        <span class="small">{{ summary.topMode.count }} of {{ summary.count }} matches</span>
+      </div>
+      <div v-if="nemesis" class="insight nemesis">
+        <span class="label">Nemesis</span>
+        <span class="big" :class="nemesis.threat ? `t-${nemesis.threat}` : ''">{{ nemesis.title }}</span>
+        <span class="small">
+          {{ nemesis.detail }}<template v-if="summary.avgEliminatorKd !== null"> · avg eliminator K/D {{ summary.avgEliminatorKd.toFixed(2) }}</template>
+        </span>
+      </div>
+    </div>
+
+    <p v-if="!inRange.length" class="empty">
+      {{ range === 'today' ? 'No matches yet today.' : 'Matches appear here as you play. Older sessions are imported from Fortnite\'s recent logs.' }}
     </p>
 
     <div v-for="day in days" :key="day.label" class="day">
-      <h2>{{ day.label }}</h2>
+      <h2 class="section-title">{{ day.label }}</h2>
       <ul>
-        <li v-for="m in day.matches" :key="m.startedUtc">
+        <li v-for="m in day.matches" :key="m.startedUtc" :class="{ won: m.won }">
           <span class="time">{{ time(m.startedUtc) }}</span>
-          <span class="mode" :title="m.playlist ?? undefined">{{ m.mode }}</span>
-          <span class="squad">
-            {{ party(m.squadSize) }}<template v-if="m.eliminatedBy"> · eliminated by {{ opponent(m.eliminatedBy) }}</template>
+          <span class="mode" :title="m.playlist ?? undefined">
+            {{ m.mode }}
+            <span v-if="m.won" class="win">Win</span>
           </span>
-          <span class="duration" :class="{ left: !m.finished }">{{ duration(m) }}</span>
+          <span class="detail">
+            {{ party(m.squadSize) }}
+            <template v-if="m.eliminatedBy">
+              · by <span :class="m.eliminatorThreat ? `t-${m.eliminatorThreat}` : ''">{{ opponent(m.eliminatedBy) }}</span>
+              <template v-if="m.eliminatorThreat"> ({{ threatLabel[m.eliminatorThreat] }})</template>
+            </template>
+          </span>
+          <span class="right">
+            <span v-if="m.kills !== null" class="kills">{{ m.kills }} {{ m.kills === 1 ? 'kill' : 'kills' }}</span>
+            <span class="duration" :class="{ left: !m.finished }">{{ duration(m) }}</span>
+          </span>
         </li>
       </ul>
     </div>
@@ -80,27 +160,84 @@ const opponent = (name: string) => (/\[\d+\]$/.test(name) ? 'a Streamer Mode pla
   flex-direction: column;
   gap: 14px;
 }
-.summary {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin: 0;
+.range {
+  display: inline-flex;
+  align-self: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
 }
-.summary div {
+.range button {
+  border: none;
+  background: none;
+  border-radius: 6px;
+  padding: 4px 12px;
+  color: var(--muted);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.range button.on {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.tile,
+.insight {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
-dt {
+.label {
+  font-family: var(--display);
+  font-weight: 700;
   font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--muted);
+  white-space: nowrap;
 }
-dd {
-  margin: 2px 0 0;
-  font-size: 18px;
-  font-weight: 600;
+.value {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 24px;
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
+}
+.value.gold {
+  color: var(--rarity-legendary);
+}
+.insights {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.big {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 19px;
+  line-height: 1.15;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nemesis .big {
+  color: var(--danger);
+}
+.small {
+  font-size: 12px;
+  color: var(--muted);
 }
 ul {
   list-style: none;
@@ -108,18 +245,22 @@ ul {
   padding: 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
+  overflow: hidden;
 }
 li {
   display: grid;
-  grid-template-columns: 44px 1fr auto;
-  grid-template-areas: 'time mode duration' 'time squad duration';
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  grid-template-areas: 'time mode right' 'time detail right';
   column-gap: 10px;
   padding: 8px 12px;
   border-top: 1px solid var(--border);
 }
 li:first-child {
   border-top: none;
+}
+li.won {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--rarity-legendary) 12%, transparent), transparent 60%);
 }
 .time {
   grid-area: time;
@@ -129,20 +270,55 @@ li:first-child {
 }
 .mode {
   grid-area: mode;
-  font-weight: 600;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.squad {
-  grid-area: squad;
+.win {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1d1400;
+  background: var(--rarity-legendary);
+  border-radius: 3px;
+  padding: 0 6px;
+  transform: skewX(-8deg);
+}
+.detail {
+  grid-area: detail;
   font-size: 12px;
   color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.right {
+  grid-area: right;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.kills {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 15px;
 }
 .duration {
-  grid-area: duration;
-  align-self: center;
   font-variant-numeric: tabular-nums;
+  font-size: 13px;
 }
 .duration.left {
-  color: var(--muted);
+  color: var(--faint);
   font-size: 12px;
 }
+.t-Sweat { color: var(--danger); }
+.t-Skilled { color: var(--rarity-epic); }
+.t-Average { color: var(--rarity-rare); }
+.t-Casual { color: var(--rarity-uncommon); }
+.t-BotLikely { color: var(--rarity-common); }
 </style>

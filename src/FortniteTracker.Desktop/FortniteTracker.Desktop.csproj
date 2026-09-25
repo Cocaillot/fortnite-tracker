@@ -9,7 +9,7 @@
     <!-- Only for the tray icon (NotifyIcon); WPF has no equivalent. -->
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>FortniteTracker</AssemblyName>
-    <Version>0.2.0</Version>
+    <Version>0.3.0</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <!-- Program.Main runs Velopack's hooks before WPF starts. -->
     <StartupObject>FortniteTracker.Desktop.Program</StartupObject>
@@ -38,6 +38,8 @@
     <ApplicationDefinition Remove="App.xaml" />
     <Page Include="App.xaml" />
     <Resource Include="Assets\app.ico" />
+    <!-- Display font for the overlay, shared with the Vue UI (SIL Open Font License, see OFL.txt). -->
+    <Resource Include="$(UiDir)\src\assets\fonts\*.ttf" Link="Assets\Fonts\%(Filename)%(Extension)" />
     <None Update="Assets\app.ico" CopyToOutputDirectory="PreserveNewest" />
     <None Update="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

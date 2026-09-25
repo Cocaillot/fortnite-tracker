@@ -22,7 +22,29 @@ public partial class MainWindow : Window
     {
         _bridge = bridge;
         InitializeComponent();
+        _bridge.WindowCommand += OnWindowCommand;
         Loaded += async (_, _) => await InitWebViewAsync();
+    }
+
+    /// <summary>Ctrl+Shift+O was pressed (works while Fortnite has focus).</summary>
+    public event Action? OverlayHotkey;
+
+    private void OnWindowCommand(string command)
+    {
+        switch (command)
+        {
+            case "drag":
+                // Hand the pressed mouse button to Windows as if the title bar was grabbed.
+                ReleaseCapture();
+                SendMessage(new WindowInteropHelper(this).Handle, WmNcLButtonDown, (IntPtr)HtCaption, IntPtr.Zero);
+                break;
+            case "minimize":
+                WindowState = WindowState.Minimized;
+                break;
+            case "close":
+                Close(); // hides to the tray unless AllowClose is set
+                break;
+        }
     }
 
     /// <summary>Set before a real exit; otherwise closing only hides the window.</summary>
@@ -101,9 +123,22 @@ public partial class MainWindow : Window
 #endif
     }
 
-    // ---- Global hotkey: Ctrl+Shift+F shows/hides the window, even while Fortnite has focus ----
+    // ---- Global hotkeys, even while Fortnite has focus: Ctrl+Shift+F window, Ctrl+Shift+O overlay ----
 
     private const int HotkeyId = 0x4654;
+    private const int OverlayHotkeyId = 0x4655;
+    private const uint VkO = 0x4F;
+    private const int WmNcLButtonDown = 0xA1, HtCaption = 2;
+    private const int DwmwaWindowCornerPreference = 33, DwmwcpRound = 2;
+
+    [DllImport("user32.dll")]
+    private static extern bool ReleaseCapture();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
     private const int WmHotkey = 0x0312;
     private const uint ModControl = 0x0002, ModShift = 0x0004, ModNoRepeat = 0x4000;
     private const uint VkF = 0x46;
@@ -120,11 +155,16 @@ public partial class MainWindow : Window
         var handle = new WindowInteropHelper(this).Handle;
         HwndSource.FromHwnd(handle)?.AddHook(WndProc);
         RegisterHotKey(handle, HotkeyId, ModControl | ModShift | ModNoRepeat, VkF);
+        RegisterHotKey(handle, OverlayHotkeyId, ModControl | ModShift | ModNoRepeat, VkO);
+        // Rounded corners on Windows 11 (ignored on Windows 10).
+        var round = DwmwcpRound;
+        DwmSetWindowAttribute(handle, DwmwaWindowCornerPreference, ref round, sizeof(int));
     }
 
     protected override void OnClosed(EventArgs e)
     {
         UnregisterHotKey(new WindowInteropHelper(this).Handle, HotkeyId);
+        UnregisterHotKey(new WindowInteropHelper(this).Handle, OverlayHotkeyId);
         base.OnClosed(e);
     }
 
@@ -133,6 +173,11 @@ public partial class MainWindow : Window
         if (msg == WmHotkey && wParam.ToInt32() == HotkeyId)
         {
             ToggleVisibility();
+            handled = true;
+        }
+        else if (msg == WmHotkey && wParam.ToInt32() == OverlayHotkeyId)
+        {
+            OverlayHotkey?.Invoke();
             handled = true;
         }
         return IntPtr.Zero;

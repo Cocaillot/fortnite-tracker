@@ -31,6 +31,26 @@ public sealed class MatchHistoryStore
         lock (_gate) return _matches.Values.Reverse().Take(count).ToList();
     }
 
+    public MatchRecord? Get(DateTime startedUtc)
+    {
+        lock (_gate) return _matches.GetValueOrDefault(startedUtc);
+    }
+
+    /// <summary>Changes a stored match in place (e.g. adding kills); no-op if it isn't stored.</summary>
+    public bool Update(DateTime startedUtc, Func<MatchRecord, MatchRecord> change)
+    {
+        lock (_gate)
+        {
+            if (!_matches.TryGetValue(startedUtc, out var existing)) return false;
+            var updated = change(existing);
+            if (updated == existing) return false;
+            _matches[startedUtc] = updated;
+            Save();
+        }
+        Changed?.Invoke();
+        return true;
+    }
+
     public bool WasImported(string fileName)
     {
         lock (_gate) return _importedFiles.Contains(fileName);
@@ -38,7 +58,10 @@ public sealed class MatchHistoryStore
 
     public void Add(MatchRecord match) => AddRange([match], importedFile: null);
 
-    /// <summary>Adds matches; an existing entry is only replaced by one that knows more (finished/ended).</summary>
+    /// <summary>
+    /// Adds matches; an existing entry is only replaced by one that knows more from the log
+    /// (finished/ended/playlist/eliminator), and keeps the stats-based details already added to it.
+    /// </summary>
     public void AddRange(IEnumerable<MatchRecord> matches, string? importedFile)
     {
         var changed = false;
@@ -46,8 +69,21 @@ public sealed class MatchHistoryStore
         {
             foreach (var m in matches)
             {
-                if (_matches.TryGetValue(m.StartedUtc, out var existing) && !IsBetter(m, existing)) continue;
-                _matches[m.StartedUtc] = m;
+                if (_matches.TryGetValue(m.StartedUtc, out var existing))
+                {
+                    if (!IsBetter(m, existing)) continue;
+                    _matches[m.StartedUtc] = m with
+                    {
+                        Kills = m.Kills ?? existing.Kills,
+                        Won = m.Won ?? existing.Won,
+                        EliminatorKd = m.EliminatorKd ?? existing.EliminatorKd,
+                        EliminatorThreat = m.EliminatorThreat ?? existing.EliminatorThreat,
+                    };
+                }
+                else
+                {
+                    _matches[m.StartedUtc] = m;
+                }
                 changed = true;
             }
             while (_matches.Count > MaxMatches) _matches.Remove(_matches.Keys.First());
