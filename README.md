@@ -116,10 +116,10 @@ Each user needs a free key from https://fortnite-api.com/dashboard. The app asks
 1. In the [Discord Developer Portal](https://discord.com/developers/applications), create an
    application named **Fortnite Tracker**. Discord shows this name as "Playing Fortnite Tracker".
 2. Copy its **Application ID**.
-3. Under **Rich Presence → Art Assets**, upload `src/FortniteTracker.Desktop/Assets/app-256.png`
+3. Under **Rich Presence → Art Assets**, upload `src/FortniteTracker.Desktop/Assets/app-1024.png`
    with the key `logo`.
-4. Pass the ID to the release script as `-DiscordClientId`. For local testing, put it in
-   `Discord:ClientId` in `appsettings.json`.
+4. Put the ID in `Discord:ClientId` in `appsettings.json` (already set for this repo; the ID is
+   public). The release script's `-DiscordClientId` overrides it for one build.
 
 Users can turn Rich Presence off in the app's Settings tab.
 
