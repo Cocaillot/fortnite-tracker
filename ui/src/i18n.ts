@@ -44,6 +44,9 @@ export function tn(english: string | null | undefined): string {
   return s
 }
 
+/** A shortcut as shown on screen: "Ctrl+Shift+F", or "Ctrl+Maj+F" in French. */
+export const keysLabel = (keys: string) => (lang.value === 'fr' ? keys.replace('Shift', 'Maj') : keys)
+
 /** The locale for dates and times. */
 export const locale = () => (lang.value === 'fr' ? 'fr-FR' : 'en-GB')
 

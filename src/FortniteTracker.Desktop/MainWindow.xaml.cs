@@ -35,7 +35,7 @@ public partial class MainWindow : Window
         Loaded += async (_, _) => await InitWebViewAsync();
     }
 
-    /// <summary>Ctrl+Shift+O was pressed (works while Fortnite has focus).</summary>
+    /// <summary>The overlay shortcut was pressed (works while Fortnite has focus).</summary>
     public event Action? OverlayHotkey;
 
     /// <summary>Set before a real exit; otherwise closing only hides the window.</summary>
@@ -103,6 +103,17 @@ public partial class MainWindow : Window
         ShowAndActivate();
     }
 
+    /// <summary>Creates the native window without showing it, so global shortcuts work from the tray.</summary>
+    public void EnsureHandle() => new WindowInteropHelper(this).EnsureHandle();
+
+    /// <summary>Shows the window without taking focus (e.g. while Fortnite is starting).</summary>
+    public void ShowWithoutFocus()
+    {
+        ShowActivated = false;
+        Show();
+        ShowActivated = true;
+    }
+
     public void ShowAndActivate()
     {
         Show();
@@ -134,6 +145,13 @@ public partial class MainWindow : Window
         core.Settings.AreDefaultContextMenusEnabled = false;
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.IsZoomControlEnabled = false;
+        // Links such as fortnite-api.com/dashboard open in the default browser.
+        core.NewWindowRequested += (_, e) =>
+        {
+            e.Handled = true;
+            if (Uri.TryCreate(e.Uri, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps)
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        };
         _bridge.Attach(core, Dispatcher);
         OnStateChanged();
 
@@ -174,8 +192,30 @@ public partial class MainWindow : Window
     private const int WmNcLButtonDown = 0xA1, HtCaption = 2;
     private const int DwmwaWindowCornerPreference = 33, DwmwcpRound = 2;
     private const int MonitorDefaultToNearest = 2;
-    private const uint ModControl = 0x0002, ModShift = 0x0004, ModNoRepeat = 0x4000;
-    private const uint VkF = 0x46, VkO = 0x4F;
+    private const uint ModNoRepeat = 0x4000;
+
+    private (string Window, string Overlay) _hotkeys = (Core.SettingsStore.DefaultWindowHotkey, Core.SettingsStore.DefaultOverlayHotkey);
+
+    /// <summary>Whether each shortcut could be registered (another app may already use it).</summary>
+    public (bool Window, bool Overlay) HotkeyStatus { get; private set; }
+
+    /// <summary>Raised after the shortcuts were (re)registered.</summary>
+    public event Action? HotkeysApplied;
+
+    /// <summary>Registers the two global shortcuts, e.g. "Ctrl+Shift+F", replacing the previous ones.</summary>
+    public void SetHotkeys(string window, string overlay)
+    {
+        _hotkeys = (window, overlay);
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return; // registered once the window exists
+        UnregisterHotKey(handle, HotkeyId);
+        UnregisterHotKey(handle, OverlayHotkeyId);
+        HotkeyStatus = (Register(handle, HotkeyId, window), Register(handle, OverlayHotkeyId, overlay));
+        HotkeysApplied?.Invoke();
+    }
+
+    private static bool Register(IntPtr handle, int id, string text) =>
+        Core.HotkeyText.TryParse(text, out var mods, out var vk) && RegisterHotKey(handle, id, mods | ModNoRepeat, vk);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Point32 { public int X, Y; }
@@ -220,8 +260,7 @@ public partial class MainWindow : Window
         base.OnSourceInitialized(e);
         var handle = new WindowInteropHelper(this).Handle;
         HwndSource.FromHwnd(handle)?.AddHook(WndProc);
-        RegisterHotKey(handle, HotkeyId, ModControl | ModShift | ModNoRepeat, VkF);
-        RegisterHotKey(handle, OverlayHotkeyId, ModControl | ModShift | ModNoRepeat, VkO);
+        SetHotkeys(_hotkeys.Window, _hotkeys.Overlay);
         // Rounded corners on Windows 11 (ignored on Windows 10).
         var round = DwmwcpRound;
         DwmSetWindowAttribute(handle, DwmwaWindowCornerPreference, ref round, sizeof(int));

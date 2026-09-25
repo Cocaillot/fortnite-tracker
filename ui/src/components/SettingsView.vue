@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { t, langChoice, setLanguage, type LangChoice } from '../i18n'
+import { t, keysLabel, langChoice, setLanguage, type LangChoice } from '../i18n'
 import type { OverlayCorner, Settings } from '../bridge'
 import { ref } from 'vue'
 import ApiKeyForm from './ApiKeyForm.vue'
+import HotkeyInput from './HotkeyInput.vue'
+import { on, send } from '../bridge'
+import { onUnmounted } from 'vue'
 
 const props = defineProps<{ settings: Settings; recapResult: string | null }>()
 const webhook = ref('')
@@ -31,6 +34,24 @@ const corners: { id: OverlayCorner; label: string }[] = [
 ]
 
 const checked = (e: Event) => (e.target as HTMLInputElement).checked
+
+const setHotkey = (which: 'window' | 'overlay', keys: string) => send({ type: 'setHotkeys', [which]: keys })
+
+// ---- Export, backup, restore ----
+const dataResult = ref<string | null>(null)
+const busy = ref(false)
+const confirmRestore = ref(false)
+const offData = on('dataResult', (r) => {
+  busy.value = false
+  dataResult.value = r
+})
+onUnmounted(offData)
+function runData(action: 'csv' | 'backup' | 'restore') {
+  busy.value = true
+  dataResult.value = null
+  confirmRestore.value = false
+  send({ type: 'data', action })
+}
 </script>
 
 <template>
@@ -59,7 +80,18 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
           {{ l.id === 'auto' ? t(l.label) : l.label }}
         </button>
       </div>
-      <p class="hint">{{ t('Also used for notifications, the overlay and Discord recaps.') }}</p>
+      <p class="hint flush">{{ t('Also used for notifications, the overlay and Discord recaps.') }}</p>
+    </div>
+
+    <div class="panel option">
+      <label class="switch">
+        <input type="checkbox" :checked="settings.launchWithFortnite" @change="send({ type: 'setLaunchWithFortnite', enabled: checked($event) })" />
+        <span class="track" aria-hidden="true" />
+        <span class="text">{{ t('Open with Fortnite') }}</span>
+      </label>
+      <p class="hint">
+        {{ t('The app starts quietly with Windows, waits in the tray, and opens by itself when Fortnite starts. It uses almost no memory while waiting.') }}
+      </p>
     </div>
 
     <div class="panel option">
@@ -70,7 +102,7 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
       </label>
       <p class="hint">
         {{ t("A small bar with your squad's K/D, and your eliminator after a death. Clicks go through it. Shows while Fortnite runs in") }}
-        <strong>{{ t('Windowed Fullscreen') }}</strong>. {{ t('Shortcut: Ctrl+Shift+O.') }}
+        <strong>{{ t('Windowed Fullscreen') }}</strong>. {{ t('Shortcut: {keys}.', { keys: keysLabel(settings.hotkeys.overlay) }) }}
       </p>
       <div class="corners" role="radiogroup" :aria-label="t('Overlay position')">
         <button
@@ -153,16 +185,47 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
           <button type="button" class="ghost" @click="emit('discordRecap', '', false)">{{ t('Remove webhook') }}</button>
         </div>
       </template>
-      <p v-if="recapResult" class="result">{{ recapResult }}</p>
+      <p v-if="recapResult" class="result">{{ t(recapResult) }}</p>
     </div>
 
     <div class="panel option shortcuts">
       <span class="text">{{ t('Shortcuts') }}</span>
-      <dl>
-        <dt>{{ t('Ctrl+Shift+F') }}</dt><dd>{{ t('Show or hide this window, even in game') }}</dd>
-        <dt>{{ t('Ctrl+Shift+O') }}</dt><dd>{{ t('Turn the in-game overlay on or off') }}</dd>
-        <dt>F11</dt><dd>{{ t('Full screen') }}</dd>
-      </dl>
+      <p class="hint flush">{{ t('Click a shortcut, then press the keys you want. They work even while Fortnite has focus.') }}</p>
+      <div class="hotkeys">
+        <HotkeyInput
+          :value="settings.hotkeys.window"
+          :ok="settings.hotkeys.windowOk"
+          fallback="Ctrl+Shift+F"
+          :label="t('Show or hide this window, even in game')"
+          @change="setHotkey('window', $event)"
+        />
+        <HotkeyInput
+          :value="settings.hotkeys.overlay"
+          :ok="settings.hotkeys.overlayOk"
+          fallback="Ctrl+Shift+O"
+          :label="t('Turn the in-game overlay on or off')"
+          @change="setHotkey('overlay', $event)"
+        />
+        <div class="fixed-key"><span class="keys">F11</span><span>{{ t('Full screen') }}</span></div>
+      </div>
+    </div>
+
+    <div class="panel option data">
+      <span class="text">{{ t('Your data') }}</span>
+      <p class="hint flush">{{ t('Export your matches to open them in Excel, or back up everything (history, ranks, notes, goals, theme, settings) to move it to another PC.') }}</p>
+      <div class="row">
+        <button type="button" class="ghost" :disabled="busy" @click="runData('csv')">{{ t('Export matches (CSV)') }}</button>
+        <button type="button" class="ghost" :disabled="busy" @click="runData('backup')">{{ t('Back up my data') }}</button>
+        <button type="button" class="ghost" :disabled="busy" @click="confirmRestore = true">{{ t('Restore a backup') }}</button>
+      </div>
+      <div v-if="confirmRestore" class="confirm">
+        <p>{{ t('Restoring replaces your current data with the backup and restarts the app. A copy of your current data is kept in the backups folder.') }}</p>
+        <div class="row">
+          <button type="button" class="btn-primary" @click="runData('restore')">{{ t('Choose a backup…') }}</button>
+          <button type="button" class="ghost" @click="confirmRestore = false">{{ t('Cancel') }}</button>
+        </div>
+      </div>
+      <p v-if="dataResult" class="result">{{ dataResult }}</p>
     </div>
   </section>
     <p class="about">Fortnite Tracker {{ settings.version }} · {{ t('Not affiliated with Epic Games') }} · {{ t('Font: Barlow (SIL OFL)') }}</p>
@@ -208,6 +271,48 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
   color: var(--accent);
   font-weight: 600;
 }
+.hotkeys {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+.fixed-key {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: var(--s3);
+  align-items: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+.fixed-key .keys {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  text-align: center;
+}
+.option .hint.flush,
+.shortcuts .hint.flush,
+.data .hint.flush {
+  margin: var(--s2) 0 var(--s3);
+}
+.data .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+.confirm {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.confirm p {
+  margin: 0 0 var(--s3);
+  font-size: 14px;
+  line-height: 1.5;
+}
 .shortcuts dl {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -226,55 +331,6 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
 }
 .option .hint {
   margin: 6px 0 0 52px;
-}
-.switch {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  cursor: pointer;
-}
-.switch.disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-.switch input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-}
-.track {
-  flex: none;
-  width: 40px;
-  height: 22px;
-  border-radius: 11px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  position: relative;
-  transition: background 0.2s ease;
-}
-.track::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--muted);
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-.switch input:checked + .track {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.switch input:checked + .track::after {
-  transform: translateX(18px);
-  background: var(--accent-ink);
-}
-.switch input:focus-visible + .track {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
 }
 .text {
   font-family: var(--display);

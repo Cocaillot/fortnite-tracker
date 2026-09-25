@@ -97,6 +97,25 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
         return result;
     }
 
+    /// <summary>Checks a key before saving it: "ok", "invalid" or "offline".</summary>
+    public async Task<string> TestKeyAsync(string key, string? name, CancellationToken ct)
+    {
+        try
+        {
+            var who = Uri.EscapeDataString(string.IsNullOrWhiteSpace(name) ? "Ninja" : name);
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"v2/stats/br/v2?name={who}");
+            request.Headers.Authorization = new AuthenticationHeaderValue(key.Trim());
+            using var res = await http.SendAsync(request, ct);
+            return res.StatusCode is HttpStatusCode.Unauthorized ? "invalid"
+                : res.StatusCode is HttpStatusCode.OK or HttpStatusCode.Forbidden or HttpStatusCode.NotFound ? "ok"
+                : "offline";
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return "offline";
+        }
+    }
+
     private async Task<PlayerStats> FetchAsync(string url, string? accountId, string? name)
     {
         for (var attempt = 0; attempt < 3; attempt++)

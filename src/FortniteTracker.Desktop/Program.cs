@@ -14,15 +14,23 @@ public static class Program
     {
         // Must run first: during install/update/uninstall, Velopack launches the exe with hook
         // arguments and this call handles them and exits.
-        VelopackApp.Build().Run();
+        VelopackApp.Build()
+            .OnBeforeUninstallFastCallback(_ => AutoStart.Apply(false))
+            .Run();
 
-        // The UI is in English, so native text (overlay, notifications, Discord) formats numbers
-        // as "6.80" like the web UI, whatever the Windows region.
+        // Native text formats numbers like the web UI ("6.80") whatever the Windows region; French
+        // text uses Loc.Culture explicitly.
         CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
         CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
         using var mutex = new Mutex(initiallyOwned: true, MutexName, out var isFirstInstance);
         using var showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowEventName);
+        // After a restore the app restarts itself: wait for the old instance to exit.
+        if (!isFirstInstance && args.Contains(App.RestartArg))
+        {
+            try { isFirstInstance = mutex.WaitOne(TimeSpan.FromSeconds(15)); }
+            catch (AbandonedMutexException) { isFirstInstance = true; }
+        }
         if (!isFirstInstance)
         {
             // Already running (probably hidden in the tray): ask it to show itself instead.

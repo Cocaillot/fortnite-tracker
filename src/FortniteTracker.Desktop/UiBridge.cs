@@ -9,9 +9,10 @@ namespace FortniteTracker.Desktop;
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
 /// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme, toast,
-/// matchDetail, teammates, notes, statsHistory, goals, recapResult.
+/// matchDetail, teammates, notes, statsHistory, goals, recapResult, apiKeyTest, dataResult.
 /// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
-/// profile, follow, leaderboard, setTheme, match, teammates, setNote, setGoals, setDiscordRecap, postRecap.
+/// profile, follow, leaderboard, setTheme, match, teammates, setNote, setGoals, setDiscordRecap, postRecap,
+/// setLanguage, setHotkeys, setLaunchWithFortnite, onboardingDone, seenVersion, testApiKey, data.
 /// </summary>
 public sealed class UiBridge
 {
@@ -37,6 +38,8 @@ public sealed class UiBridge
     private readonly StatsHistory _statsHistory;
     private readonly GoalStore _goals;
     private readonly DiscordRecapPoster _recap;
+    private readonly FortniteLogTailer _tailer;
+    private readonly DataPaths _paths;
     private CancellationTokenSource? _leaderboardRun;
     private CoreWebView2? _web;
     private Dispatcher? _dispatcher;
@@ -45,8 +48,11 @@ public sealed class UiBridge
         LobbyTracker tracker, FortniteStatsService stats, SettingsStore settings,
         MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence,
         RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme, MatchInsights insights,
-        PlayerNotes notes, StatsHistory statsHistory, GoalStore goals, DiscordRecapPoster recap)
+        PlayerNotes notes, StatsHistory statsHistory, GoalStore goals, DiscordRecapPoster recap,
+        FortniteLogTailer tailer, DataPaths paths)
     {
+        _tailer = tailer;
+        _paths = paths;
         _recap = recap;
         _notes = notes;
         _statsHistory = statsHistory;
@@ -83,8 +89,17 @@ public sealed class UiBridge
     /// <summary>Set by the window: whether it is maximised and in full screen, for the title bar buttons.</summary>
     public Func<(bool Maximized, bool Fullscreen)>? WindowStateProvider { get; set; }
 
+    /// <summary>Set by the window: whether each global shortcut is registered.</summary>
+    public Func<(bool Window, bool Overlay)>? HotkeyStatusProvider { get; set; }
+
+    /// <summary>Restarts the app (after a restore).</summary>
+    public event Action? RestartRequested;
+
     /// <summary>An in-app pop-up (e.g. a rank change); "good" colours it as good news.</summary>
     public void Toast(string title, string text, bool good) => Post(() => Send("toast", new { title, text, good }));
+
+    /// <summary>Sends the settings again, e.g. once the window knows whether the shortcuts registered.</summary>
+    public void RefreshSettings() => Post(SendSettings);
 
     public void SendWindowState()
     {
@@ -135,6 +150,29 @@ public sealed class UiBridge
                 break;
             case "setLanguage" when msg.Lang is "en" or "fr" or "auto":
                 _settings.SetLanguage(msg.Lang == "auto" ? null : msg.Lang);
+                break;
+            case "setHotkeys":
+                if (msg.Window is { } w && !HotkeyText.TryParse(w, out _, out _)) break;
+                if (msg.Overlay is { } o && !HotkeyText.TryParse(o, out _, out _)) break;
+                _settings.SetHotkeys(msg.Window, msg.Overlay);
+                break;
+            case "setLaunchWithFortnite" when msg.Enabled is { } launch:
+                _settings.SetLaunchWithFortnite(launch);
+                break;
+            case "onboardingDone":
+                _settings.SetOnboardingDone();
+                _settings.SetLastSeenVersion(_updates.CurrentVersion);
+                break;
+            case "seenVersion":
+                _settings.SetLastSeenVersion(_updates.CurrentVersion);
+                break;
+            case "testApiKey" when !string.IsNullOrWhiteSpace(msg.Key):
+                var test = await _stats.TestKeyAsync(msg.Key, _tracker.Last?.LocalName, CancellationToken.None);
+                if (test == "ok") _settings.SetApiKey(msg.Key);
+                Send("apiKeyTest", test);
+                break;
+            case "data" when msg.Action is "csv" or "backup" or "restore":
+                Send("dataResult", RunDataAction(msg.Action));
                 break;
             case "postRecap":
                 Send("recapResult", await _recap.PostLatestAsync(onlyIfNew: false));
@@ -197,6 +235,54 @@ public sealed class UiBridge
         }
     }
 
+    // Runs on the UI thread (web messages arrive there), so the file dialogs can open directly.
+    private string? RunDataAction(string action)
+    {
+        var owner = System.Windows.Application.Current.MainWindow;
+        var stamp = DateTime.Now.ToString("yyyy-MM-dd");
+        try
+        {
+            switch (action)
+            {
+                case "csv":
+                {
+                    var dialog = new Microsoft.Win32.SaveFileDialog
+                    {
+                        FileName = $"fortnite-matches-{stamp}.csv",
+                        Filter = "CSV (*.csv)|*.csv",
+                    };
+                    if (dialog.ShowDialog(owner) != true) return null;
+                    DataExport.WriteCsv(_history.Recent(int.MaxValue), dialog.FileName);
+                    return Loc.T("Saved {0}", System.IO.Path.GetFileName(dialog.FileName));
+                }
+                case "backup":
+                {
+                    var dialog = new Microsoft.Win32.SaveFileDialog
+                    {
+                        FileName = $"fortnite-tracker-backup-{stamp}.zip",
+                        Filter = "Backup (*.zip)|*.zip",
+                    };
+                    if (dialog.ShowDialog(owner) != true) return null;
+                    DataExport.CreateBackup(_paths.Directory, dialog.FileName);
+                    return Loc.T("Saved {0}", System.IO.Path.GetFileName(dialog.FileName));
+                }
+                default:
+                {
+                    var dialog = new Microsoft.Win32.OpenFileDialog { Filter = "Backup (*.zip)|*.zip" };
+                    if (dialog.ShowDialog(owner) != true) return null;
+                    if (!DataExport.QueueRestore(dialog.FileName, _paths.Directory))
+                        return Loc.T("That file isn't a Fortnite Tracker backup.");
+                    RestartRequested?.Invoke();
+                    return null;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            return Loc.T("Couldn't save the file: {0}", ex.Message);
+        }
+    }
+
     private void SendSettings() => Send("settings", new
     {
         hasApiKey = _settings.HasApiKey,
@@ -207,6 +293,17 @@ public sealed class UiBridge
         effectiveLanguage = Loc.Language,
         discordRecap = new { hasWebhook = DiscordRecapPoster.IsWebhookUrl(_settings.DiscordWebhookUrl), autoPost = _settings.AutoPostRecap },
         overlay = new { enabled = _settings.OverlayEnabled, corner = _settings.OverlayCorner.ToString() },
+        hotkeys = new
+        {
+            window = _settings.WindowHotkey,
+            overlay = _settings.OverlayHotkey,
+            windowOk = HotkeyStatusProvider?.Invoke().Window ?? true,
+            overlayOk = HotkeyStatusProvider?.Invoke().Overlay ?? true,
+        },
+        launchWithFortnite = _settings.LaunchWithFortnite,
+        onboardingDone = _settings.OnboardingDone,
+        lastSeenVersion = _settings.LastSeenVersion,
+        fortniteFound = System.IO.File.Exists(_tailer.LogPath),
         version = _updates.CurrentVersion,
         updateVersion = _updates.ReadyVersion,
     });
@@ -253,5 +350,5 @@ public sealed class UiBridge
 
     private sealed record UiMessage(
         string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId,
-        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals, string? Url, string? Lang);
+        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals, string? Url, string? Lang, string? Window, string? Overlay);
 }

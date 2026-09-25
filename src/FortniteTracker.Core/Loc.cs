@@ -29,6 +29,9 @@ public static class Loc
         ("Zero Build", "Zéro construction"), ("Creative", "Créatif"),
     ];
 
+    /// <summary>A shortcut as shown to the user: "Ctrl+Shift+F", or "Ctrl+Maj+F" in French.</summary>
+    public static string Keys(string keys) => French ? keys.Replace("Shift", "Maj") : keys;
+
     public static string Name(string english)
     {
         if (!French) return english;
@@ -40,8 +43,8 @@ public static class Loc
     private static readonly Dictionary<string, string> Fr = new()
     {
         // Tray
-        ["Show / hide  (Ctrl+Shift+F)"] = "Afficher / masquer  (Ctrl+Maj+F)",
-        ["In-game overlay  (Ctrl+Shift+O)"] = "Overlay en jeu  (Ctrl+Maj+O)",
+        ["Show / hide  ({0})"] = "Afficher / masquer  ({0})",
+        ["In-game overlay  ({0})"] = "Overlay en jeu  ({0})",
         ["Restart to update"] = "Redémarrer pour mettre à jour",
         ["Restart to update to {0}"] = "Redémarrer pour passer à la {0}",
         ["Exit"] = "Quitter",
@@ -89,6 +92,22 @@ public static class Loc
         ["K/D {0:0.00} · {1:0.#}% wins"] = "K/D {0:0.00} · {1:0.#} % de victoires",
         ["squad K/D {0:0.00}"] = "K/D du groupe {0:0.00}",
         ["Tracking stats"] = "Suivi des stats",
+        // Export and backup
+        ["Date"] = "Date",
+        ["Start"] = "Début",
+        ["Mode"] = "Mode",
+        ["Playlist"] = "Playlist",
+        ["Party size"] = "Taille du groupe",
+        ["Result"] = "Résultat",
+        ["Duration (min)"] = "Durée (min)",
+        ["Eliminated by"] = "Éliminé par",
+        ["Eliminator K/D"] = "K/D de l'éliminateur",
+        ["Victory"] = "Victoire",
+        ["Left early"] = "Quittée",
+        ["Eliminated"] = "Éliminé",
+        ["Saved {0}"] = "{0} enregistré",
+        ["That file isn't a Fortnite Tracker backup."] = "Ce fichier n'est pas une sauvegarde Fortnite Tracker.",
+        ["Couldn't save the file: {0}"] = "Impossible d'enregistrer le fichier : {0}",
         // Discord recap
         ["Session recap · {0}"] = "Récap de session · {0}",
         ["{0} played {1} {2} ({3}), mostly {4}."] = "{0} a joué {1} {2} ({3}), surtout en {4}.",

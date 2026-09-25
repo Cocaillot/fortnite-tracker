@@ -417,4 +417,81 @@ export const FR: Record<string, string> = {
   'Paste a theme here…': 'Colle un thème ici…',
   'Theme to import': 'Thème à importer',
   Import: 'Importer',
+
+  // Settings: launch, shortcuts, data
+  'Open with Fortnite': "S'ouvrir avec Fortnite",
+  'The app starts quietly with Windows, waits in the tray, and opens by itself when Fortnite starts. It uses almost no memory while waiting.':
+    "L'app démarre discrètement avec Windows, attend dans la barre des tâches et s'ouvre toute seule quand Fortnite démarre. Elle ne consomme presque rien en attendant.",
+  'Shortcut: {keys}.': 'Raccourci : {keys}.',
+  'In-game overlay ({keys})': 'Overlay en jeu ({keys})',
+  'Click a shortcut, then press the keys you want. They work even while Fortnite has focus.':
+    'Clique sur un raccourci, puis appuie sur les touches voulues. Ils fonctionnent même quand Fortnite est au premier plan.',
+  'Press the keys…': 'Appuie sur les touches…',
+  'Use a letter, a number or F1–F12.': 'Utilise une lettre, un chiffre ou F1–F12.',
+  "Add Ctrl, Alt or Shift so it doesn't trigger while you type.": 'Ajoute Ctrl, Alt ou Maj pour ne pas le déclencher en tapant.',
+  'Another app already uses this shortcut. Pick another one.': 'Une autre app utilise déjà ce raccourci. Choisis-en un autre.',
+  'Your data': 'Tes données',
+  'Export your matches to open them in Excel, or back up everything (history, ranks, notes, goals, theme, settings) to move it to another PC.':
+    'Exporte tes parties pour les ouvrir dans Excel, ou sauvegarde tout (historique, rangs, notes, objectifs, thème, paramètres) pour le transférer sur un autre PC.',
+  'Export matches (CSV)': 'Exporter les parties (CSV)',
+  'Back up my data': 'Sauvegarder mes données',
+  'Restore a backup': 'Restaurer une sauvegarde',
+  'Restoring replaces your current data with the backup and restarts the app. A copy of your current data is kept in the backups folder.':
+    "La restauration remplace tes données actuelles par la sauvegarde et redémarre l'app. Une copie de tes données actuelles est gardée dans le dossier backups.",
+  'Choose a backup…': 'Choisir une sauvegarde…',
+  'Posting…': 'Publication…',
+
+  // First-run guide
+  'Welcome to Fortnite Tracker': 'Bienvenue dans Fortnite Tracker',
+  "Your squad's stats and ranks, who eliminated you, your history and progress. Everything comes from Fortnite's own log files and public stats: nothing touches the game.":
+    "Les stats et rangs de ton escouade, qui t'a éliminé, ton historique et ta progression. Tout vient des journaux de Fortnite et des stats publiques : rien ne touche au jeu.",
+  'Finding Fortnite': 'Recherche de Fortnite',
+  'Fortnite found on this PC': 'Fortnite trouvé sur ce PC',
+  "Fortnite hasn't been played on this PC yet": "Fortnite n'a pas encore été lancé sur ce PC",
+  'Signed in as {name}.': 'Connecté en tant que {name}.',
+  'Launch Fortnite once and your account is detected automatically.': 'Lance Fortnite une fois et ton compte est détecté automatiquement.',
+  'Launch Fortnite: the app picks it up by itself, no setup needed.': "Lance Fortnite : l'app le détecte toute seule, rien à configurer.",
+  "The app only reads Fortnite's log file. It never touches the game's memory or network traffic.":
+    "L'app lit uniquement le journal de Fortnite. Elle ne touche jamais à la mémoire du jeu ni à son trafic réseau.",
+  'Stats key': 'Clé des stats',
+  'Stats come from fortnite-api.com. Their key is free and takes a minute:': "Les stats viennent de fortnite-api.com. Leur clé est gratuite et s'obtient en une minute :",
+  Open: 'Ouvre',
+  'and sign in with Discord.': 'et connecte-toi avec Discord.',
+  'Copy your API key and paste it below.': 'Copie ta clé API et colle-la ci-dessous.',
+  'A key is already saved.': 'Une clé est déjà enregistrée.',
+  'Paste another one to replace it.': 'Colles-en une autre pour la remplacer.',
+  Check: 'Vérifier',
+  'Checking…': 'Vérification…',
+  'The key works and is saved.': 'La clé fonctionne et est enregistrée.',
+  'This key was refused. Check that you copied all of it.': "Cette clé a été refusée. Vérifie que tu l'as copiée en entier.",
+  "Couldn't reach fortnite-api.com to check it.": 'Impossible de joindre fortnite-api.com pour la vérifier.',
+  'Save it anyway': "L'enregistrer quand même",
+  'Your preferences': 'Tes préférences',
+  'The app waits in the tray and opens when the game starts.': "L'app attend dans la barre des tâches et s'ouvre quand le jeu démarre.",
+  'With their stats, right after your team is out.': 'Avec ses stats, juste après l\'élimination de ton équipe.',
+  'When you or a friend rank up.': "Quand toi ou un ami montez d'un rang.",
+  "A small bar over the game with your squad's K/D.": 'Une petite barre par-dessus le jeu avec le K/D de ton escouade.',
+  "You're all set": "C'est prêt",
+  'Play a match and everything fills in. Two shortcuts work even in game:': 'Joue une partie et tout se remplit. Deux raccourcis marchent même en jeu :',
+  'You can change all of this later in Settings.': 'Tu peux tout changer plus tard dans les Paramètres.',
+  'Skip setup': 'Passer',
+  Later: 'Plus tard',
+  Next: 'Suivant',
+  Start: 'Commencer',
+
+  // What's new
+  "What's new": 'Nouveautés',
+  'Got it': 'Compris',
+  'Opens with Fortnite': "S'ouvre avec Fortnite",
+  'Turn on "Open with Fortnite" in Settings: the app waits quietly in the tray and opens by itself when the game starts.':
+    "Active « S'ouvrir avec Fortnite » dans les Paramètres : l'app attend discrètement dans la barre des tâches et s'ouvre toute seule au lancement du jeu.",
+  'Your own shortcuts': 'Tes propres raccourcis',
+  'Pick the keys that show the app and toggle the overlay, in Settings → Shortcuts.':
+    "Choisis les touches qui affichent l'app et activent l'overlay, dans Paramètres → Raccourcis.",
+  'Export and backup': 'Export et sauvegarde',
+  'Export your matches to Excel, back up all your data, and restore it on another PC.':
+    'Exporte tes parties vers Excel, sauvegarde toutes tes données et restaure-les sur un autre PC.',
+  'A guide for new players': 'Un guide pour les nouveaux',
+  'Friends installing the app are now walked through the setup, including a check of their stats key.':
+    "Les amis qui installent l'app sont guidés pas à pas, avec une vérification de leur clé de stats.",
 }

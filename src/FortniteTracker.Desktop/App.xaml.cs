@@ -10,8 +10,13 @@ using Microsoft.Extensions.Logging;
 
 namespace FortniteTracker.Desktop;
 
+/// <summary>Where the app keeps its data (settings, history…).</summary>
+public sealed record DataPaths(string Directory);
+
 public partial class App : Application
 {
+    public const string RestartArg = "--restart";
+
     private readonly EventWaitHandle _showRequested;
     private IHost? _host;
     private TrayIcon? _tray;
@@ -27,7 +32,11 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
-        _host = Host.CreateDefaultBuilder(e.Args)
+        // Started at sign-in by "Open with Fortnite": stay in the tray until the game runs.
+        var background = e.Args.Contains(AutoStart.BackgroundArg);
+        var hostArgs = e.Args.Where(a => a is not (AutoStart.BackgroundArg or RestartArg)).ToArray();
+
+        _host = Host.CreateDefaultBuilder(hostArgs)
             .UseContentRoot(AppContext.BaseDirectory)
             .ConfigureServices((ctx, services) =>
             {
@@ -37,6 +46,8 @@ public partial class App : Application
                 var storage = config["Storage:Directory"] is { Length: > 0 } dir ? dir : SettingsStore.DefaultDirectory;
                 var logPath = config["Fortnite:LogPath"] is { Length: > 0 } log ? log : FortniteLogTailer.DefaultLogPath;
 
+                DataExport.ApplyPendingRestore(storage);
+                services.AddSingleton(new DataPaths(storage));
                 services.AddMemoryCache();
                 services.AddSingleton(_ => new SettingsStore(config["FortniteApi:Key"], Path.Combine(storage, "settings.json")));
                 services.AddSingleton(_ => new MatchHistoryStore(Path.Combine(storage, "history.json")));
@@ -124,16 +135,25 @@ public partial class App : Application
         theme.Changed += () => Dispatcher.InvokeAsync(() => _window.ApplyTheme(theme.Colors));
         _tray = new TrayIcon(_window.ToggleVisibility, _overlay.Toggle, ApplyUpdate, ExitApp);
         _tray.SetOverlayChecked(settings.OverlayEnabled);
+        AutoStart.Apply(settings.LaunchWithFortnite);
+        _window.SetHotkeys(settings.WindowHotkey, settings.OverlayHotkey);
+        _tray.SetHotkeys(settings.WindowHotkey, settings.OverlayHotkey);
         settings.Changed += _ => Dispatcher.InvokeAsync(() =>
         {
             ApplyLanguage();
             _tray.ApplyLanguage();
             _tray.SetOverlayChecked(settings.OverlayEnabled);
+            AutoStart.Apply(settings.LaunchWithFortnite);
+            _window.SetHotkeys(settings.WindowHotkey, settings.OverlayHotkey);
+            _tray.SetHotkeys(settings.WindowHotkey, settings.OverlayHotkey);
         });
         _window.OverlayHotkey += _overlay.Toggle;
         _window.HiddenToTray += _tray.ShowStillRunningHint;
         _ = new EliminationNotifier(tracker, settings, (title, text) => Dispatcher.InvokeAsync(() => _tray.Notify(title, text)));
         var bridge = services.GetRequiredService<UiBridge>();
+        bridge.HotkeyStatusProvider = () => _window.HotkeyStatus;
+        _window.HotkeysApplied += bridge.RefreshSettings;
+        bridge.RestartRequested += Restart;
         _ = new NoteAlerts(tracker, services.GetRequiredService<PlayerNotes>(), (title, text) =>
         {
             Dispatcher.InvokeAsync(() => _tray.Notify(title, text));
@@ -150,7 +170,8 @@ public partial class App : Application
         ThreadPool.RegisterWaitForSingleObject(_showRequested,
             (_, _) => Dispatcher.InvokeAsync(() => _window.ShowAndActivate()), null, Timeout.Infinite, executeOnlyOnce: false);
 
-        _window.Show();
+        if (background) WaitForFortnite();
+        else _window.Show();
         await _host.StartAsync();
 
         // Once old logs are imported, look up eliminators that have no stats yet (for the dashboard).
@@ -159,6 +180,31 @@ public partial class App : Application
             await Task.Delay(TimeSpan.FromSeconds(15));
             await results.BackfillEliminatorsAsync(CancellationToken.None);
         });
+    }
+
+    private const string FortniteProcess = "FortniteClient-Win64-Shipping";
+
+    // The window (and its browser engine) is only created once Fortnite runs, so the app stays
+    // light while it waits. Shortcuts and the tray work in the meantime.
+    private void WaitForFortnite()
+    {
+        _window!.EnsureHandle();
+        var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        timer.Tick += (_, _) =>
+        {
+            var running = System.Diagnostics.Process.GetProcessesByName(FortniteProcess);
+            foreach (var p in running) p.Dispose();
+            if (running.Length == 0 && !_window.IsVisible) return;
+            timer.Stop();
+            if (!_window.IsVisible) _window.ShowWithoutFocus();
+        };
+        timer.Start();
+    }
+
+    private void Restart()
+    {
+        System.Diagnostics.Process.Start(Environment.ProcessPath!, RestartArg);
+        ExitApp();
     }
 
     private void ApplyUpdate()

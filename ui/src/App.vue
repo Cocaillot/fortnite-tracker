@@ -14,6 +14,9 @@ import ProfilePanel from './components/ProfilePanel.vue'
 import AppearanceView from './components/AppearanceView.vue'
 import ToastHost from './components/ToastHost.vue'
 import MatchDrawer from './components/MatchDrawer.vue'
+import OnboardingGuide from './components/OnboardingGuide.vue'
+import WhatsNew from './components/WhatsNew.vue'
+import { unseen } from './changelog'
 
 const {
   snapshot,
@@ -101,6 +104,10 @@ const status = computed(() => {
   return { state: 'live' as const, label: tn(s.mode), timer, detail: t('Stats: {label}', { label: tn(s.statsLabel) }) }
 })
 
+const whatsNew = computed(() =>
+  settings.value?.onboardingDone ? unseen(settings.value.version, settings.value.lastSeenVersion) : [],
+)
+
 const overlayOn = computed(() => settings.value?.overlay.enabled ?? false)
 const profileShown = computed(() => page.value === 'profile' || (page.value === 'me' && (profile.value || profileLoading.value)))
 </script>
@@ -109,6 +116,7 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
   <div class="app">
     <TitleBar
       :overlay-on="overlayOn"
+      :overlay-keys="settings?.hotkeys.overlay ?? 'Ctrl+Shift+O'"
       :maximized="windowState.maximized"
       :fullscreen="windowState.fullscreen"
       @toggle-overlay="setOverlay(!overlayOn)"
@@ -193,6 +201,8 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
       @open="(id, n) => { closeMatch(); showProfile(id, n) }"
     />
     <ToastHost />
+    <OnboardingGuide v-if="settings && !settings.onboardingDone" :settings="settings" :snapshot="snapshot" />
+    <WhatsNew v-else-if="whatsNew.length" :releases="whatsNew" />
   </div>
 </template>
 

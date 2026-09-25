@@ -23,7 +23,8 @@ public sealed class SettingsStore
     public SettingsStore(string? fallbackApiKey = null, string? settingsPath = null)
     {
         _settingsPath = settingsPath ?? Path.Combine(DefaultDirectory, "settings.json");
-        _settings = Load() ?? new Settings();
+        // Settings saved by a version before the first-run guide belong to someone already set up.
+        _settings = Load() is { } saved ? saved with { OnboardingDone = saved.OnboardingDone ?? true } : new Settings(OnboardingDone: false);
         if (string.IsNullOrWhiteSpace(_settings.FortniteApiKey) && !string.IsNullOrWhiteSpace(fallbackApiKey))
             _settings = _settings with { FortniteApiKey = fallbackApiKey };
     }
@@ -38,6 +39,30 @@ public sealed class SettingsStore
     public string? Language => _settings.Language;
 
     public void SetLanguage(string? language) => Update(s => s with { Language = language }, apiKeyChanged: false);
+
+    public const string DefaultWindowHotkey = "Ctrl+Shift+F";
+    public const string DefaultOverlayHotkey = "Ctrl+Shift+O";
+    public string WindowHotkey => _settings.WindowHotkey ?? DefaultWindowHotkey;
+    public string OverlayHotkey => _settings.OverlayHotkey ?? DefaultOverlayHotkey;
+
+    /// <param name="window">null keeps the current one.</param>
+    public void SetHotkeys(string? window, string? overlay) => Update(s => s with
+    {
+        WindowHotkey = window ?? s.WindowHotkey,
+        OverlayHotkey = overlay ?? s.OverlayHotkey,
+    }, apiKeyChanged: false);
+
+    /// <summary>Open the app when Fortnite starts (a light background start at sign-in waits for it).</summary>
+    public bool LaunchWithFortnite => _settings.LaunchWithFortnite;
+    public void SetLaunchWithFortnite(bool enabled) => Update(s => s with { LaunchWithFortnite = enabled }, apiKeyChanged: false);
+
+    /// <summary>Whether the first-run guide was completed or skipped.</summary>
+    public bool OnboardingDone => _settings.OnboardingDone ?? true;
+    public void SetOnboardingDone() => Update(s => s with { OnboardingDone = true }, apiKeyChanged: false);
+
+    /// <summary>The newest version whose "What's new" the user has seen.</summary>
+    public string? LastSeenVersion => _settings.LastSeenVersion;
+    public void SetLastSeenVersion(string version) => Update(s => s with { LastSeenVersion = version }, apiKeyChanged: false);
     public bool AutoPostRecap => _settings.AutoPostRecap;
     public DateTime? LastRecapPostedUtc => _settings.LastRecapPostedUtc;
 
@@ -117,5 +142,10 @@ public sealed class SettingsStore
         string? DiscordWebhookUrl = null,
         bool AutoPostRecap = true,
         DateTime? LastRecapPostedUtc = null,
-        string? Language = null);
+        string? Language = null,
+        string? WindowHotkey = null,
+        string? OverlayHotkey = null,
+        bool LaunchWithFortnite = false,
+        bool? OnboardingDone = null,
+        string? LastSeenVersion = null);
 }

@@ -14,6 +14,7 @@ public sealed class TrayIcon : IDisposable
     private readonly ToolStripMenuItem _showItem;
     private readonly ToolStripMenuItem _exitItem;
     private string? _updateVersion;
+    private (string Window, string Overlay) _keys = (SettingsStore.DefaultWindowHotkey, SettingsStore.DefaultOverlayHotkey);
     private bool _hintShown;
 
     public TrayIcon(Action toggleWindow, Action toggleOverlay, Action applyUpdate, Action exit)
@@ -46,11 +47,17 @@ public sealed class TrayIcon : IDisposable
 
     public void SetOverlayChecked(bool on) => _overlayItem.Checked = on;
 
+    public void SetHotkeys(string window, string overlay)
+    {
+        _keys = (window, overlay);
+        ApplyLanguage();
+    }
+
     /// <summary>Menu labels in the current language (see <see cref="Loc"/>).</summary>
     public void ApplyLanguage()
     {
-        _showItem.Text = Loc.T("Show / hide  (Ctrl+Shift+F)");
-        _overlayItem.Text = Loc.T("In-game overlay  (Ctrl+Shift+O)");
+        _showItem.Text = Loc.T("Show / hide  ({0})", Loc.Keys(_keys.Window));
+        _overlayItem.Text = Loc.T("In-game overlay  ({0})", Loc.Keys(_keys.Overlay));
         _exitItem.Text = Loc.T("Exit");
         _updateItem.Text = _updateVersion is null ? Loc.T("Restart to update") : Loc.T("Restart to update to {0}", _updateVersion);
     }

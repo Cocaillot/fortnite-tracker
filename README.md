@@ -25,8 +25,13 @@ own log file and shows:
 - full customisation (Appearance page): theme presets, your own colours, fonts, size, corner
   roundness, custom logo and sidebar icons, a background image with glass panels, and themes you
   can export and share
+- rank history charts, rank-up alerts, goals, match details, teammate records, daily trends,
+  player notes and tags, and a session recap posted to Discord
+- English and French
+- a first-run guide, export of your matches to CSV, and backup / restore of all your data
 
-It lives in the notification area, has a Ctrl+Shift+F show/hide hotkey, and updates itself.
+It lives in the notification area, can open by itself when Fortnite starts, has global
+shortcuts you can change (Ctrl+Shift+F to show or hide it by default), and updates itself.
 
 **Per-match kills and wins** aren't in the log. The app reads your season stats when a match
 starts and again after it ends; the difference is that match. If two matches land in your stats

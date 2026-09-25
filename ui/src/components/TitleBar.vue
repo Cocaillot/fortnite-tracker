@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { t } from '../i18n'
+import { t, keysLabel } from '../i18n'
 import { ref } from 'vue'
 import { send } from '../bridge'
 import { theme } from '../composables/useTheme'
 
-defineProps<{ overlayOn: boolean; maximized: boolean; fullscreen: boolean }>()
+defineProps<{ overlayOn: boolean; overlayKeys: string; maximized: boolean; fullscreen: boolean }>()
 const emit = defineEmits<{ toggleOverlay: []; search: [name: string] }>()
 
 const query = ref('')
@@ -48,7 +48,7 @@ function submit() {
         class="icon"
         :class="{ on: overlayOn }"
         :aria-pressed="overlayOn"
-        :title="t('In-game overlay (Ctrl+Shift+O)')"
+        :title="t('In-game overlay ({keys})', { keys: keysLabel(overlayKeys) })"
         @click="emit('toggleOverlay')"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">

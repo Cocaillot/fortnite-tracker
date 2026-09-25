@@ -179,6 +179,16 @@ export interface Settings {
   language: 'en' | 'fr' | 'auto'
   /** The language in use. */
   effectiveLanguage: 'en' | 'fr'
+  /** Global shortcuts as text ("Ctrl+Shift+F"), and whether Windows accepted them. */
+  hotkeys: { window: string; overlay: string; windowOk: boolean; overlayOk: boolean }
+  /** Open the app by itself when Fortnite starts. */
+  launchWithFortnite: boolean
+  /** False until the first-run guide is finished or skipped. */
+  onboardingDone: boolean
+  /** The newest version whose "What's new" was seen. */
+  lastSeenVersion: string | null
+  /** Whether Fortnite's log file exists on this PC. */
+  fortniteFound: boolean
 }
 
 export interface HostMessages {
@@ -201,6 +211,9 @@ export interface HostMessages {
   /** Saved goals (format owned by composables/goals.ts). */
   goals: unknown
   recapResult: string
+  apiKeyTest: 'ok' | 'invalid' | 'offline'
+  /** Outcome of an export or backup, or null when the file dialog was cancelled. */
+  dataResult: string | null
 }
 
 export type UiMessage =
@@ -224,6 +237,12 @@ export type UiMessage =
   | { type: 'leaderboard' }
   | { type: 'setTheme'; theme: object | null }
   | { type: 'setLanguage'; lang: 'en' | 'fr' | 'auto' }
+  | { type: 'setHotkeys'; window?: string; overlay?: string }
+  | { type: 'setLaunchWithFortnite'; enabled: boolean }
+  | { type: 'onboardingDone' }
+  | { type: 'seenVersion' }
+  | { type: 'testApiKey'; key: string }
+  | { type: 'data'; action: 'csv' | 'backup' | 'restore' }
 
 interface WebView {
   postMessage(message: unknown): void
