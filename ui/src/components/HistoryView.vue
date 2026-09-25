@@ -104,6 +104,9 @@ function duration(m: MatchRecord) {
 
 // Only your own party is known; random teammates filled by matchmaking aren't in the log.
 const party = (size: number) => (size === 1 ? 'Solo / no party' : `Party of ${size}`)
+const untracked = 'Kills and wins are measured from your stats before and after each match, so they only exist for matches played while the app was open.'
+const periodLabel = computed(() => (range.value === 'today' ? 'Today' : 'All time'))
+
 const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}` : `${min} min`)
 </script>
 
@@ -132,13 +135,18 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
     <TeammatesView v-else-if="view === 'teammates'" :teammates="teammates" @refresh="emit('loadTeammates')" @open="(id, n) => emit('open', id, n)" />
 
     <template v-else>
+      <h2 class="period">{{ periodLabel }} <span class="faint">· {{ summary.count }} {{ summary.count === 1 ? 'match' : 'matches' }}</span></h2>
       <div class="tiles">
         <div class="tile"><span class="label">Matches</span><span class="value">{{ summary.count }}</span></div>
         <div class="tile"><span class="label">Time in matches</span><span class="value">{{ hours(summary.played) }}</span></div>
-        <div class="tile" :title="summary.tracked ? `From ${summary.tracked} matches with tracked results` : 'Kills are tracked for matches played with the app running'">
+        <div class="tile" :title="untracked">
           <span class="label">Kills</span><span class="value">{{ summary.kills ?? '–' }}</span>
+          <span class="small">{{ summary.tracked ? `in ${summary.tracked} of ${summary.count} matches` : 'Counted from your next matches' }}</span>
         </div>
-        <div class="tile"><span class="label">Wins</span><span class="value" :class="{ gold: summary.wins }">{{ summary.wins }}</span></div>
+        <div class="tile" :title="untracked">
+          <span class="label">Wins</span><span class="value" :class="{ gold: summary.wins }">{{ summary.tracked ? summary.wins : '–' }}</span>
+          <span class="small">{{ summary.tracked ? `in ${summary.tracked} of ${summary.count} matches` : 'Counted from your next matches' }}</span>
+        </div>
         <div class="tile wide">
           <span class="label">Most played</span>
           <span class="big">{{ summary.topMode?.value ?? '–' }}</span>
@@ -201,7 +209,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
                   <span v-else-if="!row.m.finished" class="faint">Left early</span>
                   <span v-else class="muted">Eliminated</span>
                 </td>
-                <td class="num">{{ row.m.kills ?? '–' }}</td>
+                <td class="num" :title="row.m.kills === null ? untracked : undefined">{{ row.m.kills ?? '–' }}</td>
                 <td class="num muted">{{ duration(row.m) }}</td>
                 <td>
                   <template v-if="row.m.eliminatedBy">
@@ -233,6 +241,14 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
   display: flex;
   gap: var(--s3);
   flex-wrap: wrap;
+}
+.period {
+  margin: 0 0 calc(-1 * var(--s3));
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .tiles {
   display: grid;

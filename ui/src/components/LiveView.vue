@@ -62,7 +62,7 @@ const subtitle = computed(() => {
       <dl class="hero-stats" aria-label="Today">
         <div><dt>Matches today</dt><dd>{{ today.matches }}</dd></div>
         <div><dt>Wins</dt><dd :class="{ gold: today.wins }">{{ today.wins }}</dd></div>
-        <div><dt>Kills</dt><dd>{{ today.kills ?? '–' }}</dd></div>
+        <div :title="today.kills === null ? 'Kills are measured for matches played while the app is open' : undefined"><dt>Kills</dt><dd>{{ today.kills ?? '–' }}</dd></div>
         <div><dt>Time played</dt><dd>{{ today.time }}</dd></div>
       </dl>
     </section>
