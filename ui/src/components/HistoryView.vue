@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { isAnonymous, threatLabel, type MatchRecord, type Threat } from '../bridge'
+import { isAnonymous, threatLabel, type MatchRecord, type SessionRecord, type Threat } from '../bridge'
+import SessionsView from './SessionsView.vue'
 
-const props = defineProps<{ matches: MatchRecord[] }>()
+const props = defineProps<{ matches: MatchRecord[]; sessions: SessionRecord[] }>()
+const emit = defineEmits<{ open: [accountId: string | null, name: string | null] }>()
+
+const view = ref<'matches' | 'sessions'>('matches')
 
 type Range = 'today' | 'all'
 const range = ref<Range>('today')
@@ -81,10 +85,10 @@ function dayLabel(key: string) {
   const diff = Math.round((new Date(new Date().toDateString()).getTime() - d.getTime()) / 86_400_000)
   if (diff === 0) return 'Today'
   if (diff === 1) return 'Yesterday'
-  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
 }
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
 function duration(m: MatchRecord) {
   const min = minutes(m)
@@ -100,6 +104,14 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
 
 <template>
   <section class="history">
+    <div class="range views" role="tablist" aria-label="View">
+      <button type="button" role="tab" :aria-selected="view === 'matches'" :class="{ on: view === 'matches' }" @click="view = 'matches'">Matches</button>
+      <button type="button" role="tab" :aria-selected="view === 'sessions'" :class="{ on: view === 'sessions' }" @click="view = 'sessions'">Sessions</button>
+    </div>
+
+    <SessionsView v-if="view === 'sessions'" :matches="matches" :sessions="sessions" @open="(id, n) => emit('open', id, n)" />
+
+    <template v-else>
     <div class="range" role="tablist" aria-label="Period">
       <button type="button" role="tab" :aria-selected="range === 'today'" :class="{ on: range === 'today' }" @click="range = 'today'">
         Today
@@ -149,7 +161,18 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
           <span class="detail">
             {{ party(m.squadSize) }}
             <template v-if="m.eliminatedBy">
-              · by <span :class="m.eliminatorThreat ? `t-${m.eliminatorThreat}` : ''">{{ opponent(m.eliminatedBy) }}</span>
+              · by
+              <span
+                v-if="!isAnonymous(m.eliminatedBy)"
+                class="player-link"
+                :class="m.eliminatorThreat ? `t-${m.eliminatorThreat}` : ''"
+                role="button"
+                tabindex="0"
+                @click="emit('open', null, m.eliminatedBy)"
+                @keydown.enter="emit('open', null, m.eliminatedBy)"
+                >{{ m.eliminatedBy }}</span
+              >
+              <span v-else>{{ opponent(m.eliminatedBy) }}</span>
               <template v-if="m.eliminatorThreat"> ({{ threatLabel[m.eliminatorThreat] }})</template>
             </template>
           </span>
@@ -160,6 +183,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
         </li>
       </ul>
     </div>
+    </template>
   </section>
 </template>
 
@@ -168,6 +192,13 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+.range.views {
+  align-self: stretch;
+  display: flex;
+}
+.range.views button {
+  flex: 1;
 }
 .range {
   display: inline-flex;

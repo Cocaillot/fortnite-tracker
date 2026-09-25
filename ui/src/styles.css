@@ -38,6 +38,18 @@
   --rarity-epic: #c07cff;
   --rarity-legendary: #ffb83d;
 
+  /* Ranked tiers. */
+  --tier-Bronze: #c98a5a;
+  --tier-Silver: #c3cad6;
+  --tier-Gold: #f5c542;
+  --tier-Platinum: #52d6c8;
+  --tier-Diamond: #5b9dff;
+  --tier-Elite: #e4e9f2;
+  --tier-Champion: #ff8a3d;
+  --tier-Unreal: #c77dff;
+  --tier-Beyond: #c77dff;
+  --tier-Unranked: #6b7282;
+
   --display: 'Barlow Condensed', 'Segoe UI Variable Display', 'Segoe UI', sans-serif;
   --body: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
 
@@ -144,6 +156,27 @@ button:disabled {
 .r-Rare { --r: var(--rarity-rare); }
 .r-Epic { --r: var(--rarity-epic); }
 .r-Legendary { --r: var(--rarity-legendary); }
+
+/* Rank tier colour: sets --t for the element. */
+.tier-Bronze { --t: var(--tier-Bronze); }
+.tier-Silver { --t: var(--tier-Silver); }
+.tier-Gold { --t: var(--tier-Gold); }
+.tier-Platinum { --t: var(--tier-Platinum); }
+.tier-Diamond { --t: var(--tier-Diamond); }
+.tier-Elite { --t: var(--tier-Elite); }
+.tier-Champion { --t: var(--tier-Champion); }
+.tier-Unreal { --t: var(--tier-Unreal); }
+.tier-Beyond { --t: var(--tier-Beyond); }
+.tier-Unranked { --t: var(--tier-Unranked); }
+
+/* Clickable player names open their profile. */
+.player-link {
+  cursor: pointer;
+}
+.player-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 /* Loading placeholder shimmer. */
 .skeleton {

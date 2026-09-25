@@ -7,14 +7,25 @@ import LiveView from './components/LiveView.vue'
 import ApiKeyForm from './components/ApiKeyForm.vue'
 import HistoryView from './components/HistoryView.vue'
 import SettingsView from './components/SettingsView.vue'
+import LeaderboardView from './components/LeaderboardView.vue'
+import ProfilePanel from './components/ProfilePanel.vue'
 
 const {
   snapshot,
   settings,
   history,
+  sessions,
+  squadRanks,
   lookupResult,
   lookingUp,
+  profile,
+  profileLoading,
+  leaderboard,
   lookup,
+  openProfile,
+  closeProfile,
+  follow,
+  loadLeaderboard,
   saveApiKey,
   setRichPresence,
   setNotify,
@@ -22,13 +33,20 @@ const {
   applyUpdate,
 } = useTracker()
 
-type Tab = 'live' | 'history' | 'settings'
+type Tab = 'live' | 'board' | 'history' | 'settings'
 const tabs: { id: Tab; label: string }[] = [
   { id: 'live', label: 'Live' },
+  { id: 'board', label: 'Leaderboard' },
   { id: 'history', label: 'History' },
-  { id: 'settings', label: 'Settings' },
 ]
 const tab = ref<Tab>('live')
+
+function selectTab(t: Tab) {
+  closeProfile()
+  tab.value = t
+}
+
+const profileOpen = computed(() => profile.value !== null || profileLoading.value !== null)
 
 // Ticks every second so the match timer counts up live.
 const now = ref(Date.now())
@@ -66,10 +84,24 @@ const overlayOn = computed(() => settings.value?.overlay.enabled ?? false)
         type="button"
         role="tab"
         :aria-selected="tab === t.id"
-        :class="{ active: tab === t.id }"
-        @click="tab = t.id"
+        :class="{ active: tab === t.id && !profileOpen }"
+        @click="selectTab(t.id)"
       >
         {{ t.label }}
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="gear"
+        :aria-selected="tab === 'settings'"
+        :class="{ active: tab === 'settings' && !profileOpen }"
+        title="Settings"
+        aria-label="Settings"
+        @click="selectTab('settings')"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm8.4 4.6l1.7 1.3-1.8 3.2-2-.7a7.6 7.6 0 0 1-1.9 1.1l-.3 2.1h-3.7l-.3-2.1a7.6 7.6 0 0 1-1.9-1.1l-2 .7-1.8-3.2 1.7-1.3a7.3 7.3 0 0 1 0-2.2L3.9 9.6l1.8-3.2 2 .7a7.6 7.6 0 0 1 1.9-1.1L9.9 4h3.7l.3 2.1c.7.3 1.3.6 1.9 1.1l2-.7 1.8 3.2-1.7 1.3a7.3 7.3 0 0 1 0 2.1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+        </svg>
       </button>
     </nav>
 
@@ -83,12 +115,29 @@ const overlayOn = computed(() => settings.value?.overlay.enabled ?? false)
         <button type="button" class="btn-primary" @click="applyUpdate">Restart to update</button>
       </div>
 
-      <template v-if="tab === 'live'">
+      <ProfilePanel
+        v-if="profileOpen"
+        :profile="profile"
+        :loading-name="profileLoading?.name ?? null"
+        @close="closeProfile"
+        @follow="follow"
+      />
+
+      <template v-else-if="tab === 'live'">
         <ApiKeyForm v-if="settings && !settings.hasApiKey" :has-key="false" class="key-prompt" @save="saveApiKey" />
-        <LiveView :snapshot="snapshot" :lookup-result="lookupResult" :looking-up="lookingUp" @lookup="lookup" />
+        <LiveView
+          :snapshot="snapshot"
+          :lookup-result="lookupResult"
+          :looking-up="lookingUp"
+          :ranks="squadRanks"
+          @lookup="lookup"
+          @open="openProfile"
+        />
       </template>
 
-      <HistoryView v-else-if="tab === 'history'" :matches="history" />
+      <LeaderboardView v-else-if="tab === 'board'" :entries="leaderboard" @refresh="loadLeaderboard" @open="openProfile" />
+
+      <HistoryView v-else-if="tab === 'history'" :matches="history" :sessions="sessions" @open="openProfile" />
 
       <SettingsView
         v-else-if="settings"
@@ -185,6 +234,15 @@ const overlayOn = computed(() => settings.value?.overlay.enabled ?? false)
   letter-spacing: 0.05em;
   text-transform: uppercase;
   position: relative;
+}
+.tabs .gear {
+  margin-left: auto;
+  padding: 6px 8px 8px;
+}
+.tabs .gear svg {
+  width: 19px;
+  height: 19px;
+  display: block;
 }
 .tabs button:hover {
   color: var(--text);

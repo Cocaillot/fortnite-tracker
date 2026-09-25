@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { LobbySnapshot, Platform, PlayerStats } from '../bridge'
+import { latestRank, type LobbySnapshot, type Platform, type PlayerStats, type RankProgress } from '../bridge'
 import PlayerCard from './PlayerCard.vue'
 
 const props = defineProps<{
   snapshot: LobbySnapshot | null
   lookupResult: PlayerStats | null
   lookingUp: boolean
+  ranks: Record<string, RankProgress[]>
 }>()
-const emit = defineEmits<{ lookup: [name: string, platform: Platform] }>()
+const emit = defineEmits<{
+  lookup: [name: string, platform: Platform]
+  open: [accountId: string | null, name: string | null]
+}>()
+const onOpen = (accountId: string | null, name: string | null) => emit('open', accountId, name)
 
 const searchName = ref('')
 const platform = ref<Platform>('epic')
@@ -33,6 +38,7 @@ function submit() {
           :mode-label="label"
           :you="you"
           variant="eliminator"
+          @open="onOpen"
         />
       </section>
     </Transition>
@@ -48,6 +54,8 @@ function submit() {
           :mode-label="label"
           :is-you="i === 0 && !!snapshot.localName"
           :fallback-name="i === 0 ? snapshot.localName : null"
+          :rank="p.accountId ? latestRank(ranks[p.accountId]) : null"
+          @open="onOpen"
         />
       </TransitionGroup>
       <p v-else class="empty">Launch Fortnite. Your squad appears here automatically.</p>
@@ -64,6 +72,7 @@ function submit() {
           :mode-label="label"
           :you="you"
           variant="opponent"
+          @open="onOpen"
         />
       </TransitionGroup>
     </section>
@@ -88,6 +97,7 @@ function submit() {
           :you="you"
           variant="opponent"
           class="result"
+          @open="onOpen"
         />
       </Transition>
     </section>

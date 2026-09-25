@@ -17,6 +17,10 @@ own log file and shows:
 - a small click-through in-game overlay with your squad's K/D (Ctrl+Shift+O)
 - match history with a session dashboard: time played, most-played mode, your nemesis, and
   (experimental) kills and wins per match
+- ranks for you, your party and your friends (current season, best rank, past seasons)
+- player profiles: season and lifetime stats per mode, ranks, and your history with them
+- a leaderboard of you, your party, friends with a rank this season and players you follow
+- sessions: what you did in each play session, from Epic's own before/after numbers
 - your mode, party and K/D on your Discord profile (Rich Presence)
 
 It lives in the notification area, has a Ctrl+Shift+F show/hide hotkey, and updates itself.
@@ -45,7 +49,13 @@ From that log it gets:
   teammates and are ignored. Those names are looked up as Epic, then PSN, then Xbox accounts.
   Streamer Mode players appear as `Anonyme[272]` and are shown as hidden.
 
-**Stats for the rest of the lobby, and ranks, aren't available.** Epic redacts other players' IDs
+**Ranks** come from the log too: Fortnite fetches ranked progress (`HabaneroProgress`) for you,
+your party and friends shown in its social panel, never for opponents. A rank updated in the last
+120 days counts as this season. Ranks run from 0 (Bronze I) to 17 (Unreal); 2026 "combined"
+tracks also show values above 17, which are displayed as "Rank N" because their names aren't known.
+Friends whose stats are private show as "Private profile": the log has their rank but not their name.
+
+**Stats for the rest of the lobby, and opponents' ranks, aren't available.** Epic redacts other players' IDs
 in the log (`MCP:9f8e7...6d5c4`) and doesn't log their names unless you spectate them. Getting the
 full lobby would need memory reading or packet capture, which anti-cheat bans. No public service
 provides competitive ranks. Placement and elimination counts aren't logged either.

@@ -8,8 +8,9 @@ namespace FortniteTracker.Desktop;
 
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
-/// Host → UI: snapshot, settings, history, lookupResult.
-/// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window.
+/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard.
+/// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
+/// profile, follow, leaderboard.
 /// </summary>
 public sealed class UiBridge
 {
@@ -26,13 +27,21 @@ public sealed class UiBridge
     private readonly MatchHistoryStore _history;
     private readonly UpdateService _updates;
     private readonly DiscordPresenceService _presence;
+    private readonly RankBook _ranks;
+    private readonly SessionStore _sessions;
+    private readonly PlayerDirectory _directory;
+    private CancellationTokenSource? _leaderboardRun;
     private CoreWebView2? _web;
     private Dispatcher? _dispatcher;
 
     public UiBridge(
         LobbyTracker tracker, FortniteStatsService stats, SettingsStore settings,
-        MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence)
+        MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence,
+        RankBook ranks, SessionStore sessions, PlayerDirectory directory)
     {
+        _ranks = ranks;
+        _sessions = sessions;
+        _directory = directory;
         _tracker = tracker;
         _stats = stats;
         _settings = settings;
@@ -40,7 +49,13 @@ public sealed class UiBridge
         _updates = updates;
         _presence = presence;
 
-        _tracker.Changed += s => Post(() => Send("snapshot", s));
+        _tracker.Changed += s => Post(() =>
+        {
+            Send("snapshot", s);
+            SendSquadRanks();
+        });
+        _ranks.Changed += () => Post(SendSquadRanks);
+        _sessions.Changed += () => Post(SendSessions);
         _settings.Changed += _ => Post(SendSettings);
         _history.Changed += () => Post(SendHistory);
         _updates.UpdateReady += () => Post(SendSettings);
@@ -73,7 +88,20 @@ public sealed class UiBridge
             case "ready":
                 SendSettings();
                 SendHistory();
+                SendSessions();
                 if (_tracker.Last is { } last) Send("snapshot", last);
+                SendSquadRanks();
+                break;
+            case "profile" when msg.AccountId is not null || !string.IsNullOrWhiteSpace(msg.Name):
+                Send("profile", await _directory.GetProfileAsync(msg.AccountId, msg.Name, CancellationToken.None));
+                break;
+            case "follow" when !string.IsNullOrWhiteSpace(msg.Name) || msg.AccountId is not null:
+                if (msg.Enabled == false) _settings.Unfollow(msg.AccountId, msg.Name);
+                else _settings.Follow(msg.AccountId, msg.Name ?? msg.AccountId!);
+                Send("profile", await _directory.GetProfileAsync(msg.AccountId, msg.Name, CancellationToken.None));
+                break;
+            case "leaderboard":
+                await RunLeaderboardAsync();
                 break;
             case "lookup" when !string.IsNullOrWhiteSpace(msg.Name):
                 var result = await _stats.GetByNameAsync(msg.Name.Trim(), msg.Platform ?? "epic", CancellationToken.None);
@@ -114,11 +142,33 @@ public sealed class UiBridge
 
     private void SendHistory() => Send("history", _history.Recent(HistoryCount));
 
+    private void SendSessions() => Send("sessions", _sessions.All.Reverse().Take(50).ToList());
+
+    // Ranks of the squad on screen, keyed by account ID.
+    private void SendSquadRanks()
+    {
+        var ids = _tracker.Last?.Squad.Select(p => p.AccountId).OfType<string>() ?? [];
+        Send("ranks", ids.Distinct().ToDictionary(id => id, id => _ranks.For(id)));
+    }
+
+    private async Task RunLeaderboardAsync()
+    {
+        var cts = new CancellationTokenSource();
+        Interlocked.Exchange(ref _leaderboardRun, cts)?.Cancel();
+        try
+        {
+            await _directory.BuildLeaderboardAsync(entries => Post(() => Send("leaderboard", entries)), cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     private void Post(Action action) => _dispatcher?.InvokeAsync(action);
 
     private void Send(string type, object data) =>
         _web?.PostWebMessageAsJson(JsonSerializer.Serialize(new { type, data }, Json));
 
     private sealed record UiMessage(
-        string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action);
+        string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId);
 }

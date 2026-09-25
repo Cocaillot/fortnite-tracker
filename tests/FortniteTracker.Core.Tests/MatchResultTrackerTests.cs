@@ -35,7 +35,7 @@ public sealed class MatchResultTrackerTests : IDisposable
         var tracker = new LobbyTracker(stats) { Debounce = TimeSpan.FromMilliseconds(1) };
         var history = new MatchHistoryStore(Path.Combine(_dir, "history.json"));
         tracker.MatchCompleted += history.Add;
-        _ = new MatchResultTracker(tracker, stats, history, NullLogger<MatchResultTracker>.Instance)
+        _ = new MatchResultTracker(tracker, stats, history, new SessionStore(Path.Combine(_dir, "sessions.json")), NullLogger<MatchResultTracker>.Instance)
         {
             Delay = _ => Task.Delay(10),
         };

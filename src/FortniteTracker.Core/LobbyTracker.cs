@@ -40,6 +40,16 @@ public sealed class LobbyTracker
 
     public LobbySnapshot? Last { get; private set; }
 
+    public string? SelfId
+    {
+        get { lock (_gate) return _state.SelfId; }
+    }
+
+    public IReadOnlyList<string> PartyIds
+    {
+        get { lock (_gate) return [.. _state.Party]; }
+    }
+
     public event Action<LobbySnapshot>? Changed;
     public event Action<MatchRecord>? MatchCompleted;
 

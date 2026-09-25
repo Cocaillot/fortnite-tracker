@@ -22,18 +22,26 @@ public sealed class MatchResultTracker
 
     private readonly FortniteStatsService _stats;
     private readonly MatchHistoryStore _history;
+    private readonly SessionStore _sessions;
     private readonly ILogger<MatchResultTracker> _logger;
     private readonly ConcurrentDictionary<DateTime, (string SelfId, Task<PlayerStats> Before)> _live = new();
     private int _backfillRunning;
 
-    public MatchResultTracker(LobbyTracker tracker, FortniteStatsService stats, MatchHistoryStore history, ILogger<MatchResultTracker> logger)
+    public MatchResultTracker(
+        LobbyTracker tracker, FortniteStatsService stats, MatchHistoryStore history, SessionStore sessions,
+        ILogger<MatchResultTracker> logger)
     {
         _stats = stats;
         _history = history;
+        _sessions = sessions;
         _logger = logger;
 
         tracker.LiveMatchStarted += (startedUtc, selfId) =>
-            _live[startedUtc] = (selfId, _stats.GetFreshByAccountIdAsync(selfId, CancellationToken.None));
+        {
+            var before = _stats.GetFreshByAccountIdAsync(selfId, CancellationToken.None);
+            _live[startedUtc] = (selfId, before);
+            _ = before.ContinueWith(t => _sessions.MatchStarted(startedUtc, t.Result.Overall), TaskContinuationOptions.OnlyOnRanToCompletion);
+        };
         tracker.MatchCompleted += OnMatchCompleted;
         tracker.Changed += OnSnapshot;
     }
@@ -60,6 +68,7 @@ public sealed class MatchResultTracker
                 await Delay(delay);
                 var after = (await _stats.GetFreshByAccountIdAsync(selfId, CancellationToken.None)).Overall;
                 if (after is null || after.Matches == before.Matches) continue;
+                _sessions.StatsUpdated(startedUtc, after); // session totals don't need per-match attribution
 
                 // More than one new match (e.g. the previous one landed late): can't attribute it.
                 if (after.Matches - before.Matches != 1)

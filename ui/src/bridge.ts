@@ -5,6 +5,50 @@ export type Platform = 'epic' | 'psn' | 'xbl'
 export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary'
 export type Threat = 'BotLikely' | 'Casual' | 'Average' | 'Skilled' | 'Sweat'
 export type OverlayCorner = 'TopLeft' | 'TopRight' | 'BottomLeft' | 'BottomRight'
+export type Relation = 'You' | 'Party' | 'Friend' | 'Followed' | 'Opponent'
+
+export interface RankProgress {
+  accountId: string
+  track: string
+  current: number
+  highest: number
+  progress: number
+  position: number | null
+  lastUpdatedUtc: string | null
+  rankName: string
+  highestName: string
+  /** Bronze, Silver, … Unreal; "Beyond" for 2026 values above Unreal; "Unranked". */
+  tier: string
+  trackName: string
+  isCurrentSeason: boolean
+}
+
+export interface PlayerProfile {
+  accountId: string | null
+  name: string
+  relation: Relation
+  followed: boolean
+  season: PlayerStats
+  lifetime: PlayerStats
+  ranks: RankProgress[]
+  encounters: { eliminatedYou: number; lastEliminatedYouUtc: string | null }
+}
+
+export interface LeaderboardEntry {
+  accountId: string | null
+  name: string | null
+  relation: Relation
+  stats: PlayerStats
+  ranks: RankProgress[]
+}
+
+export interface SessionRecord {
+  startedUtc: string
+  lastMatchUtc: string
+  baseline: ModeStats | null
+  latest: ModeStats | null
+  delta: ModeStats | null
+}
 
 export interface ModeStats {
   wins: number
@@ -12,6 +56,11 @@ export interface ModeStats {
   kd: number
   kills: number
   matches: number
+  top10: number
+  top25: number
+  minutesPlayed: number
+  killsPerMatch: number
+  deaths: number
   kdRarity: Rarity
   winRateRarity: Rarity
 }
@@ -23,6 +72,7 @@ export interface PlayerStats {
   overall: ModeStats | null
   /** fortnite-api buckets: solo, duo, squad, ltm (Ranked counts as ltm). */
   byMode: Record<string, ModeStats> | null
+  battlePassLevel: number | null
   threat: Threat | null
 }
 
@@ -69,6 +119,10 @@ export interface HostMessages {
   settings: Settings
   history: MatchRecord[]
   lookupResult: PlayerStats
+  ranks: Record<string, RankProgress[]>
+  sessions: SessionRecord[]
+  profile: PlayerProfile
+  leaderboard: LeaderboardEntry[]
 }
 
 export type UiMessage =
@@ -80,6 +134,9 @@ export type UiMessage =
   | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
   | { type: 'window'; action: 'drag' | 'minimize' | 'close' }
+  | { type: 'profile'; accountId?: string | null; name?: string | null }
+  | { type: 'follow'; accountId?: string | null; name: string; enabled: boolean }
+  | { type: 'leaderboard' }
 
 interface WebView {
   postMessage(message: unknown): void
@@ -124,3 +181,16 @@ export const threatLabel: Record<Threat, string> = {
 }
 
 export const isAnonymous = (name: string) => /\[\d+\]$/.test(name)
+
+/** The rank for the mode a player played most recently (mirrors RankBook.Latest). */
+export function latestRank(ranks: RankProgress[] | undefined): RankProgress | null {
+  return (ranks ?? []).filter((r) => r.lastUpdatedUtc).sort((a, b) => Date.parse(b.lastUpdatedUtc!) - Date.parse(a.lastUpdatedUtc!))[0] ?? null
+}
+
+export const relationLabel: Record<Relation, string> = {
+  You: 'You',
+  Party: 'Party',
+  Friend: 'Friend',
+  Followed: 'Following',
+  Opponent: 'Opponent',
+}

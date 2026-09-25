@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { statsFor, threatLabel, type PlayerStats } from '../bridge'
+import { statsFor, threatLabel, type PlayerStats, type RankProgress } from '../bridge'
+import RankBadge from './RankBadge.vue'
 
 const props = withDefaults(defineProps<{
   player: PlayerStats
@@ -11,7 +12,11 @@ const props = withDefaults(defineProps<{
   /** Your own stats, to compare an opponent against ("2.3× your K/D"). */
   you?: PlayerStats | null
   variant?: 'squad' | 'eliminator' | 'opponent'
-}>(), { variant: 'squad', modeLabel: undefined, fallbackName: null, you: null })
+  /** Current-mode rank, when Fortnite shared it (you, party, friends). */
+  rank?: RankProgress | null
+}>(), { variant: 'squad', modeLabel: undefined, fallbackName: null, you: null, rank: null })
+
+const emit = defineEmits<{ open: [accountId: string | null, name: string | null] }>()
 
 const statusText: Partial<Record<PlayerStats['status'], string>> = {
   Private: 'Stats private: they can make them public in Fortnite settings',
@@ -29,6 +34,11 @@ const name = computed(() =>
 const stats = computed(() => (props.player.status === 'Ok' ? statsFor(props.player, props.bucket) : null))
 const loading = computed(() => props.player.status === 'Loading')
 
+const canOpen = computed(() => props.player.status !== 'Hidden' && !loading.value)
+function open() {
+  if (canOpen.value) emit('open', props.player.accountId, props.player.accountId ? null : name.value)
+}
+
 const versus = computed(() => {
   const mine = props.you && props.you.status === 'Ok' ? statsFor(props.you, props.bucket) : null
   if (!stats.value || !mine || mine.kd <= 0) return null
@@ -45,13 +55,25 @@ const fmt = (n: number, digits = 0) => n.toFixed(digits)
   <article class="card" :class="[variant, stats ? `r-${stats.kdRarity}` : 'r-Common']">
     <header>
       <span v-if="loading" class="skeleton name-skeleton" />
-      <span v-else class="name" :title="name">{{ name }}</span>
+      <span
+        v-else
+        class="name"
+        :class="{ 'player-link': canOpen }"
+        :title="canOpen ? `${name}: open profile` : name"
+        :role="canOpen ? 'button' : undefined"
+        :tabindex="canOpen ? 0 : undefined"
+        @click="open"
+        @keydown.enter="open"
+        >{{ name }}</span
+      >
       <span v-if="isYou" class="tag you">You</span>
       <span v-if="player.threat && variant !== 'squad'" class="tag threat" :class="`t-${player.threat}`">
         {{ threatLabel[player.threat] }}
       </span>
       <span v-if="stats && modeLabel" class="mode">{{ modeLabel }}</span>
     </header>
+
+    <div v-if="rank" class="rank-row"><RankBadge :rank="rank" show-track /></div>
 
     <div v-if="loading" class="stats">
       <div v-for="i in 4" :key="i" class="tile"><span class="skeleton value-skeleton" /></div>
@@ -151,6 +173,9 @@ header {
   white-space: nowrap;
 }
 
+.rank-row {
+  margin: -4px 0 8px;
+}
 .stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

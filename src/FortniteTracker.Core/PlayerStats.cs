@@ -9,7 +9,12 @@ public enum Rarity { Common, Uncommon, Rare, Epic, Legendary }
 /// <summary>How dangerous a player looks from their season stats.</summary>
 public enum Threat { BotLikely, Casual, Average, Skilled, Sweat }
 
-public sealed record ModeStats(int Wins, double WinRate, double Kd, int Kills, int Matches)
+/// <summary>Which period stats cover.</summary>
+public enum StatsWindow { Season, Lifetime }
+
+public sealed record ModeStats(
+    int Wins, double WinRate, double Kd, int Kills, int Matches,
+    int Top10 = 0, int Top25 = 0, int MinutesPlayed = 0, double KillsPerMatch = 0, int Deaths = 0)
 {
     public Rarity KdRarity => StatGrades.ForKd(Kd);
     public Rarity WinRateRarity => StatGrades.ForWinRate(WinRate);
@@ -24,7 +29,8 @@ public sealed record PlayerStats(
     string? EpicName,
     StatsStatus Status,
     ModeStats? Overall = null,
-    IReadOnlyDictionary<string, ModeStats>? ByMode = null)
+    IReadOnlyDictionary<string, ModeStats>? ByMode = null,
+    int? BattlePassLevel = null)
 {
     public int? Wins => Overall?.Wins;
     public double? WinRate => Overall?.WinRate;

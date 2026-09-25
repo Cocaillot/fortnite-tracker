@@ -30,6 +30,9 @@ public sealed record PlaylistSeen(string UserId, string Playlist) : GameEvent;
 /// </summary>
 public sealed record ViewTargetChanged(string PlayerName) : GameEvent;
 
+/// <summary>Ranked progress Fortnite fetched for you, your party or friends (one log line can hold many).</summary>
+public sealed record RanksSeen(IReadOnlyList<RankProgress> Ranks) : GameEvent;
+
 /// <summary>
 /// Turns FortniteGame.log lines into game events. The log format is undocumented and can change
 /// with any Fortnite patch, so every pattern here is covered by tests built from real log lines.
@@ -72,6 +75,7 @@ public static partial class FortniteLogParser
 
     private static GameEvent? ParseEvent(string line)
     {
+        if (RankParser.Parse(line) is { Count: > 0 } ranks) return new RanksSeen(ranks);
         if (Login().Match(line) is { Success: true } l)
             return new LocalPlayerDetected(l.Groups["id"].Value, l.Groups["name"].Value);
         if (PartyMember().Match(line) is { Success: true } p)

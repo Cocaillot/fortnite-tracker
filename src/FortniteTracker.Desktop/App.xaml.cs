@@ -40,6 +40,9 @@ public partial class App : Application
                 services.AddMemoryCache();
                 services.AddSingleton(_ => new SettingsStore(config["FortniteApi:Key"], Path.Combine(storage, "settings.json")));
                 services.AddSingleton(_ => new MatchHistoryStore(Path.Combine(storage, "history.json")));
+                services.AddSingleton(_ => new RankBook(Path.Combine(storage, "ranks.json")));
+                services.AddSingleton(_ => new SessionStore(Path.Combine(storage, "sessions.json")));
+                services.AddSingleton<PlayerDirectory>();
                 services.AddHttpClient("fortnite-api", c =>
                 {
                     c.BaseAddress = new Uri("https://fortnite-api.com/");
@@ -53,7 +56,8 @@ public partial class App : Application
                 services.AddHostedService(sp => sp.GetRequiredService<FortniteLogTailer>());
                 if (!config.GetValue<bool>("Fortnite:AssumeRunning")) services.AddHostedService<GameProcessWatcher>();
                 services.AddHostedService(sp => new MatchHistoryImporter(
-                    sp.GetRequiredService<MatchHistoryStore>(), sp.GetRequiredService<ILogger<MatchHistoryImporter>>())
+                    sp.GetRequiredService<MatchHistoryStore>(), sp.GetRequiredService<RankBook>(),
+                    sp.GetRequiredService<ILogger<MatchHistoryImporter>>())
                 {
                     LogDirectory = Path.GetDirectoryName(logPath)!,
                 });
@@ -75,9 +79,12 @@ public partial class App : Application
 
         // Subscribe before the tailer starts so the initial replay of the log is not missed.
         tailer.FileOpened += () => tracker.Handle(new LogFileOpened { At = DateTime.UtcNow });
+        var ranks = services.GetRequiredService<RankBook>();
         tailer.LineRead += line =>
         {
-            if (FortniteLogParser.Parse(line) is { } gameEvent) tracker.Handle(gameEvent);
+            var gameEvent = FortniteLogParser.Parse(line);
+            if (gameEvent is RanksSeen seen) ranks.Add(seen.Ranks);
+            else if (gameEvent is not null) tracker.Handle(gameEvent);
         };
         tracker.MatchCompleted += history.Add;
         var settings = services.GetRequiredService<SettingsStore>();

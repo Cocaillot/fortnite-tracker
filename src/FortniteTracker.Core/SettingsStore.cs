@@ -4,6 +4,9 @@ namespace FortniteTracker.Core;
 
 public enum OverlayCorner { TopLeft, TopRight, BottomLeft, BottomRight }
 
+/// <summary>A player you follow on the leaderboard. AccountId is set once their stats were found.</summary>
+public sealed record FollowedPlayer(string? AccountId, string Name);
+
 /// <summary>
 /// User settings in %APPDATA%\FortniteTracker\settings.json. Each user brings their own free
 /// fortnite-api.com key, so no secret ships inside the app.
@@ -31,6 +34,21 @@ public sealed class SettingsStore
     public bool NotifyOnElimination => _settings.NotifyOnElimination;
     public bool OverlayEnabled => _settings.Overlay;
     public OverlayCorner OverlayCorner => _settings.OverlayCorner;
+    public IReadOnlyList<FollowedPlayer> Followed => _settings.Followed ?? [];
+
+    public bool IsFollowed(string? accountId, string? name) => Followed.Any(f => Matches(f, accountId, name));
+
+    public void Follow(string? accountId, string name) => Update(s => s with
+    {
+        Followed = [.. (s.Followed ?? []).Where(f => !Matches(f, accountId, name)), new FollowedPlayer(accountId, name)],
+    }, apiKeyChanged: false);
+
+    public void Unfollow(string? accountId, string? name) =>
+        Update(s => s with { Followed = [.. (s.Followed ?? []).Where(f => !Matches(f, accountId, name))] }, apiKeyChanged: false);
+
+    private static bool Matches(FollowedPlayer f, string? accountId, string? name) =>
+        (accountId is not null && f.AccountId == accountId)
+        || (name is not null && string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Raised after any change; the argument says whether the API key changed.</summary>
     public event Action<bool>? Changed;
@@ -73,5 +91,6 @@ public sealed class SettingsStore
         bool RichPresence = true,
         bool NotifyOnElimination = true,
         bool Overlay = false,
-        OverlayCorner OverlayCorner = OverlayCorner.TopRight);
+        OverlayCorner OverlayCorner = OverlayCorner.TopRight,
+        List<FollowedPlayer>? Followed = null);
 }

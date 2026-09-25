@@ -22,23 +22,24 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
         AutoReplenishment = true,
     });
 
-    public Task<PlayerStats> GetByAccountIdAsync(string accountId, CancellationToken ct) =>
-        GetCachedAsync(AccountKey(accountId), AccountUrl(accountId), accountId, null, ct);
+    public Task<PlayerStats> GetByAccountIdAsync(string accountId, CancellationToken ct, StatsWindow window = StatsWindow.Season) =>
+        GetCachedAsync(AccountKey(accountId, window), AccountUrl(accountId, window), accountId, null, ct);
 
     /// <summary>Skips the cache (used to see a match land in your stats); refreshes it on success.</summary>
     public async Task<PlayerStats> GetFreshByAccountIdAsync(string accountId, CancellationToken ct)
     {
         if (!settings.HasApiKey) return new PlayerStats(accountId, null, StatsStatus.NoApiKey);
         ct.ThrowIfCancellationRequested();
-        return await FetchAndCacheAsync(AccountKey(accountId), AccountUrl(accountId), accountId, null);
+        return await FetchAndCacheAsync(AccountKey(accountId, StatsWindow.Season), AccountUrl(accountId, StatsWindow.Season), accountId, null);
     }
 
-    private static string AccountKey(string accountId) => "id:" + accountId;
-    private static string AccountUrl(string accountId) => $"v2/stats/br/v2/{accountId}?timeWindow=season";
+    private static string Window(StatsWindow w) => w == StatsWindow.Lifetime ? "lifetime" : "season";
+    private static string AccountKey(string accountId, StatsWindow w) => $"id:{Window(w)}:{accountId}";
+    private static string AccountUrl(string accountId, StatsWindow w) => $"v2/stats/br/v2/{accountId}?timeWindow={Window(w)}";
 
-    public Task<PlayerStats> GetByNameAsync(string name, string accountType, CancellationToken ct) =>
-        GetCachedAsync($"name:{accountType}:{name.ToLowerInvariant()}",
-            $"v2/stats/br/v2?name={Uri.EscapeDataString(name)}&accountType={accountType}&timeWindow=season",
+    public Task<PlayerStats> GetByNameAsync(string name, string accountType, CancellationToken ct, StatsWindow window = StatsWindow.Season) =>
+        GetCachedAsync($"name:{Window(window)}:{accountType}:{name.ToLowerInvariant()}",
+            $"v2/stats/br/v2?name={Uri.EscapeDataString(name)}&accountType={accountType}&timeWindow={Window(window)}",
             null, name, ct);
 
     /// <summary>
@@ -138,7 +139,10 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
         // "all" (and each mode inside it) is null when there are no matches in the time window.
         if (!data.TryGetProperty("stats", out var stats)
             || !stats.TryGetProperty("all", out var all) || all.ValueKind != JsonValueKind.Object)
-            return new(id, epicName, StatsStatus.Ok, new ModeStats(0, 0, 0, 0, 0), new Dictionary<string, ModeStats>());
+            return new(id, epicName, StatsStatus.Ok, new ModeStats(0, 0, 0, 0, 0), new Dictionary<string, ModeStats>(), null);
+
+        int? battlePass = data.TryGetProperty("battlePass", out var bp) && bp.ValueKind == JsonValueKind.Object
+            && bp.TryGetProperty("level", out var lvl) && lvl.ValueKind == JsonValueKind.Number ? lvl.GetInt32() : null;
 
         var byMode = new Dictionary<string, ModeStats>();
         foreach (var mode in all.EnumerateObject())
@@ -146,14 +150,26 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
 
         return new(id, epicName, StatsStatus.Ok,
             all.TryGetProperty("overall", out var o) ? ParseMode(o) ?? new ModeStats(0, 0, 0, 0, 0) : new ModeStats(0, 0, 0, 0, 0),
-            byMode);
+            byMode,
+            battlePass);
     }
 
     private static ModeStats? ParseMode(JsonElement m) =>
         m.ValueKind != JsonValueKind.Object ? null : new ModeStats(
-            Wins: m.GetProperty("wins").GetInt32(),
-            WinRate: m.GetProperty("winRate").GetDouble(),
-            Kd: m.GetProperty("kd").GetDouble(),
-            Kills: m.GetProperty("kills").GetInt32(),
-            Matches: m.GetProperty("matches").GetInt32());
+            Wins: Int(m, "wins"),
+            WinRate: Num(m, "winRate"),
+            Kd: Num(m, "kd"),
+            Kills: Int(m, "kills"),
+            Matches: Int(m, "matches"),
+            Top10: Int(m, "top10"),
+            Top25: Int(m, "top25"),
+            MinutesPlayed: Int(m, "minutesPlayed"),
+            KillsPerMatch: Num(m, "killsPerMatch"),
+            Deaths: Int(m, "deaths"));
+
+    private static int Int(JsonElement m, string name) =>
+        m.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;
+
+    private static double Num(JsonElement m, string name) =>
+        m.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
 }
