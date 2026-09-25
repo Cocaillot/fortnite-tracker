@@ -45,6 +45,8 @@ public partial class App : Application
                 services.AddSingleton<PlayerDirectory>();
                 services.AddSingleton<MatchInsights>();
                 services.AddSingleton(_ => new PlayerNotes(Path.Combine(storage, "notes.json")));
+                services.AddSingleton(_ => new StatsHistory(Path.Combine(storage, "stats-history.json")));
+                services.AddSingleton(_ => new GoalStore(storage));
                 services.AddSingleton(_ => new ThemeStore(storage));
                 services.AddHttpClient("fortnite-api", c =>
                 {
@@ -90,6 +92,13 @@ public partial class App : Application
             else if (gameEvent is not null) tracker.Handle(gameEvent);
         };
         tracker.MatchCompleted += history.Add;
+        // A daily snapshot of your season stats for trend charts.
+        var statsHistory = services.GetRequiredService<StatsHistory>();
+        tracker.Changed += s =>
+        {
+            if (s.LocalName is not null && s.Squad.FirstOrDefault() is { Status: StatsStatus.Ok, Overall: { } overall })
+                statsHistory.Record(DateOnly.FromDateTime(DateTime.Now), overall);
+        };
         var settings = services.GetRequiredService<SettingsStore>();
         var results = services.GetRequiredService<MatchResultTracker>(); // follows the tracker from here on
         settings.Changed += apiKeyChanged =>

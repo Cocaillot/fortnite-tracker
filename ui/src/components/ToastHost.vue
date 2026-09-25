@@ -1,28 +1,5 @@
 <script setup lang="ts">
-import { onUnmounted, ref } from 'vue'
-import { on } from '../bridge'
-
-// In-app pop-ups sent by the host (rank changes, meeting a noted player again…).
-interface Toast {
-  id: number
-  title: string
-  text: string
-  good: boolean
-}
-
-const toasts = ref<Toast[]>([])
-let next = 0
-
-function dismiss(id: number) {
-  toasts.value = toasts.value.filter((t) => t.id !== id)
-}
-
-const off = on('toast', (t) => {
-  const id = next++
-  toasts.value = [...toasts.value.slice(-3), { id, ...t }]
-  window.setTimeout(() => dismiss(id), 7000)
-})
-onUnmounted(off)
+import { dismissToast as dismiss, toasts } from '../composables/toasts'
 </script>
 
 <template>

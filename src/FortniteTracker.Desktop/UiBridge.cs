@@ -9,9 +9,9 @@ namespace FortniteTracker.Desktop;
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
 /// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme, toast,
-/// matchDetail, teammates, notes.
+/// matchDetail, teammates, notes, statsHistory, goals.
 /// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
-/// profile, follow, leaderboard, setTheme, match, teammates, setNote.
+/// profile, follow, leaderboard, setTheme, match, teammates, setNote, setGoals.
 /// </summary>
 public sealed class UiBridge
 {
@@ -34,6 +34,8 @@ public sealed class UiBridge
     private readonly ThemeStore _theme;
     private readonly MatchInsights _insights;
     private readonly PlayerNotes _notes;
+    private readonly StatsHistory _statsHistory;
+    private readonly GoalStore _goals;
     private CancellationTokenSource? _leaderboardRun;
     private CoreWebView2? _web;
     private Dispatcher? _dispatcher;
@@ -42,9 +44,12 @@ public sealed class UiBridge
         LobbyTracker tracker, FortniteStatsService stats, SettingsStore settings,
         MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence,
         RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme, MatchInsights insights,
-        PlayerNotes notes)
+        PlayerNotes notes, StatsHistory statsHistory, GoalStore goals)
     {
         _notes = notes;
+        _statsHistory = statsHistory;
+        _goals = goals;
+        _statsHistory.Changed += () => Post(SendStatsHistory);
         _notes.Changed += () => Post(SendNotes);
         _insights = insights;
         _theme = theme;
@@ -115,6 +120,12 @@ public sealed class UiBridge
                 SendWindowState();
                 SendTheme();
                 SendNotes();
+                SendStatsHistory();
+                SendGoals();
+                break;
+            case "setGoals":
+                // The UI owns the goal format; stored as-is.
+                _goals.Save(msg.Goals is { ValueKind: JsonValueKind.Array } g ? g.GetRawText() : "[]");
                 break;
             case "setNote" when !string.IsNullOrWhiteSpace(msg.Name):
                 _notes.Save(msg.AccountId, msg.Name, msg.Tags ?? [], msg.Text ?? "");
@@ -187,6 +198,11 @@ public sealed class UiBridge
 
     private void SendNotes() => Send("notes", _notes.All);
 
+    private void SendStatsHistory() => Send("statsHistory", _statsHistory.All);
+
+    private void SendGoals() =>
+        _web?.PostWebMessageAsJson($"{{\"type\":\"goals\",\"data\":{_goals.Json}}}");
+
     private void SendHistory() => Send("history", _history.Recent(HistoryCount));
 
     private void SendSessions() => Send("sessions", _sessions.All.Reverse().Take(50).ToList());
@@ -218,5 +234,5 @@ public sealed class UiBridge
 
     private sealed record UiMessage(
         string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId,
-        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text);
+        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals);
 }

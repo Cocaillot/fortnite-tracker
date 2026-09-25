@@ -27,6 +27,7 @@ const {
   openMatch,
   matchDetail,
   teammates,
+  statsHistory,
   showMatch,
   closeMatch,
   loadTeammates,
@@ -157,6 +158,7 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
           :matches="history"
           :sessions="sessions"
           :teammates="teammates"
+          :stats-history="statsHistory"
           @open="showProfile"
           @match="showMatch"
           @load-teammates="loadTeammates"

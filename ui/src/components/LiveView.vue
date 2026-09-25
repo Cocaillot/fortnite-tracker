@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import type { LobbySnapshot, MatchRecord, RankProgress } from '../bridge'
 import PlayerCard from './PlayerCard.vue'
+import GoalsCard from './GoalsCard.vue'
+import { showToast } from '../composables/toasts'
 
 const props = defineProps<{
   snapshot: LobbySnapshot | null
@@ -14,6 +16,7 @@ const emit = defineEmits<{ open: [accountId: string | null, name: string | null]
 const onOpen = (accountId: string | null, name: string | null) => emit('open', accountId, name)
 
 const you = computed(() => (props.snapshot?.localName ? props.snapshot.squad[0] : null))
+const myRanks = computed(() => (you.value?.accountId ? (props.ranks[you.value.accountId] ?? []) : []))
 const bucket = computed(() => props.snapshot?.statsBucket ?? null)
 const label = computed(() => props.snapshot?.statsLabel)
 
@@ -90,6 +93,7 @@ const subtitle = computed(() => {
         </div>
       </section>
 
+      <div class="side">
       <section class="elimination">
         <h2 class="card-title">Last elimination</h2>
         <Transition name="slide" mode="out-in">
@@ -115,6 +119,8 @@ const subtitle = computed(() => {
           </div>
         </Transition>
       </section>
+      <GoalsCard :snapshot="snapshot" :ranks="myRanks" :history="history" @completed="(t) => showToast('Goal completed!', t, true)" />
+      </div>
     </div>
   </div>
 </template>
@@ -242,6 +248,11 @@ const subtitle = computed(() => {
   .columns {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
 }
 .list {
   display: flex;

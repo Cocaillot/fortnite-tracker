@@ -14,6 +14,7 @@ import {
   type Settings,
   type MatchDetail,
   type TeammateSummary,
+  type StatsDay,
 } from '../bridge'
 
 export function useTracker() {
@@ -31,6 +32,7 @@ export function useTracker() {
   const openMatch = ref<MatchRecord | null>(null)
   const matchDetail = ref<MatchDetail | null>(null)
   const teammates = ref<TeammateSummary[] | null>(null)
+  const statsHistory = ref<StatsDay[]>([])
 
   const unsubscribers: (() => void)[] = []
 
@@ -57,6 +59,7 @@ export function useTracker() {
         if (d && openMatch.value && d.match.startedUtc === openMatch.value.startedUtc) matchDetail.value = d
       }),
       on('teammates', (t) => (teammates.value = t)),
+      on('statsHistory', (h) => (statsHistory.value = h)),
     )
     // Ask the host for the current state; it may have published before the page loaded.
     send({ type: 'ready' })
@@ -96,6 +99,7 @@ export function useTracker() {
     openMatch,
     matchDetail,
     teammates,
+    statsHistory,
     showMatch: (m: MatchRecord) => {
       openMatch.value = m
       matchDetail.value = null

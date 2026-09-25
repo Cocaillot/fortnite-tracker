@@ -123,6 +123,12 @@ export interface MatchRecord {
   partyIds: string[] | null
 }
 
+export interface StatsDay {
+  /** Local date, "2026-09-25". */
+  day: string
+  overall: ModeStats
+}
+
 export interface PlayerNote {
   accountId: string | null
   name: string
@@ -186,6 +192,9 @@ export interface HostMessages {
   matchDetail: MatchDetail | null
   teammates: TeammateSummary[]
   notes: PlayerNote[]
+  statsHistory: StatsDay[]
+  /** Saved goals (format owned by composables/goals.ts). */
+  goals: unknown
 }
 
 export type UiMessage =
@@ -198,6 +207,7 @@ export type UiMessage =
   | { type: 'match'; startedUtc: string }
   | { type: 'teammates' }
   | { type: 'setNote'; accountId: string | null; name: string; tags: string[]; text: string }
+  | { type: 'setGoals'; goals: object[] }
   | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
   | { type: 'window'; action: 'drag' | 'minimize' | 'maximize' | 'fullscreen' | 'close' }

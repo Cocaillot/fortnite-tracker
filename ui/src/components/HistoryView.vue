@@ -3,16 +3,22 @@ import { computed, ref } from 'vue'
 import { isAnonymous, threatLabel, type MatchRecord, type SessionRecord, type Threat } from '../bridge'
 import SessionsView from './SessionsView.vue'
 import TeammatesView from './TeammatesView.vue'
-import type { TeammateSummary } from '../bridge'
+import TrendsView from './TrendsView.vue'
+import type { StatsDay, TeammateSummary } from '../bridge'
 
-const props = defineProps<{ matches: MatchRecord[]; sessions: SessionRecord[]; teammates: TeammateSummary[] | null }>()
+const props = defineProps<{
+  matches: MatchRecord[]
+  sessions: SessionRecord[]
+  teammates: TeammateSummary[] | null
+  statsHistory: StatsDay[]
+}>()
 const emit = defineEmits<{
   open: [accountId: string | null, name: string | null]
   match: [m: MatchRecord]
   loadTeammates: []
 }>()
 
-const view = ref<'matches' | 'sessions' | 'teammates'>('matches')
+const view = ref<'matches' | 'sessions' | 'teammates' | 'trends'>('matches')
 type Range = 'today' | 'all'
 const range = ref<Range>('today')
 
@@ -122,6 +128,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
           <button type="button" role="tab" :aria-selected="view === 'matches'" :class="{ on: view === 'matches' }" @click="view = 'matches'">Matches</button>
           <button type="button" role="tab" :aria-selected="view === 'sessions'" :class="{ on: view === 'sessions' }" @click="view = 'sessions'">Sessions</button>
           <button type="button" role="tab" :aria-selected="view === 'teammates'" :class="{ on: view === 'teammates' }" @click="view = 'teammates'">Teammates</button>
+          <button type="button" role="tab" :aria-selected="view === 'trends'" :class="{ on: view === 'trends' }" @click="view = 'trends'">Trends</button>
         </div>
         <div v-if="view === 'matches'" class="seg" role="tablist" aria-label="Period">
           <button type="button" role="tab" :aria-selected="range === 'today'" :class="{ on: range === 'today' }" @click="range = 'today'">Today</button>
@@ -131,6 +138,8 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
     </div>
 
     <SessionsView v-if="view === 'sessions'" :matches="matches" :sessions="sessions" @open="(id, n) => emit('open', id, n)" />
+
+    <TrendsView v-else-if="view === 'trends'" :matches="matches" :stats-history="statsHistory" />
 
     <TeammatesView v-else-if="view === 'teammates'" :teammates="teammates" @refresh="emit('loadTeammates')" @open="(id, n) => emit('open', id, n)" />
 
