@@ -37,13 +37,13 @@ jobs:
         shell: pwsh
         run: if ($env:VERSION -notmatch '^\d+\.\d+\.\d+$') { throw "Version must look like 1.2.3, got '$env:VERSION'" }
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 8.0.x
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -82,7 +82,7 @@ jobs:
       - name: Upload binaries to sign
         id: upload-app
         if: env.SIGN == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-unsigned
           path: to-sign/
@@ -125,7 +125,7 @@ jobs:
       - name: Upload installer to sign
         id: upload-setup
         if: env.SIGN == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: setup-unsigned
           path: releases/FortniteTracker-win-Setup.exe
