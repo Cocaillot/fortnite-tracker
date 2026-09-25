@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { relationLabel, type LeaderboardEntry, type Relation, type RankProgress } from '../bridge'
 import RankBadge from './RankBadge.vue'
+import PlayerAvatar from './PlayerAvatar.vue'
 
 const props = defineProps<{ entries: LeaderboardEntry[] | null }>()
 const emit = defineEmits<{ refresh: []; open: [accountId: string | null, name: string | null] }>()
@@ -98,6 +99,21 @@ function formatStat(e: LeaderboardEntry, key: StatKey) {
   }
 }
 
+// Top 3 as medal cards, in podium order (2nd, 1st, 3rd), once every row has its stats.
+const podium = computed(() => {
+  if (rows.value.length < 3 || loaded.value < total.value) return []
+  const [first, second, third] = rows.value
+  return [
+    { e: second!, place: 2 },
+    { e: first!, place: 1 },
+    { e: third!, place: 3 },
+  ]
+})
+const sortLabel = computed(
+  () => modes.value.find((m) => m.track === activeSort.value)?.name ?? statColumns.find((c) => c.key === activeSort.value)?.label ?? '',
+)
+const sortIsMode = computed(() => modes.value.some((m) => m.track === activeSort.value))
+
 const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â†“' : ' â†‘') : '')
 </script>
 
@@ -125,6 +141,31 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
         Loading stats {{ loaded }}/{{ total }}
         <span class="bar"><span :style="{ width: `${(100 * loaded) / Math.max(1, total)}%` }" /></span>
       </span>
+    </div>
+
+    <div v-if="podium.length" class="podium-cards" :aria-label="`Top 3 by ${sortLabel}`">
+      <button
+        v-for="p in podium"
+        :key="p.place"
+        type="button"
+        class="step"
+        :class="`place-${p.place}`"
+        @click="emit('open', p.e.accountId, p.e.accountId ? null : p.e.name)"
+      >
+        <span class="medal">{{ p.place }}</span>
+        <PlayerAvatar :name="p.e.name" :size="p.place === 1 ? 64 : 52" :you="p.e.relation === 'You'" />
+        <span class="step-name">{{ displayName(p.e) }}</span>
+        <span class="step-rel">{{ relationLabel[p.e.relation] }}</span>
+        <span class="step-value">
+          <template v-if="sortIsMode">
+            <RankBadge v-if="rankIn(p.e, activeSort)" :rank="rankIn(p.e, activeSort)!" size="md" />
+          </template>
+          <template v-else>
+            <span class="stat-value big">{{ formatStat(p.e, activeSort as StatKey) }}</span>
+            <span class="faint">{{ sortLabel }}</span>
+          </template>
+        </span>
+      </button>
     </div>
 
     <div v-if="!entries" class="skeleton" style="height: 320px" />
@@ -175,8 +216,13 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
           >
             <td class="pos" :class="{ podium: i < 3 }">{{ i + 1 }}</td>
             <td class="who">
-              <span class="player-name" :class="{ faint: !e.name }">{{ displayName(e) }}</span>
-              <span class="rel" :class="e.relation">{{ relationLabel[e.relation] }}</span>
+              <div class="who-inner">
+                <PlayerAvatar :name="e.name" :size="38" :you="e.relation === 'You'" />
+                <div>
+                  <span class="player-name" :class="{ faint: !e.name }">{{ displayName(e) }}</span>
+                  <span class="rel" :class="e.relation">{{ relationLabel[e.relation] }}</span>
+                </div>
+              </div>
             </td>
             <template v-if="view === 'ranks'">
               <td v-for="m in modes" :key="m.track" class="rank-cell">
@@ -267,7 +313,12 @@ tr.you td {
   background: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 .who {
-  min-width: 200px;
+  min-width: 220px;
+}
+.who-inner {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
 }
 .player-name {
   display: block;
@@ -294,6 +345,79 @@ tr.you td {
   display: inline-block;
   width: 44px;
   height: 18px;
+}
+.podium-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s4);
+  align-items: end;
+}
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s5) var(--s4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--m) 16%, var(--surface)), var(--surface) 70%);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  min-width: 0;
+}
+.step:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px -12px color-mix(in srgb, var(--m) 60%, transparent);
+}
+.place-1 {
+  --m: var(--rarity-legendary);
+  padding-top: var(--s6);
+  padding-bottom: var(--s6);
+  border-color: color-mix(in srgb, var(--m) 55%, var(--border));
+}
+.place-2 {
+  --m: var(--tier-Silver);
+}
+.place-3 {
+  --m: var(--tier-Bronze);
+}
+.medal {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 17px;
+  color: #1a1206;
+  background: var(--m);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--m) 30%, transparent);
+}
+.step-name {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 22px;
+  line-height: 1.1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.step-rel {
+  font-size: 12px;
+  color: var(--faint);
+  margin-top: -6px;
+}
+.step-value {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 34px;
+}
+.stat-value.big {
+  font-size: 28px;
 }
 .legend {
   margin: 0;

@@ -15,6 +15,13 @@ public sealed record PartyMemberLeft(string AccountId) : GameEvent;
 public sealed record LocalPartyLeft : GameEvent;
 public sealed record MatchStarted(string Level) : GameEvent;
 public sealed record MatchEnded : GameEvent;
+
+/// <summary>
+/// The game loaded the main menu locally ("Browse: /Game/Maps/Frontend"). Leaving a match before
+/// being eliminated writes no placement line, so this is how that shows up. Joining a match also
+/// browses to Frontend, but on a server address ("1.2.3.4:9000/Game/Maps/Frontend").
+/// </summary>
+public sealed record ReturnedToMenu : GameEvent;
 public sealed record GameRunningChanged(bool Running) : GameEvent;
 
 /// <summary>
@@ -55,6 +62,9 @@ public static partial class FortniteLogParser
     [GeneratedRegex(@"LocalPlacementChanged We now have placement")]
     private static partial Regex Placement();
 
+    [GeneratedRegex(@"LogNet: Browse: /Game/Maps/Frontend")]
+    private static partial Regex MainMenu();
+
     [GeneratedRegex(@"\[Presence\.Parse\] user=MCP:(?<id>[0-9a-f.]+) .*? Playlist=(?<playlist>Playlist_[A-Za-z0-9_]+)")]
     private static partial Regex Presence();
 
@@ -85,6 +95,7 @@ public static partial class FortniteLogParser
         if (PartyLeft().IsMatch(line)) return new LocalPartyLeft();
         if (Welcomed().Match(line) is { Success: true } w) return new MatchStarted(w.Groups["level"].Value);
         if (Placement().IsMatch(line)) return new MatchEnded();
+        if (MainMenu().IsMatch(line)) return new ReturnedToMenu();
         if (Presence().Match(line) is { Success: true } pr)
             return new PlaylistSeen(pr.Groups["id"].Value, pr.Groups["playlist"].Value);
         if (ViewTarget().Match(line) is { Success: true } v)

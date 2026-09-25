@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { RankProgress } from '../bridge'
+import RankEmblem from './RankEmblem.vue'
 
 const props = withDefaults(defineProps<{ rank: RankProgress; showTrack?: boolean; size?: 'sm' | 'md' }>(), {
   showTrack: false,
@@ -8,6 +9,8 @@ const props = withDefaults(defineProps<{ rank: RankProgress; showTrack?: boolean
 })
 
 const unranked = computed(() => props.rank.lastUpdatedUtc === null)
+// Division pips (I, II, III) for the shield tiers; the text shows the full name too.
+const division = computed(() => (props.rank.current < 9 && !unranked.value ? (props.rank.current % 3) + 1 : 0))
 // Unreal has a leaderboard position instead of progress.
 const showProgress = computed(() => !unranked.value && props.rank.position === null && props.rank.tier !== 'Beyond')
 const title = computed(() => {
@@ -21,7 +24,7 @@ const title = computed(() => {
 
 <template>
   <span class="rank" :class="[`tier-${rank.tier}`, size, { past: !rank.isCurrentSeason }]" :title="title">
-    <svg class="gem" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1l6 5-6 9-6-9z" /></svg>
+    <RankEmblem :tier="rank.tier" :division="division" :size="size === 'md' ? 26 : 18" />
     <span class="text">
       <span class="name">{{ showTrack ? `${rank.trackName} · ` : '' }}{{ rank.rankName }}</span>
       <span v-if="showProgress" class="bar"><span :style="{ width: `${Math.round(rank.progress * 100)}%` }" /></span>
@@ -33,23 +36,12 @@ const title = computed(() => {
 .rank {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
   color: var(--t);
   min-width: 0;
 }
 .rank.past {
   opacity: 0.55;
-}
-.gem {
-  flex: none;
-  width: 13px;
-  height: 13px;
-  fill: currentColor;
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--t) 50%, transparent));
-}
-.md .gem {
-  width: 18px;
-  height: 18px;
 }
 .text {
   display: flex;

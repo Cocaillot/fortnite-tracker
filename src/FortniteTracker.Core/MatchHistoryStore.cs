@@ -10,8 +10,9 @@ public sealed class MatchHistoryStore
 {
     private const int MaxMatches = 1000;
 
-    // Bump when the importer learns something new, so old logs are read again (2: eliminators, 3: ranks).
-    private const int FormatVersion = 3;
+    // Bump when the importer learns something new, so old logs are read again (2: eliminators, 3: ranks,
+    // 4: end time of matches left early).
+    private const int FormatVersion = 4;
 
     private readonly string _path;
     private readonly object _gate = new();

@@ -92,6 +92,14 @@ public class FortniteLogParserTests
         Assert.Equal(anonymous, FortniteLogParser.IsAnonymous(name));
 
     [Fact]
+    public void Loading_the_main_menu_locally_means_back_in_the_lobby() =>
+        Assert.IsType<ReturnedToMenu>(ParseIgnoringTime("[2026.09.25-08.20.28:365][100]LogNet: Browse: /Game/Maps/Frontend?Name=Player"));
+
+    [Fact]
+    public void Joining_a_match_server_is_not_a_return_to_the_menu() =>
+        Assert.Null(FortniteLogParser.Parse("[2026.09.25-08.19.24:322][100]LogNet: Browse: 18.168.146.39:9040/Game/Maps/Frontend?EncryptionToken=x"));
+
+    [Fact]
     public void Timestamp_is_read_as_utc()
     {
         var e = FortniteLogParser.Parse(Lines.Welcomed)!;
@@ -104,7 +112,6 @@ public class FortniteLogParserTests
     // Opponents only ever appear with redacted IDs; they must not be mistaken for party members.
     [InlineData("[2026.09.25-02.39.09:739][487]LogFort: AFortGameStateAthena::CheckAndAddMissedPlayerStatesToMaps(): Added missed player state to team and squad map, with UniqueId: MCP:9f8e7...6d5c4, in team: 6 and squad: 4.")]
     [InlineData("[2026.09.25-02.38.18:018][661]LogParty: Verbose: Created new party member [MCP:1a2b3...4c5d6, Party (V2:cccccccccccccccccccccccccccccccc-57379872-default)]")]
-    [InlineData("[2026.09.25-02.38.08:281][499]LogNet: Browse: /Game/Maps/Frontend?Name=Player")]
     [InlineData("[2026.09.25-02.38.13:607][544]LogJoinInProgress: Verbose: [Presence.Parse] user=MCP:cb2eb...70107 SessionId(empty=True) SessionKey(empty=True) Playlist=None ServerPlayers=0")]
     public void Unrelated_lines_are_ignored(string line) =>
         Assert.Null(FortniteLogParser.Parse(line));

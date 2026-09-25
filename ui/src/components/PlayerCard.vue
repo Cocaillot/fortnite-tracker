@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { statsFor, threatLabel, type PlayerStats, type RankProgress } from '../bridge'
 import RankBadge from './RankBadge.vue'
+import PlayerAvatar from './PlayerAvatar.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -56,6 +57,8 @@ const versus = computed(() => {
 <template>
   <article class="player" :class="[variant, stats ? `r-${stats.kdRarity}` : 'r-Common']">
     <header>
+      <span v-if="loading" class="skeleton avatar-skeleton" />
+      <PlayerAvatar v-else :name="player.status === 'Hidden' ? '?' : name" :size="46" :you="isYou" />
       <span v-if="loading" class="skeleton name-skeleton" />
       <button v-else-if="canOpen" type="button" class="name link" :title="`Open ${name}'s profile`" @click="open">{{ name }}</button>
       <span v-else class="name">{{ name }}</span>
@@ -116,6 +119,14 @@ const versus = computed(() => {
   width: 5px;
   background: var(--r);
 }
+.player {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.player:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--r) 45%, var(--border));
+  box-shadow: 0 12px 28px -18px color-mix(in srgb, var(--r) 70%, transparent);
+}
 .player.eliminator {
   border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
   background: linear-gradient(160deg, color-mix(in srgb, var(--danger) 10%, var(--surface)) 0%, var(--surface) 55%);
@@ -123,8 +134,13 @@ const versus = computed(() => {
 header {
   display: flex;
   align-items: center;
-  gap: var(--s2);
-  min-height: 30px;
+  gap: var(--s3);
+  min-height: 46px;
+}
+.avatar-skeleton {
+  width: 46px;
+  height: 46px;
+  flex: none;
 }
 .name {
   font-family: var(--display);

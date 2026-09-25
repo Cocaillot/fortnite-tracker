@@ -103,6 +103,10 @@ public sealed class SessionState
             case MatchEnded m when InMatch:
                 _lastFinished = Complete(m.At, finished: true);
                 return true;
+            // Left the match before being eliminated: back in the lobby, match not finished.
+            case ReturnedToMenu r when InMatch:
+                Complete(r.At, finished: false);
+                return true;
             // Before placement the camera follows your own teammates, so only targets after it count.
             case ViewTargetChanged v when _lastFinished is not null
                                           && v.PlayerName != SelfName

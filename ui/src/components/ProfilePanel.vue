@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { relationLabel, type ModeStats, type PlayerProfile } from '../bridge'
 import RankBadge from './RankBadge.vue'
+import PlayerAvatar from './PlayerAvatar.vue'
 
 const props = defineProps<{ profile: PlayerProfile | null; loadingName: string | null; canGoBack: boolean }>()
 const emit = defineEmits<{ close: []; follow: [accountId: string | null, name: string, enabled: boolean] }>()
@@ -49,16 +50,6 @@ const statusText: Record<string, string> = {
   Error: 'Stats unavailable right now.',
 }
 
-const initials = computed(
-  () =>
-    (props.profile?.name ?? props.loadingName ?? '?')
-      .replace(/[^\p{L}\p{N} ]/gu, '')
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0]!.toUpperCase())
-      .join('') || '?',
-)
 
 // fortnite-api doesn't count placements for Ranked/LTMs, so all-zero tops mean "not tracked", not "never".
 const placementsTracked = computed(() => !!selected.value && (selected.value.top25 > 0 || selected.value.matches < 10))
@@ -73,7 +64,7 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
     <button v-if="canGoBack" type="button" class="back" @click="emit('close')">‹ Back</button>
 
     <header class="hero card">
-      <span class="avatar" aria-hidden="true">{{ initials }}</span>
+      <PlayerAvatar :name="profile?.name ?? loadingName" :size="92" :you="profile?.relation === 'You'" />
       <div class="identity">
         <h1 class="name">{{ profile?.name ?? loadingName }}</h1>
         <div v-if="profile" class="chips">
@@ -200,20 +191,6 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
   display: flex;
   align-items: center;
   gap: var(--s5);
-}
-.avatar {
-  width: 84px;
-  height: 84px;
-  flex: none;
-  border-radius: 20px;
-  display: grid;
-  place-items: center;
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 36px;
-  color: var(--accent-ink);
-  background: linear-gradient(135deg, var(--accent), var(--rarity-epic));
-  transform: skewX(-4deg);
 }
 .identity {
   flex: 1;

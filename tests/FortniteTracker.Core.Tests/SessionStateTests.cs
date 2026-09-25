@@ -95,6 +95,33 @@ public class SessionStateTests
     }
 
     [Fact]
+    public void Leaving_a_match_early_ends_it_when_the_menu_loads()
+    {
+        var (s, matches) = Create();
+        s.Apply(new LocalPlayerDetected(Self, "PlayerOne"));
+        s.Apply(new PlaylistSeen(Self, "Playlist_Habanero_PunchBerry_Solo"));
+        s.Apply(new MatchStarted("/Game/Athena/Maps/Athena_Empty") { At = T0 });
+        s.Apply(new ReturnedToMenu { At = T0.AddMinutes(1) });
+
+        Assert.False(s.InMatch);
+        var m = Assert.Single(matches);
+        Assert.False(m.Finished);
+        Assert.Equal(T0.AddMinutes(1), m.EndedUtc);
+        Assert.Equal("Ranked Solo", m.Mode);
+    }
+
+    [Fact]
+    public void Returning_to_the_menu_after_placement_changes_nothing()
+    {
+        var (s, matches) = Create();
+        s.Apply(new MatchStarted("/Game/Athena/Maps/Athena_Empty") { At = T0 });
+        s.Apply(new MatchEnded { At = T0.AddMinutes(5) });
+
+        Assert.False(s.Apply(new ReturnedToMenu { At = T0.AddMinutes(6) }));
+        Assert.True(Assert.Single(matches).Finished);
+    }
+
+    [Fact]
     public void Creative_island_is_named_from_the_level()
     {
         var (s, matches) = Create();

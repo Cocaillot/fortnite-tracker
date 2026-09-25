@@ -80,7 +80,8 @@ const status = computed(() => {
   const s = snapshot.value
   if (!s) return { state: 'idle' as const, label: 'Waiting for Fortnite', timer: null, detail: null }
   if (!s.gameRunning) return { state: 'idle' as const, label: 'Fortnite not running', timer: null, detail: null }
-  if (!s.inMatch) return { state: 'lobby' as const, label: 'In lobby', timer: null, detail: `Stats: ${s.statsLabel}` }
+  if (!s.inMatch)
+    return { state: 'lobby' as const, label: 'In lobby', timer: null, detail: s.mode !== 'Match' ? `${s.mode} selected` : null }
   const secs = s.matchStartedUtc ? Math.max(0, Math.floor((now.value - Date.parse(s.matchStartedUtc)) / 1000)) : null
   const timer = secs === null ? null : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
   return { state: 'live' as const, label: s.mode, timer, detail: `Stats: ${s.statsLabel}` }
@@ -117,6 +118,7 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
           <ApiKeyForm :has-key="false" @save="saveApiKey" />
         </div>
 
+        <Transition name="page" mode="out-in">
         <ProfilePanel
           v-if="profileShown"
           :profile="profile"
@@ -130,7 +132,14 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
           <div class="page-header"><div><h1>My profile</h1><p>Launch Fortnite once so the app knows which account is yours.</p></div></div>
         </div>
 
-        <LiveView v-else-if="page === 'live'" :snapshot="snapshot" :ranks="squadRanks" @open="showProfile" />
+        <LiveView
+          v-else-if="page === 'live'"
+          :snapshot="snapshot"
+          :ranks="squadRanks"
+          :history="history"
+          :timer="status.timer"
+          @open="showProfile"
+        />
 
         <LeaderboardView v-else-if="page === 'leaderboard'" :entries="leaderboard" @refresh="loadLeaderboard" @open="showProfile" />
 
@@ -146,6 +155,7 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
           @notify="setNotify"
           @overlay="setOverlay"
         />
+        </Transition>
       </main>
     </div>
   </div>
@@ -167,6 +177,21 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
   min-width: 0;
   overflow-y: auto;
   scroll-behavior: smooth;
+  /* A faint accent glow in the top corner gives the page some depth. */
+  background: radial-gradient(1100px 520px at 0% 0%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 70%);
+}
+.page-enter-active {
+  transition: opacity 0.2s ease, transform 0.25s ease;
+}
+.page-leave-active {
+  transition: opacity 0.1s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.page-leave-to {
+  opacity: 0;
 }
 .key-banner {
   max-width: 1440px;
