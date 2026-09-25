@@ -24,6 +24,13 @@ public sealed record GameRunningChanged(bool Running) : GameEvent;
 public sealed record PlaylistSeen(string UserId, string Playlist) : GameEvent;
 
 /// <summary>
+/// The camera switched to a player, identified by their in-game display name. This is the only
+/// place the log names other players: after your team is eliminated, the camera follows whoever
+/// eliminated it, then whoever you spectate next. Streamer Mode players appear as e.g. "Anonyme[272]".
+/// </summary>
+public sealed record ViewTargetChanged(string PlayerName) : GameEvent;
+
+/// <summary>
 /// Turns FortniteGame.log lines into game events. The log format is undocumented and can change
 /// with any Fortnite patch, so every pattern here is covered by tests built from real log lines.
 /// Other players in a match appear only as redacted IDs (MCP:xxxxx...xxxxx) and are not resolvable.
@@ -48,6 +55,15 @@ public static partial class FortniteLogParser
     [GeneratedRegex(@"\[Presence\.Parse\] user=MCP:(?<id>[0-9a-f.]+) .*? Playlist=(?<playlist>Playlist_[A-Za-z0-9_]+)")]
     private static partial Regex Presence();
 
+    [GeneratedRegex(@"LogFortViewTarget: \[[0-9a-f]+\] trying to set view target from .+? to Pawn:(?<name>.+?)\s*$")]
+    private static partial Regex ViewTarget();
+
+    [GeneratedRegex(@"\[\d+\]$")]
+    private static partial Regex AnonymousName();
+
+    /// <summary>Streamer Mode hides names as "Anonyme[272]" / "Anonymous[272]"; Epic names can't contain brackets.</summary>
+    public static bool IsAnonymous(string displayName) => AnonymousName().IsMatch(displayName);
+
     public static GameEvent? Parse(string line)
     {
         var e = ParseEvent(line);
@@ -67,6 +83,8 @@ public static partial class FortniteLogParser
         if (Placement().IsMatch(line)) return new MatchEnded();
         if (Presence().Match(line) is { Success: true } pr)
             return new PlaylistSeen(pr.Groups["id"].Value, pr.Groups["playlist"].Value);
+        if (ViewTarget().Match(line) is { Success: true } v)
+            return new ViewTargetChanged(v.Groups["name"].Value);
         return null;
     }
 

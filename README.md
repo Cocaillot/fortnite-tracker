@@ -3,9 +3,11 @@
 A Windows companion app that runs next to Fortnite. It detects you and your party from Fortnite's
 own log file and shows:
 
-- each squad member's season stats (K/D, win rate, wins, matches), plus lookup of any player by name
-- your match history (mode, squad size, duration), including sessions from Fortnite's recent logs
-- your mode, squad and K/D on your Discord profile (Rich Presence)
+- each party member's season stats (K/D, win rate, wins, matches), plus lookup of any player by name
+- the stats of the player who eliminated your team, and of players you spectate afterwards
+- your match history (mode, party size, duration, who eliminated you), including sessions from
+  Fortnite's recent logs
+- your mode, party and K/D on your Discord profile (Rich Presence)
 
 It lives in the notification area, has a Ctrl+Shift+F show/hide hotkey, and updates itself.
 
@@ -20,10 +22,15 @@ From that log it gets:
 - your party members' account IDs as they join and leave
 - when a match starts (`Welcomed by server`) and ends (placement), and the playlist from your own
   presence (`Habanero` = Ranked)
+- the display names of players the camera follows (`LogFortViewTarget`). Once your team is
+  eliminated, the first of them is the player who eliminated it; earlier targets are your own
+  teammates and are ignored. Those names are looked up as Epic, then PSN, then Xbox accounts.
+  Streamer Mode players appear as `Anonyme[272]` and are shown as hidden.
 
-**Stats for other players in your match aren't available.** Epic redacts their IDs in the log
-(`MCP:9f8e7...6d5c4`) and never logs their names. Placement and eliminations aren't logged
-either, so match history shows mode, squad and duration only.
+**Stats for the rest of the lobby, and ranks, aren't available.** Epic redacts other players' IDs
+in the log (`MCP:9f8e7...6d5c4`) and doesn't log their names unless you spectate them. Getting the
+full lobby would need memory reading or packet capture, which anti-cheat bans. No public service
+provides competitive ranks. Placement and elimination counts aren't logged either.
 
 The log format is undocumented and can change with any Fortnite update. All patterns are in
 `FortniteLogParser.cs`, and each one has a test with a real (anonymized) log line.

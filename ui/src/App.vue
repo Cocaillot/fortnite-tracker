@@ -87,6 +87,18 @@ function submitSearch() {
         <p v-else class="empty">Launch Fortnite. Your squad appears here automatically.</p>
       </section>
 
+      <section v-if="snapshot?.eliminatedBy">
+        <h2>Eliminated by</h2>
+        <PlayerCard :player="snapshot.eliminatedBy" />
+      </section>
+
+      <section v-if="snapshot?.spectated.length">
+        <h2>Also spectated</h2>
+        <div class="list">
+          <PlayerCard v-for="p in snapshot.spectated" :key="p.epicName ?? ''" :player="p" />
+        </div>
+      </section>
+
       <section>
         <h2>Look up a player</h2>
         <form class="row" @submit.prevent="submitSearch">

@@ -105,6 +105,42 @@ public class SessionStateTests
     }
 
     [Fact]
+    public void First_player_spectated_after_placement_is_the_eliminator()
+    {
+        var (s, matches) = Create();
+        s.Apply(new LocalPlayerDetected(Self, "PlayerOne"));
+        s.Apply(new MatchStarted("/Game/Athena/Maps/Athena_Empty") { At = T0 });
+        s.Apply(new ViewTargetChanged("Mate Name"));  // you died; camera follows your teammate
+        s.Apply(new ViewTargetChanged("PlayerOne"));  // Reload respawn
+        s.Apply(new MatchEnded { At = T0.AddMinutes(5) });
+        s.Apply(new ViewTargetChanged("PlayerOne"));
+        s.Apply(new ViewTargetChanged("Rival"));
+        s.Apply(new ViewTargetChanged("Rival"));
+        s.Apply(new ViewTargetChanged("Anonyme[272]"));
+
+        Assert.Equal("Rival", s.EliminatedBy);
+        Assert.Equal(["Rival", "Anonyme[272]"], s.Spectated);
+        // Placement completes the match; the eliminator arrives as an update of the same match.
+        Assert.Equal(2, matches.Count);
+        Assert.Null(matches[0].EliminatedBy);
+        Assert.Equal(matches[0] with { EliminatedBy = "Rival" }, matches[1]);
+    }
+
+    [Fact]
+    public void Next_match_clears_spectated_players()
+    {
+        var (s, _) = Create();
+        s.Apply(new MatchStarted("/Game/Athena/Maps/Athena_Empty") { At = T0 });
+        s.Apply(new MatchEnded { At = T0.AddMinutes(5) });
+        s.Apply(new ViewTargetChanged("Rival"));
+        s.Apply(new MatchStarted("/Game/Athena/Maps/Athena_Empty") { At = T0.AddMinutes(7) });
+        s.Apply(new ViewTargetChanged("Someone")); // e.g. spectating a teammate in the new match
+
+        Assert.Null(s.EliminatedBy);
+        Assert.Empty(s.Spectated);
+    }
+
+    [Fact]
     public void New_log_file_resets_party_and_playlist()
     {
         var (s, _) = Create();

@@ -7,7 +7,8 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace FortniteTracker.Core;
 
-public enum StatsStatus { Ok, Private, NotFound, NoApiKey, Error }
+/// <summary>Hidden: the player uses Streamer Mode, so Fortnite never revealed their real name.</summary>
+public enum StatsStatus { Ok, Private, NotFound, NoApiKey, Error, Hidden }
 
 public sealed record PlayerStats(
     string? AccountId, string? EpicName, StatsStatus Status,
@@ -35,6 +36,23 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
         GetCachedAsync($"name:{accountType}:{name.ToLowerInvariant()}",
             $"v2/stats/br/v2?name={Uri.EscapeDataString(name)}&accountType={accountType}&timeWindow=season",
             null, name, ct);
+
+    /// <summary>
+    /// Looks up a player by the name shown in-game. Console players show their PSN/Xbox name,
+    /// so Epic is tried first, then PSN, then Xbox. Streamer Mode names are not looked up.
+    /// </summary>
+    public async Task<PlayerStats> GetByDisplayNameAsync(string displayName, CancellationToken ct)
+    {
+        if (FortniteLogParser.IsAnonymous(displayName)) return new PlayerStats(null, displayName, StatsStatus.Hidden);
+
+        PlayerStats? result = null;
+        foreach (var accountType in new[] { "epic", "psn", "xbl" })
+        {
+            result = await GetByNameAsync(displayName, accountType, ct);
+            if (result.Status != StatsStatus.NotFound) return result;
+        }
+        return result!;
+    }
 
     public void ClearCache() => (cache as MemoryCache)?.Clear();
 

@@ -40,7 +40,11 @@ function duration(m: MatchRecord) {
   return min < 1 ? '<1 min' : `${Math.round(min)} min`
 }
 
-const squad = (size: number) => (size === 1 ? 'Solo' : `Squad of ${size}`)
+// Only your own party is known; random teammates filled by matchmaking aren't in the log.
+const party = (size: number) => (size === 1 ? 'No party' : `Party of ${size}`)
+
+// Streamer Mode players appear as e.g. "Anonyme[274]".
+const opponent = (name: string) => (/\[\d+\]$/.test(name) ? 'a Streamer Mode player' : name)
 </script>
 
 <template>
@@ -60,7 +64,9 @@ const squad = (size: number) => (size === 1 ? 'Solo' : `Squad of ${size}`)
         <li v-for="m in day.matches" :key="m.startedUtc">
           <span class="time">{{ time(m.startedUtc) }}</span>
           <span class="mode" :title="m.playlist ?? undefined">{{ m.mode }}</span>
-          <span class="squad">{{ squad(m.squadSize) }}</span>
+          <span class="squad">
+            {{ party(m.squadSize) }}<template v-if="m.eliminatedBy"> · eliminated by {{ opponent(m.eliminatedBy) }}</template>
+          </span>
           <span class="duration" :class="{ left: !m.finished }">{{ duration(m) }}</span>
         </li>
       </ul>

@@ -6,11 +6,14 @@ public sealed record LobbySnapshot(
     string? LocalName,
     string Mode,
     DateTime? MatchStartedUtc,
-    IReadOnlyList<PlayerStats> Squad);
+    IReadOnlyList<PlayerStats> Squad,
+    PlayerStats? EliminatedBy,
+    IReadOnlyList<PlayerStats> Spectated);
 
 /// <summary>
-/// Live view of the current session: publishes a debounced snapshot with squad stats whenever
-/// the state changes, and forwards finished matches to history.
+/// Live view of the current session: publishes a debounced snapshot with stats for your squad,
+/// the player who eliminated your team, and players you spectated after that. Also forwards
+/// finished matches to history.
 /// </summary>
 public sealed class LobbyTracker
 {
@@ -39,7 +42,7 @@ public sealed class LobbyTracker
         if (changed) SchedulePublish();
     }
 
-    /// <summary>Re-fetches stats for the current squad (e.g. after the API key changes).</summary>
+    /// <summary>Re-fetches stats (e.g. after the API key changes).</summary>
     public void Refresh() => SchedulePublish();
 
     // Startup replays the whole log; debouncing collapses that burst into one publish.
@@ -61,19 +64,27 @@ public sealed class LobbyTracker
             return;
         }
 
-        string[] ids;
+        string[] ids, opponents;
         LobbySnapshot partial;
         lock (_gate)
         {
             ids = _state.SelfId is null ? [.. _state.Party] : [_state.SelfId, .. _state.Party];
+            opponents = [.. _state.Spectated];
             partial = new LobbySnapshot(
-                _state.GameRunning, _state.InMatch, _state.SelfName, _state.Mode, _state.MatchStartedUtc, []);
+                _state.GameRunning, _state.InMatch, _state.SelfName, _state.Mode, _state.MatchStartedUtc, [], null, []);
         }
 
-        var squad = await Task.WhenAll(ids.Select(id => _stats.GetByAccountIdAsync(id, CancellationToken.None)));
+        var squad = Task.WhenAll(ids.Select(id => _stats.GetByAccountIdAsync(id, CancellationToken.None)));
+        var others = Task.WhenAll(opponents.Select(name => _stats.GetByDisplayNameAsync(name, CancellationToken.None)));
+        await Task.WhenAll(squad, others);
         if (ct.IsCancellationRequested) return; // a newer state is already on its way
 
-        var snapshot = partial with { Squad = squad };
+        var snapshot = partial with
+        {
+            Squad = squad.Result,
+            EliminatedBy = others.Result.FirstOrDefault(),
+            Spectated = others.Result.Skip(1).ToArray(),
+        };
         Last = snapshot;
         Changed?.Invoke(snapshot);
     }

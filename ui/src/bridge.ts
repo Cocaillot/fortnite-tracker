@@ -1,6 +1,6 @@
 // Messages exchanged with the .NET host through WebView2 (see UiBridge.cs).
 
-export type StatsStatus = 'Ok' | 'Private' | 'NotFound' | 'NoApiKey' | 'Error'
+export type StatsStatus = 'Ok' | 'Private' | 'NotFound' | 'NoApiKey' | 'Error' | 'Hidden'
 export type Platform = 'epic' | 'psn' | 'xbl'
 
 export interface PlayerStats {
@@ -21,6 +21,8 @@ export interface LobbySnapshot {
   mode: string
   matchStartedUtc: string | null
   squad: PlayerStats[]
+  eliminatedBy: PlayerStats | null
+  spectated: PlayerStats[]
 }
 
 export interface MatchRecord {
@@ -30,6 +32,7 @@ export interface MatchRecord {
   playlist: string | null
   squadSize: number
   finished: boolean
+  eliminatedBy: string | null
 }
 
 export interface Settings {

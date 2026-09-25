@@ -27,6 +27,16 @@ public class FortniteLogParserTests
             "[2026.09.25-02.39.05:610][343]LogNet: Welcomed by server (Level: /Game/Athena/Maps/Athena_Empty?VerseURI=/Fortnite.com/GameFeatures/BRRoot+/Fortnite.com/GameFeatures/CreativeRoot?ValidateDownloadableContentDuringTravel, Game: /Game/Athena/Athena_GameMode.Athena_GameMode_C)";
         public const string Placement =
             "[2026.09.25-02.40.59:328][395]LogFortPostGamePlacementOverlay: UPostGamePlacementOverlay::LocalPlacementChanged We now have placement for the local player.";
+        public const string SpectateTeammate =
+            "[2026.09.25-02.40.19:224][616]LogFortViewTarget: [30f0] trying to set view target from BP_SpectatorPawn_C_2147482644 to Pawn:Mate Name";
+        public const string SpectateSelf =
+            "[2026.09.25-02.40.26:293][700]LogFortViewTarget: [30f0] trying to set view target from Pawn:PlayerOne to Pawn:PlayerOne";
+        public const string SpectateEliminator =
+            "[2026.09.25-02.41.04:239][800]LogFortViewTarget: [30f0] trying to set view target from BP_SpectatorPawn_C_2147482643 to Pawn:ライバル Rival 01";
+        public const string SpectateEliminatorAgain =
+            "[2026.09.25-02.41.04:243][800]LogFortViewTarget: [30f0] trying to set view target from Pawn:ライバル Rival 01 to Pawn:ライバル Rival 01";
+        public const string SpectateNext =
+            "[2026.09.25-02.41.30:000][900]LogFortViewTarget: [30f0] trying to set view target from Pawn:ライバル Rival 01 to Pawn:Anonyme[272]";
     }
 
     private static GameEvent? ParseIgnoringTime(string line) => FortniteLogParser.Parse(line) is { } e ? e with { At = default } : null;
@@ -62,6 +72,24 @@ public class FortniteLogParserTests
     [Fact]
     public void Friend_presence_keeps_redacted_id() =>
         Assert.Equal(new PlaylistSeen("ee3a0...08392", "Playlist_Habanero_RopeSmile_Solo"), ParseIgnoringTime(Lines.FriendPresence));
+
+    [Fact]
+    public void View_target_keeps_names_with_spaces_and_unicode() =>
+        Assert.Equal(new ViewTargetChanged("ライバル Rival 01"), ParseIgnoringTime(Lines.SpectateEliminator));
+
+    [Theory]
+    [InlineData("[2026.09.25-02.40.14:283][616]LogFortViewTarget: [30f0] trying to set view target from Pawn:PlayerOne to Controller:PlayerOne")]
+    [InlineData("[2026.09.25-02.39.33:518][616]LogFortViewTarget: [30f0] trying to set view target from Pawn:PlayerOne to AthenaAircraft_C_2147482646")]
+    public void Non_player_view_targets_are_ignored(string line) =>
+        Assert.Null(FortniteLogParser.Parse(line));
+
+    [Theory]
+    [InlineData("Anonyme[272]", true)]
+    [InlineData("Anonymous[1]", true)]
+    [InlineData("J o h n D.", false)]
+    [InlineData("777.player", false)]
+    public void Streamer_mode_names_are_recognized(string name, bool anonymous) =>
+        Assert.Equal(anonymous, FortniteLogParser.IsAnonymous(name));
 
     [Fact]
     public void Timestamp_is_read_as_utc()

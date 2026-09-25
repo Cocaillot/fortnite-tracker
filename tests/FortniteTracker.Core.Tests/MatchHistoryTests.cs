@@ -23,18 +23,26 @@ public sealed class MatchHistoryTests : IDisposable
             Lines.SelfPresence,
             Lines.Welcomed,
             "[2026.09.25-02.40.00:000][100]LogFort: some unrelated line",
+            Lines.SpectateTeammate,
+            Lines.SpectateSelf,
             Lines.Placement,
+            Lines.SpectateEliminator,
+            Lines.SpectateEliminatorAgain,
+            Lines.SpectateNext,
             // A second match the game closed during: recorded as abandoned at end of file.
             Lines.Welcomed.Replace("02.39.05", "02.45.00"),
         ]);
 
-        var matches = MatchHistoryImporter.ReadMatches(log);
+        var store = new MatchHistoryStore(Path.Combine(_dir, "history.json"));
+        store.AddRange(MatchHistoryImporter.ReadMatches(log), importedFile: null);
+        var matches = store.Recent(10).Reverse().ToList();
 
         Assert.Equal(2, matches.Count);
         Assert.Equal(new MatchRecord(
             new DateTime(2026, 9, 25, 2, 39, 5, 610, DateTimeKind.Utc),
             new DateTime(2026, 9, 25, 2, 40, 59, 328, DateTimeKind.Utc),
-            "Ranked Duos", "Playlist_Habanero_PiperBoot_Duos", SquadSize: 2, Finished: true), matches[0]);
+            "Ranked Duos", "Playlist_Habanero_PiperBoot_Duos", SquadSize: 2, Finished: true,
+            EliminatedBy: "ライバル Rival 01"), matches[0]);
         Assert.False(matches[1].Finished);
     }
 
@@ -64,6 +72,23 @@ public sealed class MatchHistoryTests : IDisposable
 
         Assert.Equal(match, Assert.Single(reloaded.Recent(10)));
         Assert.True(reloaded.WasImported("FortniteGame-backup-x.log"));
+    }
+
+    [Fact]
+    public void History_from_an_older_version_reimports_logs_and_keeps_matches()
+    {
+        var path = Path.Combine(_dir, "history.json");
+        var match = new MatchRecord(T0, T0.AddMinutes(9), "Ranked Duos", null, 2, true);
+        // A 0.1.0 file: no Version field, no EliminatedBy.
+        File.WriteAllText(path, """
+            {"Matches":[{"StartedUtc":"2026-09-25T02:39:00Z","EndedUtc":"2026-09-25T02:48:00Z","Mode":"Ranked Duos","Playlist":null,"SquadSize":2,"Finished":true}],
+             "ImportedFiles":["FortniteGame-backup-x.log"]}
+            """);
+
+        var store = new MatchHistoryStore(path);
+
+        Assert.Equal(match, Assert.Single(store.Recent(10)));
+        Assert.False(store.WasImported("FortniteGame-backup-x.log"));
     }
 
     [Theory]

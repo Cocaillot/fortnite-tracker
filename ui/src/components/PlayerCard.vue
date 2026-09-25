@@ -6,12 +6,17 @@ const props = defineProps<{ player: PlayerStats; isYou?: boolean; fallbackName?:
 
 const statusText: Record<Exclude<PlayerStats['status'], 'Ok'>, string> = {
   Private: 'Stats private: they can enable public stats in Fortnite settings',
-  NotFound: 'Player not found',
+  NotFound: 'No stats found: could be a bot or a name that changed',
   NoApiKey: 'Add your API key to load stats',
   Error: 'Stats unavailable right now',
+  Hidden: 'Streamer Mode: Fortnite hides their real name',
 }
 
-const name = computed(() => props.player.epicName ?? props.fallbackName ?? 'Squad member')
+const name = computed(() =>
+  props.player.status === 'Hidden'
+    ? 'Streamer Mode player'
+    : (props.player.epicName ?? props.fallbackName ?? 'Squad member'),
+)
 const fmt = (n: number | null, digits = 0) => (n === null ? '–' : n.toFixed(digits))
 </script>
 

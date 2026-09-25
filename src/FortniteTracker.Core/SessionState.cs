@@ -6,19 +6,23 @@ public sealed record MatchRecord(
     string Mode,
     string? Playlist,
     int SquadSize,
-    bool Finished);
+    bool Finished,
+    string? EliminatedBy = null);
 
 /// <summary>Raised by the log tailer when it starts reading a (new) log file, i.e. a new game session.</summary>
 public sealed record LogFileOpened : GameEvent;
 
 /// <summary>
-/// The state machine over game events: who you are, your party, the selected playlist, and the
-/// current match. Used live by <see cref="LobbyTracker"/> and offline to import old logs into history.
-/// Not thread-safe; callers serialize access.
+/// The state machine over game events: who you are, your party, the selected playlist, the
+/// current match, and who eliminated your team. Used live by <see cref="LobbyTracker"/> and
+/// offline to import old logs into history. Not thread-safe; callers serialize access.
 /// </summary>
 public sealed class SessionState
 {
+    private const int MaxSpectated = 6;
+
     private readonly List<string> _party = [];
+    private readonly List<string> _spectated = [];
 
     public string? SelfId { get; private set; }
     public string? SelfName { get; private set; }
@@ -30,10 +34,18 @@ public sealed class SessionState
     public bool InMatch => MatchStartedUtc is not null;
     public string Mode => PlaylistNames.Describe(Playlist, InMatch ? Level : null);
 
+    /// <summary>Players spectated after your team was eliminated; the first one eliminated it.</summary>
+    public IReadOnlyList<string> Spectated => _spectated;
+    public string? EliminatedBy => _spectated.Count > 0 ? _spectated[0] : null;
+
     private int _squadSizeAtStart;
     private bool _playlistConfirmed;
+    private MatchRecord? _lastFinished; // set from placement until the next match starts
 
-    /// <summary>A match finished (placement reached) or was abandoned.</summary>
+    /// <summary>
+    /// A match finished (placement reached) or was abandoned. Raised again for the same match
+    /// (same StartedUtc) once its eliminator is known.
+    /// </summary>
     public event Action<MatchRecord>? MatchCompleted;
 
     /// <summary>Applies an event; returns false when it changed nothing.</summary>
@@ -44,6 +56,7 @@ public sealed class SessionState
             case LogFileOpened:
                 CompleteOpenMatch(endedUtc: null);
                 _party.Clear();
+                ResetSpectating();
                 Playlist = null;
                 Level = null;
                 return true;
@@ -73,13 +86,23 @@ public sealed class SessionState
                 return true;
             case MatchStarted m:
                 CompleteOpenMatch(endedUtc: null); // previous match never reached placement
+                ResetSpectating();
                 MatchStartedUtc = m.At;
                 Level = m.Level;
                 _squadSizeAtStart = _party.Count + 1;
                 _playlistConfirmed = false;
                 return true;
             case MatchEnded m when InMatch:
-                Complete(m.At, finished: true);
+                _lastFinished = Complete(m.At, finished: true);
+                return true;
+            // Before placement the camera follows your own teammates, so only targets after it count.
+            case ViewTargetChanged v when _lastFinished is not null
+                                          && v.PlayerName != SelfName
+                                          && !_spectated.Contains(v.PlayerName)
+                                          && _spectated.Count < MaxSpectated:
+                _spectated.Add(v.PlayerName);
+                if (_spectated.Count == 1)
+                    MatchCompleted?.Invoke(_lastFinished with { EliminatedBy = v.PlayerName });
                 return true;
             case GameRunningChanged g when g.Running != GameRunning:
                 GameRunning = g.Running;
@@ -98,11 +121,18 @@ public sealed class SessionState
         if (InMatch) Complete(endedUtc, finished: false);
     }
 
-    private void Complete(DateTime? endedUtc, bool finished)
+    private void ResetSpectating()
+    {
+        _spectated.Clear();
+        _lastFinished = null;
+    }
+
+    private MatchRecord Complete(DateTime? endedUtc, bool finished)
     {
         var record = new MatchRecord(
             MatchStartedUtc!.Value, endedUtc, PlaylistNames.Describe(Playlist, Level), Playlist, _squadSizeAtStart, finished);
         MatchStartedUtc = null;
         MatchCompleted?.Invoke(record);
+        return record;
     }
 }

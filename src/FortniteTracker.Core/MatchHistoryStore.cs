@@ -10,6 +10,9 @@ public sealed class MatchHistoryStore
 {
     private const int MaxMatches = 1000;
 
+    // Bump when the importer learns something new, so old logs are read again (2: eliminators).
+    private const int FormatVersion = 2;
+
     private readonly string _path;
     private readonly object _gate = new();
     private readonly SortedDictionary<DateTime, MatchRecord> _matches = new();
@@ -58,7 +61,8 @@ public sealed class MatchHistoryStore
         (candidate.Finished && !existing.Finished)
         || (candidate.Finished == existing.Finished
             && ((candidate.EndedUtc is not null && existing.EndedUtc is null)
-                || (candidate.Playlist is not null && existing.Playlist is null)));
+                || (candidate.Playlist is not null && existing.Playlist is null)
+                || (candidate.EliminatedBy is not null && existing.EliminatedBy is null)));
 
     private void Load()
     {
@@ -68,7 +72,7 @@ public sealed class MatchHistoryStore
             var file = JsonSerializer.Deserialize<HistoryFile>(File.ReadAllText(_path));
             if (file is null) return;
             foreach (var m in file.Matches) _matches[m.StartedUtc] = m;
-            _importedFiles.UnionWith(file.ImportedFiles);
+            if (file.Version >= FormatVersion) _importedFiles.UnionWith(file.ImportedFiles);
         }
         catch (Exception ex) when (ex is IOException or JsonException)
         {
@@ -80,9 +84,9 @@ public sealed class MatchHistoryStore
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
         var tmp = _path + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(new HistoryFile([.. _matches.Values], [.. _importedFiles])));
+        File.WriteAllText(tmp, JsonSerializer.Serialize(new HistoryFile([.. _matches.Values], [.. _importedFiles], FormatVersion)));
         File.Move(tmp, _path, overwrite: true);
     }
 
-    private sealed record HistoryFile(List<MatchRecord> Matches, List<string> ImportedFiles);
+    private sealed record HistoryFile(List<MatchRecord> Matches, List<string> ImportedFiles, int Version = 1);
 }
