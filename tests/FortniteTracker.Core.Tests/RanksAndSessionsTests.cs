@@ -168,3 +168,35 @@ public sealed class RankHistoryTests : IDisposable
         Assert.Equal(("ranked-br-combined", 6, ""), (r.Track, r.Current, r.TrackGuid));
     }
 }
+
+public sealed class PlayerNotesTests : IDisposable
+{
+    private readonly string _dir = Directory.CreateTempSubdirectory("ft-tests-").FullName;
+
+    public void Dispose() => Directory.Delete(_dir, recursive: true);
+
+    [Fact]
+    public void Notes_are_found_by_account_or_in_game_name_and_persist()
+    {
+        var path = Path.Combine(_dir, "notes.json");
+        var notes = new PlayerNotes(path);
+        notes.Save(null, "Rival", ["Teamer"], "camps boxes");
+        notes.Save("acc1", "Friend", ["Good duo"], "");
+
+        var reloaded = new PlayerNotes(path);
+
+        Assert.Equal("camps boxes", reloaded.Find(null, "rival")!.Text); // name match ignores case
+        Assert.Equal(["Good duo"], reloaded.Find("acc1", "Renamed")!.Tags);
+    }
+
+    [Fact]
+    public void Saving_an_empty_note_deletes_it()
+    {
+        var notes = new PlayerNotes(Path.Combine(_dir, "notes.json"));
+        notes.Save(null, "Rival", ["Teamer"], "");
+        notes.Save(null, "Rival", [], "  ");
+
+        Assert.Null(notes.Find(null, "Rival"));
+        Assert.Empty(notes.All);
+    }
+}

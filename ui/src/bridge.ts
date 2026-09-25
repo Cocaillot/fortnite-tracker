@@ -123,6 +123,14 @@ export interface MatchRecord {
   partyIds: string[] | null
 }
 
+export interface PlayerNote {
+  accountId: string | null
+  name: string
+  tags: string[]
+  text: string
+  updatedUtc: string
+}
+
 export interface RankMove {
   track: string
   trackName: string
@@ -177,6 +185,7 @@ export interface HostMessages {
   toast: { title: string; text: string; good: boolean }
   matchDetail: MatchDetail | null
   teammates: TeammateSummary[]
+  notes: PlayerNote[]
 }
 
 export type UiMessage =
@@ -188,6 +197,7 @@ export type UiMessage =
   | { type: 'setNotifyRanks'; enabled: boolean }
   | { type: 'match'; startedUtc: string }
   | { type: 'teammates' }
+  | { type: 'setNote'; accountId: string | null; name: string; tags: string[]; text: string }
   | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
   | { type: 'window'; action: 'drag' | 'minimize' | 'maximize' | 'fullscreen' | 'close' }

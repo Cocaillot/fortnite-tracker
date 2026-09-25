@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { statsFor, threatLabel, type PlayerStats, type RankProgress } from '../bridge'
 import RankBadge from './RankBadge.vue'
 import PlayerAvatar from './PlayerAvatar.vue'
+import { findNote } from '../composables/notes'
 
 const props = withDefaults(
   defineProps<{
@@ -39,6 +40,8 @@ const seasonRanks = computed(() =>
   props.ranks.filter((r) => r.isCurrentSeason).sort((a, b) => b.current + b.progress - (a.current + a.progress)),
 )
 
+const note = computed(() => findNote(props.player.accountId, props.player.epicName))
+
 const canOpen = computed(() => props.player.status !== 'Hidden' && !loading.value)
 function open() {
   if (canOpen.value) emit('open', props.player.accountId, props.player.accountId ? null : name.value)
@@ -66,6 +69,7 @@ const versus = computed(() => {
       <span v-if="player.threat && variant !== 'squad'" class="tag threat" :class="`t-${player.threat}`">
         {{ threatLabel[player.threat] }}
       </span>
+      <span v-for="t in note?.tags ?? []" :key="t" class="tag note-tag" :title="note?.text || 'Your tag'">{{ t }}</span>
       <span v-if="stats && modeLabel" class="mode">{{ modeLabel }} stats</span>
     </header>
 
@@ -185,6 +189,10 @@ header {
 .t-Average { color: var(--rarity-rare); }
 .t-Casual { color: var(--rarity-uncommon); }
 .t-BotLikely { color: var(--rarity-common); }
+.note-tag {
+  color: var(--accent);
+  border: 1px dashed currentColor;
+}
 .mode {
   margin-left: auto;
   flex: none;

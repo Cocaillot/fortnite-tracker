@@ -44,6 +44,7 @@ public partial class App : Application
                 services.AddSingleton(_ => new SessionStore(Path.Combine(storage, "sessions.json")));
                 services.AddSingleton<PlayerDirectory>();
                 services.AddSingleton<MatchInsights>();
+                services.AddSingleton(_ => new PlayerNotes(Path.Combine(storage, "notes.json")));
                 services.AddSingleton(_ => new ThemeStore(storage));
                 services.AddHttpClient("fortnite-api", c =>
                 {
@@ -112,6 +113,11 @@ public partial class App : Application
         _window.HiddenToTray += _tray.ShowStillRunningHint;
         _ = new EliminationNotifier(tracker, settings, (title, text) => Dispatcher.InvokeAsync(() => _tray.Notify(title, text)));
         var bridge = services.GetRequiredService<UiBridge>();
+        _ = new NoteAlerts(tracker, services.GetRequiredService<PlayerNotes>(), (title, text) =>
+        {
+            Dispatcher.InvokeAsync(() => _tray.Notify(title, text));
+            bridge.Toast(title, text, false);
+        });
         _ = new RankAlerts(ranks, settings, tracker, stats, (title, text, good) =>
         {
             Dispatcher.InvokeAsync(() => _tray.Notify(title, text));

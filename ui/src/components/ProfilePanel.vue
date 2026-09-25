@@ -4,6 +4,7 @@ import { relationLabel, type ModeStats, type PlayerProfile } from '../bridge'
 import RankBadge from './RankBadge.vue'
 import PlayerAvatar from './PlayerAvatar.vue'
 import RankChart from './RankChart.vue'
+import NoteEditor from './NoteEditor.vue'
 import { RANK_NAMES } from '../ranks'
 
 const props = defineProps<{ profile: PlayerProfile | null; loadingName: string | null; canGoBack: boolean }>()
@@ -112,7 +113,16 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
     </div>
 
     <template v-else>
-      <section class="card">
+      <NoteEditor v-if="profile.relation !== 'You'" :account-id="profile.accountId" :name="profile.name" />
+
+      <p v-if="!profile.ranks.length" class="no-ranks">
+        {{
+          profile.relation === 'Opponent' || profile.relation === 'Followed'
+            ? "Ranks: Fortnite only shares them for you, your party and your friends."
+            : "Ranks: no ranked matches found."
+        }}
+      </p>
+      <section v-else class="card">
         <h2 class="card-title">Ranked modes</h2>
         <div v-if="playedRanks.length" class="table-wrap flat">
           <table class="data">
@@ -339,6 +349,11 @@ tr.past .mode-name {
   border-radius: 3px;
   padding: 0 5px;
   margin-left: 4px;
+}
+.no-ranks {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
 }
 .best-ever {
   display: block;

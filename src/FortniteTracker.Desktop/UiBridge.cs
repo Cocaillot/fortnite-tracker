@@ -9,9 +9,9 @@ namespace FortniteTracker.Desktop;
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
 /// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme, toast,
-/// matchDetail, teammates.
+/// matchDetail, teammates, notes.
 /// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
-/// profile, follow, leaderboard, setTheme, match, teammates.
+/// profile, follow, leaderboard, setTheme, match, teammates, setNote.
 /// </summary>
 public sealed class UiBridge
 {
@@ -33,6 +33,7 @@ public sealed class UiBridge
     private readonly PlayerDirectory _directory;
     private readonly ThemeStore _theme;
     private readonly MatchInsights _insights;
+    private readonly PlayerNotes _notes;
     private CancellationTokenSource? _leaderboardRun;
     private CoreWebView2? _web;
     private Dispatcher? _dispatcher;
@@ -40,8 +41,11 @@ public sealed class UiBridge
     public UiBridge(
         LobbyTracker tracker, FortniteStatsService stats, SettingsStore settings,
         MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence,
-        RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme, MatchInsights insights)
+        RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme, MatchInsights insights,
+        PlayerNotes notes)
     {
+        _notes = notes;
+        _notes.Changed += () => Post(SendNotes);
         _insights = insights;
         _theme = theme;
         _ranks = ranks;
@@ -110,6 +114,10 @@ public sealed class UiBridge
                 SendSquadRanks();
                 SendWindowState();
                 SendTheme();
+                SendNotes();
+                break;
+            case "setNote" when !string.IsNullOrWhiteSpace(msg.Name):
+                _notes.Save(msg.AccountId, msg.Name, msg.Tags ?? [], msg.Text ?? "");
                 break;
             case "setTheme":
                 // The UI owns the theme format; stored as-is (null = back to the default look).
@@ -177,6 +185,8 @@ public sealed class UiBridge
     private void SendTheme() =>
         _web?.PostWebMessageAsJson($"{{\"type\":\"theme\",\"data\":{_theme.Json ?? "null"}}}");
 
+    private void SendNotes() => Send("notes", _notes.All);
+
     private void SendHistory() => Send("history", _history.Recent(HistoryCount));
 
     private void SendSessions() => Send("sessions", _sessions.All.Reverse().Take(50).ToList());
@@ -208,5 +218,5 @@ public sealed class UiBridge
 
     private sealed record UiMessage(
         string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId,
-        JsonElement? Theme, DateTime? StartedUtc);
+        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text);
 }
