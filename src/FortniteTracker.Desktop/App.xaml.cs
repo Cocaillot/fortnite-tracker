@@ -43,6 +43,7 @@ public partial class App : Application
                 services.AddSingleton(_ => new RankBook(Path.Combine(storage, "ranks.json")));
                 services.AddSingleton(_ => new SessionStore(Path.Combine(storage, "sessions.json")));
                 services.AddSingleton<PlayerDirectory>();
+                services.AddSingleton<MatchInsights>();
                 services.AddSingleton(_ => new ThemeStore(storage));
                 services.AddHttpClient("fortnite-api", c =>
                 {

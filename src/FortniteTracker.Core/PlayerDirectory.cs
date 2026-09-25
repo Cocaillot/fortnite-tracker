@@ -18,7 +18,9 @@ public sealed record PlayerProfile(
     // Every season played (all modes), newest first, for "best ever" and past seasons.
     IReadOnlyList<RankProgress> Seasons,
     // Rank points of the current season of each mode, keyed by mode.
-    IReadOnlyDictionary<string, IReadOnlyList<RankPoint>> RankHistory);
+    IReadOnlyDictionary<string, IReadOnlyList<RankPoint>> RankHistory,
+    // Your record together, when they were in your party.
+    TeammateSummary? Together);
 
 public sealed record LeaderboardEntry(
     string? AccountId,
@@ -32,7 +34,8 @@ public sealed record LeaderboardEntry(
 /// history and your followed list.
 /// </summary>
 public sealed class PlayerDirectory(
-    FortniteStatsService stats, RankBook ranks, MatchHistoryStore history, SettingsStore settings, LobbyTracker tracker)
+    FortniteStatsService stats, RankBook ranks, MatchHistoryStore history, SettingsStore settings, LobbyTracker tracker,
+    MatchInsights insights)
 {
     // Friends are listed when Fortnite fetched a current-season rank for them; this caps lookups.
     private const int MaxFriends = 60;
@@ -79,7 +82,8 @@ public sealed class PlayerDirectory(
             id is null
                 ? new Dictionary<string, IReadOnlyList<RankPoint>>()
                 : ranks.For(id).Where(r => r.LastUpdatedUtc is not null)
-                    .ToDictionary(r => r.Track, r => ranks.History(id, r.Track, r.TrackGuid)));
+                    .ToDictionary(r => r.Track, r => ranks.History(id, r.Track, r.TrackGuid)),
+            id is null ? null : insights.Teammates().FirstOrDefault(t => t.AccountId == id));
     }
 
     /// <summary>

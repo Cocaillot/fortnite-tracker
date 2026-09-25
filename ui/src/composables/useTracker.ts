@@ -12,6 +12,8 @@ import {
   type RankProgress,
   type SessionRecord,
   type Settings,
+  type MatchDetail,
+  type TeammateSummary,
 } from '../bridge'
 
 export function useTracker() {
@@ -26,6 +28,9 @@ export function useTracker() {
   const profileLoading = ref<{ accountId: string | null; name: string | null } | null>(null)
   const leaderboard = ref<LeaderboardEntry[] | null>(null)
   const windowState = ref({ maximized: true, fullscreen: false })
+  const openMatch = ref<MatchRecord | null>(null)
+  const matchDetail = ref<MatchDetail | null>(null)
+  const teammates = ref<TeammateSummary[] | null>(null)
 
   const unsubscribers: (() => void)[] = []
 
@@ -48,6 +53,10 @@ export function useTracker() {
       }),
       on('leaderboard', (l) => (leaderboard.value = l)),
       on('windowState', (w) => (windowState.value = w)),
+      on('matchDetail', (d) => {
+        if (d && openMatch.value && d.match.startedUtc === openMatch.value.startedUtc) matchDetail.value = d
+      }),
+      on('teammates', (t) => (teammates.value = t)),
     )
     // Ask the host for the current state; it may have published before the page loaded.
     send({ type: 'ready' })
@@ -84,6 +93,19 @@ export function useTracker() {
     profileLoading,
     leaderboard,
     windowState,
+    openMatch,
+    matchDetail,
+    teammates,
+    showMatch: (m: MatchRecord) => {
+      openMatch.value = m
+      matchDetail.value = null
+      send({ type: 'match', startedUtc: m.startedUtc })
+    },
+    closeMatch: () => {
+      openMatch.value = null
+      matchDetail.value = null
+    },
+    loadTeammates: () => send({ type: 'teammates' }),
     lookup,
     openProfile,
     closeProfile,

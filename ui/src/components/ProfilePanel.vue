@@ -87,6 +87,9 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
         <div v-if="profile" class="chips">
           <span class="chip" :class="profile.relation">{{ relationLabel[profile.relation] }}</span>
           <span v-if="profile.season.battlePassLevel" class="chip muted">Battle Pass level {{ profile.season.battlePassLevel }}</span>
+          <span v-if="profile.together" class="together">
+            {{ profile.together.matches }} {{ profile.together.matches === 1 ? 'match' : 'matches' }} together<template v-if="profile.together.wins">, {{ profile.together.wins }} {{ profile.together.wins === 1 ? 'win' : 'wins' }}</template>
+          </span>
           <span v-if="profile.encounters.eliminatedYou" class="encounter">
             Eliminated you {{ profile.encounters.eliminatedYou }}×<template v-if="profile.encounters.lastEliminatedYouUtc">, last on {{ when(profile.encounters.lastEliminatedYouUtc) }}</template>
           </span>
@@ -273,6 +276,10 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
 .chip.Followed {
   background: color-mix(in srgb, var(--rarity-epic) 20%, transparent);
   color: var(--rarity-epic);
+}
+.together {
+  color: var(--live);
+  font-size: 14px;
 }
 .encounter {
   color: var(--danger);

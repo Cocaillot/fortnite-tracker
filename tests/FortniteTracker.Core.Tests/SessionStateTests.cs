@@ -26,7 +26,8 @@ public class SessionStateTests
         s.Apply(new MatchEnded { At = T0.AddMinutes(12) });
 
         var m = Assert.Single(matches);
-        Assert.Equal(new MatchRecord(T0, T0.AddMinutes(12), "Ranked Duos", "Playlist_Habanero_PiperBoot_Duos", 2, true), m);
+        Assert.Equal(new MatchRecord(T0, T0.AddMinutes(12), "Ranked Duos", "Playlist_Habanero_PiperBoot_Duos", 2, true), m with { PartyIds = null });
+        Assert.Equal([Mate], m.PartyIds!);
         Assert.False(s.InMatch);
     }
 
@@ -178,5 +179,25 @@ public class SessionStateTests
 
         Assert.Empty(s.Party);
         Assert.Null(s.Playlist);
+    }
+}
+
+public class MatchPartyTests
+{
+    [Fact]
+    public void Matches_remember_who_was_in_the_party()
+    {
+        var state = new SessionState();
+        var matches = new List<MatchRecord>();
+        state.MatchCompleted += matches.Add;
+        var t0 = new DateTime(2026, 9, 25, 2, 39, 0, DateTimeKind.Utc);
+
+        state.Apply(new LocalPlayerDetected(FortniteLogParserTests.Self, "PlayerOne"));
+        state.Apply(new PartyMemberJoined(FortniteLogParserTests.Mate));
+        state.Apply(new MatchStarted("/Game/Athena/Maps/Athena_Empty") { At = t0 });
+        state.Apply(new LocalPartyLeft()); // leaving mid-match doesn't rewrite who you started with
+        state.Apply(new MatchEnded { At = t0.AddMinutes(4) });
+
+        Assert.Equal([FortniteLogParserTests.Mate], Assert.Single(matches).PartyIds!);
     }
 }

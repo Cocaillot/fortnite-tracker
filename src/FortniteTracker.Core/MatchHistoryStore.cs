@@ -11,8 +11,8 @@ public sealed class MatchHistoryStore
     private const int MaxMatches = 1000;
 
     // Bump when the importer learns something new, so old logs are read again (2: eliminators, 3: ranks,
-    // 4: end time of matches left early, 5: every ranked season and rank history).
-    private const int FormatVersion = 5;
+    // 4: end time of matches left early, 5: every ranked season and rank history, 6: party per match).
+    private const int FormatVersion = 6;
 
     private readonly string _path;
     private readonly object _gate = new();
@@ -99,7 +99,8 @@ public sealed class MatchHistoryStore
         || (candidate.Finished == existing.Finished
             && ((candidate.EndedUtc is not null && existing.EndedUtc is null)
                 || (candidate.Playlist is not null && existing.Playlist is null)
-                || (candidate.EliminatedBy is not null && existing.EliminatedBy is null)));
+                || (candidate.EliminatedBy is not null && existing.EliminatedBy is null)
+                || (candidate.PartyIds is not null && existing.PartyIds is null)));
 
     private void Load()
     {

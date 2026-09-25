@@ -42,7 +42,8 @@ public sealed class MatchHistoryTests : IDisposable
             new DateTime(2026, 9, 25, 2, 39, 5, 610, DateTimeKind.Utc),
             new DateTime(2026, 9, 25, 2, 40, 59, 328, DateTimeKind.Utc),
             "Ranked Duos", "Playlist_Habanero_PiperBoot_Duos", SquadSize: 2, Finished: true,
-            EliminatedBy: "ライバル Rival 01"), matches[0]);
+            EliminatedBy: "ライバル Rival 01"), matches[0] with { PartyIds = null });
+        Assert.Equal([Mate], matches[0].PartyIds!);
         Assert.False(matches[1].Finished);
     }
 

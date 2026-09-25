@@ -2,11 +2,17 @@
 import { computed, ref } from 'vue'
 import { isAnonymous, threatLabel, type MatchRecord, type SessionRecord, type Threat } from '../bridge'
 import SessionsView from './SessionsView.vue'
+import TeammatesView from './TeammatesView.vue'
+import type { TeammateSummary } from '../bridge'
 
-const props = defineProps<{ matches: MatchRecord[]; sessions: SessionRecord[] }>()
-const emit = defineEmits<{ open: [accountId: string | null, name: string | null] }>()
+const props = defineProps<{ matches: MatchRecord[]; sessions: SessionRecord[]; teammates: TeammateSummary[] | null }>()
+const emit = defineEmits<{
+  open: [accountId: string | null, name: string | null]
+  match: [m: MatchRecord]
+  loadTeammates: []
+}>()
 
-const view = ref<'matches' | 'sessions'>('matches')
+const view = ref<'matches' | 'sessions' | 'teammates'>('matches')
 type Range = 'today' | 'all'
 const range = ref<Range>('today')
 
@@ -112,6 +118,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
         <div class="seg" role="tablist" aria-label="View">
           <button type="button" role="tab" :aria-selected="view === 'matches'" :class="{ on: view === 'matches' }" @click="view = 'matches'">Matches</button>
           <button type="button" role="tab" :aria-selected="view === 'sessions'" :class="{ on: view === 'sessions' }" @click="view = 'sessions'">Sessions</button>
+          <button type="button" role="tab" :aria-selected="view === 'teammates'" :class="{ on: view === 'teammates' }" @click="view = 'teammates'">Teammates</button>
         </div>
         <div v-if="view === 'matches'" class="seg" role="tablist" aria-label="Period">
           <button type="button" role="tab" :aria-selected="range === 'today'" :class="{ on: range === 'today' }" @click="range = 'today'">Today</button>
@@ -121,6 +128,8 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
     </div>
 
     <SessionsView v-if="view === 'sessions'" :matches="matches" :sessions="sessions" @open="(id, n) => emit('open', id, n)" />
+
+    <TeammatesView v-else-if="view === 'teammates'" :teammates="teammates" @refresh="emit('loadTeammates')" @open="(id, n) => emit('open', id, n)" />
 
     <template v-else>
       <div class="tiles">
@@ -175,7 +184,15 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
               <tr v-if="row.kind === 'day'" class="day">
                 <td colspan="7">{{ row.label }} <span class="faint">· {{ row.count }} {{ row.count === 1 ? 'match' : 'matches' }}</span></td>
               </tr>
-              <tr v-else :class="{ won: row.m.won }">
+              <tr
+                v-else
+                class="clickable"
+                :class="{ won: row.m.won }"
+                tabindex="0"
+                title="Open match details"
+                @click="emit('match', row.m)"
+                @keydown.enter="emit('match', row.m)"
+              >
                 <td class="muted">{{ time(row.m.startedUtc) }}</td>
                 <td class="mode" :title="row.m.playlist ?? undefined">{{ row.m.mode }}</td>
                 <td class="muted">{{ party(row.m.squadSize) }}</td>
@@ -193,7 +210,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
                       type="button"
                       class="link"
                       :class="row.m.eliminatorThreat ? `t-${row.m.eliminatorThreat}` : ''"
-                      @click="emit('open', null, row.m.eliminatedBy)"
+                      @click.stop="emit('open', null, row.m.eliminatedBy)"
                     >
                       {{ row.m.eliminatedBy }}
                     </button>

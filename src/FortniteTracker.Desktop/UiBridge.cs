@@ -8,9 +8,10 @@ namespace FortniteTracker.Desktop;
 
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
-/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme, toast.
+/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme, toast,
+/// matchDetail, teammates.
 /// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
-/// profile, follow, leaderboard, setTheme.
+/// profile, follow, leaderboard, setTheme, match, teammates.
 /// </summary>
 public sealed class UiBridge
 {
@@ -31,6 +32,7 @@ public sealed class UiBridge
     private readonly SessionStore _sessions;
     private readonly PlayerDirectory _directory;
     private readonly ThemeStore _theme;
+    private readonly MatchInsights _insights;
     private CancellationTokenSource? _leaderboardRun;
     private CoreWebView2? _web;
     private Dispatcher? _dispatcher;
@@ -38,8 +40,9 @@ public sealed class UiBridge
     public UiBridge(
         LobbyTracker tracker, FortniteStatsService stats, SettingsStore settings,
         MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence,
-        RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme)
+        RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme, MatchInsights insights)
     {
+        _insights = insights;
         _theme = theme;
         _ranks = ranks;
         _sessions = sessions;
@@ -123,6 +126,12 @@ public sealed class UiBridge
             case "leaderboard":
                 await RunLeaderboardAsync();
                 break;
+            case "match" when msg.StartedUtc is { } started:
+                Send("matchDetail", await _insights.GetDetailAsync(started.ToUniversalTime(), CancellationToken.None));
+                break;
+            case "teammates":
+                Send("teammates", await _insights.TeammatesWithNamesAsync(CancellationToken.None));
+                break;
             case "lookup" when !string.IsNullOrWhiteSpace(msg.Name):
                 var result = await _stats.GetByNameAsync(msg.Name.Trim(), msg.Platform ?? "epic", CancellationToken.None);
                 Send("lookupResult", result);
@@ -194,10 +203,10 @@ public sealed class UiBridge
 
     private void Post(Action action) => _dispatcher?.InvokeAsync(action);
 
-    private void Send(string type, object data) =>
+    private void Send(string type, object? data) =>
         _web?.PostWebMessageAsJson(JsonSerializer.Serialize(new { type, data }, Json));
 
     private sealed record UiMessage(
         string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId,
-        JsonElement? Theme);
+        JsonElement? Theme, DateTime? StartedUtc);
 }

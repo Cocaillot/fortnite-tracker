@@ -12,6 +12,7 @@ import LeaderboardView from './components/LeaderboardView.vue'
 import ProfilePanel from './components/ProfilePanel.vue'
 import AppearanceView from './components/AppearanceView.vue'
 import ToastHost from './components/ToastHost.vue'
+import MatchDrawer from './components/MatchDrawer.vue'
 
 const {
   snapshot,
@@ -23,6 +24,12 @@ const {
   profileLoading,
   leaderboard,
   windowState,
+  openMatch,
+  matchDetail,
+  teammates,
+  showMatch,
+  closeMatch,
+  loadTeammates,
   openProfile,
   closeProfile,
   follow,
@@ -145,7 +152,15 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
 
         <LeaderboardView v-else-if="page === 'leaderboard'" :entries="leaderboard" @refresh="loadLeaderboard" @open="showProfile" />
 
-        <HistoryView v-else-if="page === 'history'" :matches="history" :sessions="sessions" @open="showProfile" />
+        <HistoryView
+          v-else-if="page === 'history'"
+          :matches="history"
+          :sessions="sessions"
+          :teammates="teammates"
+          @open="showProfile"
+          @match="showMatch"
+          @load-teammates="loadTeammates"
+        />
 
         <AppearanceView v-else-if="page === 'appearance'" />
 
@@ -161,6 +176,13 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
         </Transition>
       </main>
     </div>
+    <MatchDrawer
+      v-if="openMatch"
+      :match="openMatch"
+      :detail="matchDetail"
+      @close="closeMatch"
+      @open="(id, n) => { closeMatch(); showProfile(id, n) }"
+    />
     <ToastHost />
   </div>
 </template>

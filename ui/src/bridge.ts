@@ -40,6 +40,8 @@ export interface PlayerProfile {
   seasons: RankProgress[]
   /** Rank points of each mode's current season, keyed by mode. */
   rankHistory: Record<string, RankPoint[]>
+  /** Your record together, when they were in your party. */
+  together: TeammateSummary | null
 }
 
 export interface RankPoint {
@@ -117,6 +119,37 @@ export interface MatchRecord {
   won: boolean | null
   eliminatorKd: number | null
   eliminatorThreat: Threat | null
+  /** Your party members at the start of the match (you excluded). */
+  partyIds: string[] | null
+}
+
+export interface RankMove {
+  track: string
+  trackName: string
+  before: RankPoint
+  after: RankPoint
+  beforeName: string
+  afterName: string
+  /** Progress change in percentage points (a whole rank = 100). */
+  delta: number
+}
+
+export interface MatchDetail {
+  match: MatchRecord
+  eliminator: PlayerStats | null
+  party: { accountId: string; name: string | null; stats: PlayerStats }[]
+  rank: RankMove | null
+}
+
+export interface TeammateSummary {
+  accountId: string
+  name: string | null
+  matches: number
+  wins: number
+  kills: number | null
+  minutes: number
+  lastPlayedUtc: string
+  tracked: number
 }
 
 export interface Settings {
@@ -142,6 +175,8 @@ export interface HostMessages {
   /** The saved theme (format owned by composables/useTheme.ts), or null for the default look. */
   theme: unknown
   toast: { title: string; text: string; good: boolean }
+  matchDetail: MatchDetail | null
+  teammates: TeammateSummary[]
 }
 
 export type UiMessage =
@@ -151,6 +186,8 @@ export type UiMessage =
   | { type: 'setRichPresence'; enabled: boolean }
   | { type: 'setNotify'; enabled: boolean }
   | { type: 'setNotifyRanks'; enabled: boolean }
+  | { type: 'match'; startedUtc: string }
+  | { type: 'teammates' }
   | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
   | { type: 'window'; action: 'drag' | 'minimize' | 'maximize' | 'fullscreen' | 'close' }

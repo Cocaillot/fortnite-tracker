@@ -12,7 +12,9 @@ public sealed record MatchRecord(
     int? Kills = null,
     bool? Won = null,
     double? EliminatorKd = null,
-    Threat? EliminatorThreat = null);
+    Threat? EliminatorThreat = null,
+    // Account IDs of your party members at the start of the match (you excluded).
+    IReadOnlyList<string>? PartyIds = null);
 
 /// <summary>Raised by the log tailer when it starts reading a (new) log file, i.e. a new game session.</summary>
 public sealed record LogFileOpened : GameEvent;
@@ -47,6 +49,7 @@ public sealed class SessionState
     public MatchRecord? LastFinished => _lastFinished;
 
     private int _squadSizeAtStart;
+    private string[] _partyAtStart = [];
     private bool _playlistConfirmed;
     private MatchRecord? _lastFinished; // set from placement until the next match starts
 
@@ -98,6 +101,7 @@ public sealed class SessionState
                 MatchStartedUtc = m.At;
                 Level = m.Level;
                 _squadSizeAtStart = _party.Count + 1;
+                _partyAtStart = [.. _party];
                 _playlistConfirmed = false;
                 return true;
             case MatchEnded m when InMatch:
@@ -142,7 +146,8 @@ public sealed class SessionState
     private MatchRecord Complete(DateTime? endedUtc, bool finished)
     {
         var record = new MatchRecord(
-            MatchStartedUtc!.Value, endedUtc, PlaylistNames.Describe(Playlist, Level), Playlist, _squadSizeAtStart, finished);
+            MatchStartedUtc!.Value, endedUtc, PlaylistNames.Describe(Playlist, Level), Playlist, _squadSizeAtStart, finished,
+            PartyIds: _partyAtStart);
         MatchStartedUtc = null;
         MatchCompleted?.Invoke(record);
         return record;
