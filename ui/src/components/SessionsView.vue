@@ -149,7 +149,7 @@ header {
 }
 .tile {
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: var(--s2) var(--s3);
   display: flex;
   flex-direction: column;

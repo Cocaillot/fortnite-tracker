@@ -86,6 +86,13 @@ public partial class MainWindow : Window
         _bridge.SendWindowState();
     }
 
+    /// <summary>Frame and loading background follow the theme so no dark edge shows around a light one.</summary>
+    public void ApplyTheme(ThemeColors colors)
+    {
+        Background = new SolidColorBrush(colors.Background);
+        WebView.DefaultBackgroundColor = System.Drawing.Color.FromArgb(colors.Background.R, colors.Background.G, colors.Background.B);
+    }
+
     public void ToggleVisibility()
     {
         if (IsVisible && WindowState != WindowState.Minimized && IsActive)

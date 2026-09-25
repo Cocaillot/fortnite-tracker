@@ -22,6 +22,9 @@ own log file and shows:
 - a leaderboard of you, your party, friends with a rank this season and players you follow
 - sessions: what you did in each play session, from Epic's own before/after numbers
 - your mode, party and K/D on your Discord profile (Rich Presence)
+- full customisation (Appearance page): theme presets, your own colours, fonts, size, corner
+  roundness, custom logo and sidebar icons, a background image with glass panels, and themes you
+  can export and share
 
 It lives in the notification area, has a Ctrl+Shift+F show/hide hotkey, and updates itself.
 
@@ -85,6 +88,7 @@ The Vue UI and the .NET host talk through WebView2 web messages (see `ui/src/bri
 |---|---|
 | `%APPDATA%\FortniteTracker\settings.json` | fortnite-api.com key, Rich Presence on/off |
 | `%APPDATA%\FortniteTracker\history.json` | match history |
+| `%APPDATA%\FortniteTracker\theme.json` | appearance (colours, fonts, custom images) |
 | `%LOCALAPPDATA%\FortniteTracker\` | installed app (managed by Velopack) |
 | `%LOCALAPPDATA%\FortniteTracker.WebView2\` | UI browser profile |
 

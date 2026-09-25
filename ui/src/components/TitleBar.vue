@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { send } from '../bridge'
+import { theme } from '../composables/useTheme'
 
 defineProps<{ overlayOn: boolean; maximized: boolean; fullscreen: boolean }>()
 const emit = defineEmits<{ toggleOverlay: []; search: [name: string] }>()
@@ -23,7 +24,8 @@ function submit() {
 <template>
   <header class="titlebar" @mousedown="startDrag" @dblclick="send({ type: 'window', action: 'maximize' })">
     <div class="brand">
-      <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+      <img v-if="theme.logo" class="logo custom" :src="theme.logo" alt="" />
+      <svg v-else class="logo" viewBox="0 0 24 24" aria-hidden="true">
         <rect x="3" y="12" width="4.5" height="8" rx="1" />
         <rect x="9.75" y="8" width="4.5" height="12" rx="1" />
         <rect x="16.5" y="4" width="4.5" height="16" rx="1" />
@@ -91,7 +93,7 @@ function submit() {
   gap: var(--s4);
   padding: 0 var(--s2) 0 var(--s5);
   border-bottom: 1px solid var(--border);
-  background: #090b0f;
+  background: var(--chrome);
   cursor: default;
 }
 .brand {
@@ -103,6 +105,12 @@ function submit() {
   width: 22px;
   height: 22px;
   fill: var(--accent);
+}
+.logo.custom {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
 }
 .name {
   font-family: var(--display);
@@ -119,7 +127,7 @@ function submit() {
   gap: var(--s2);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 0 var(--s3);
 }
 .search:focus-within {
@@ -158,7 +166,7 @@ function submit() {
   place-items: center;
   background: none;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--muted);
 }
 .icon svg {

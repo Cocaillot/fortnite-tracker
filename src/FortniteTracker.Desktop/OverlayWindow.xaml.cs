@@ -30,6 +30,14 @@ public partial class OverlayWindow : Window
 
     public sealed record Row(string Name, string Kd, Brush KdBrush, string WinRate);
 
+    public void ApplyTheme(ThemeColors theme)
+    {
+        Resources["OverlayBackground"] = new SolidColorBrush(Color.FromArgb(0xE6, theme.Background.R, theme.Background.G, theme.Background.B));
+        Resources["OverlayText"] = new SolidColorBrush(theme.Text);
+        Resources["Muted"] = new SolidColorBrush(Color.FromArgb(0xB0, theme.Text.R, theme.Text.G, theme.Text.B));
+        Resources["OverlayAccent"] = new SolidColorBrush(theme.Accent);
+    }
+
     public void SetCorner(OverlayCorner corner)
     {
         _corner = corner;

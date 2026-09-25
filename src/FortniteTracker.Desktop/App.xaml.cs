@@ -43,6 +43,7 @@ public partial class App : Application
                 services.AddSingleton(_ => new RankBook(Path.Combine(storage, "ranks.json")));
                 services.AddSingleton(_ => new SessionStore(Path.Combine(storage, "sessions.json")));
                 services.AddSingleton<PlayerDirectory>();
+                services.AddSingleton(_ => new ThemeStore(storage));
                 services.AddHttpClient("fortnite-api", c =>
                 {
                     c.BaseAddress = new Uri("https://fortnite-api.com/");
@@ -99,7 +100,10 @@ public partial class App : Application
         services.GetRequiredService<DiscordPresenceService>(); // starts following the tracker
 
         _window = services.GetRequiredService<MainWindow>();
-        _overlay = new OverlayController(settings, tracker, Dispatcher);
+        var theme = services.GetRequiredService<ThemeStore>();
+        _overlay = new OverlayController(settings, tracker, theme, Dispatcher);
+        _window.ApplyTheme(theme.Colors);
+        theme.Changed += () => Dispatcher.InvokeAsync(() => _window.ApplyTheme(theme.Colors));
         _tray = new TrayIcon(_window.ToggleVisibility, _overlay.Toggle, ApplyUpdate, ExitApp);
         _tray.SetOverlayChecked(settings.OverlayEnabled);
         settings.Changed += _ => Dispatcher.InvokeAsync(() => _tray.SetOverlayChecked(settings.OverlayEnabled));

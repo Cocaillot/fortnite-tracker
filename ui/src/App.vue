@@ -10,6 +10,7 @@ import HistoryView from './components/HistoryView.vue'
 import SettingsView from './components/SettingsView.vue'
 import LeaderboardView from './components/LeaderboardView.vue'
 import ProfilePanel from './components/ProfilePanel.vue'
+import AppearanceView from './components/AppearanceView.vue'
 
 const {
   snapshot,
@@ -112,7 +113,7 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
       <main ref="content" class="content">
         <p v-if="!isHosted" class="notice">This page talks to the desktop app. Run it inside FortniteTracker.exe to see live data.</p>
 
-        <div v-if="settings && !settings.hasApiKey && page !== 'settings'" class="key-banner">
+        <div v-if="settings && !settings.hasApiKey && page !== 'settings' && page !== 'appearance'" class="key-banner">
           <ApiKeyForm :has-key="false" @save="saveApiKey" />
         </div>
 
@@ -134,6 +135,8 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
         <LeaderboardView v-else-if="page === 'leaderboard'" :entries="leaderboard" @refresh="loadLeaderboard" @open="showProfile" />
 
         <HistoryView v-else-if="page === 'history'" :matches="history" :sessions="sessions" @open="showProfile" />
+
+        <AppearanceView v-else-if="page === 'appearance'" />
 
         <SettingsView
           v-else-if="page === 'settings' && settings"

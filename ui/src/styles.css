@@ -18,18 +18,22 @@
 :root {
   color-scheme: dark;
 
+  /* Base colours: the Appearance page overrides these (see composables/useTheme.ts). */
   --bg: #0b0d12;
   --surface: #141821;
-  --surface-2: #1b202b;
-  --border: #252b38;
   --text: #eef1f6;
-  --muted: #9aa1b0;
-  --faint: #6b7282;
-
   --accent: #4cb8ff;
   --accent-ink: #04121d;
-  --live: #5fd86b;
   --danger: #ff5a5f;
+  --live: #5fd86b;
+
+  /* Derived from the base colours, so any theme stays readable. */
+  --surface-2: color-mix(in srgb, var(--surface) 93%, var(--text));
+  --border: color-mix(in srgb, var(--surface) 86%, var(--text));
+  --muted: color-mix(in srgb, var(--text) 64%, var(--bg));
+  --faint: color-mix(in srgb, var(--text) 44%, var(--bg));
+  --chrome: color-mix(in srgb, var(--bg) 82%, #000);
+  --chrome-2: color-mix(in srgb, var(--bg) 92%, #000);
 
   /* Fortnite item rarities, also used by the native overlay (StatText.cs). */
   --rarity-common: #b4bac6;
@@ -62,6 +66,7 @@
   --s6: 32px;
   --s7: 48px;
   --radius: 12px;
+  --radius-sm: calc(var(--radius) * 0.7);
 
   font-family: var(--body);
   font-size: 15px;
@@ -75,7 +80,12 @@
 }
 body {
   margin: 0;
-  background: var(--bg);
+  background-color: var(--bg);
+  /* Optional wallpaper from the Appearance page, dimmed so text stays readable. */
+  background-image: linear-gradient(color-mix(in srgb, var(--bg) var(--wallpaper-dim, 80%), transparent), color-mix(in srgb, var(--bg) var(--wallpaper-dim, 80%), transparent)), var(--wallpaper, none);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   overflow: hidden;
   user-select: none;
 }
@@ -90,7 +100,7 @@ button {
   color: inherit;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
 }
 input {
@@ -160,6 +170,16 @@ button:disabled {
   gap: 8px;
 }
 
+/* Glass panels over a wallpaper (Appearance page). */
+.glass .card,
+.glass .table-wrap,
+.glass .player,
+.glass .tile,
+.glass .panel,
+.glass .session {
+  backdrop-filter: blur(14px);
+}
+
 /* ---- Layout primitives ---- */
 
 .page {
@@ -212,7 +232,7 @@ button:disabled {
   display: inline-flex;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 3px;
   gap: 2px;
 }
@@ -336,7 +356,7 @@ table.data tbody tr.clickable:hover td {
 
 /* Loading placeholder shimmer. */
 .skeleton {
-  background: linear-gradient(90deg, var(--surface-2) 0%, #262c39 50%, var(--surface-2) 100%);
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--border) 50%, var(--surface-2) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.2s ease-in-out infinite;
   border-radius: 6px;
@@ -348,7 +368,7 @@ table.data tbody tr.clickable:hover td {
 
 /* Scrollbars that fit the dark theme. */
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-thumb { background: #2a3040; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 @media (prefers-reduced-motion: reduce) {

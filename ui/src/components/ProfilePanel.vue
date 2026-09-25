@@ -339,7 +339,7 @@ tr.past .mode-name {
 .modes button {
   border: 1px solid var(--border);
   background: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 5px 14px;
   color: var(--muted);
   font-family: var(--display);
@@ -365,7 +365,7 @@ tr.past .mode-name {
   flex-direction: column;
   gap: 2px;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: var(--s3) var(--s4);
 }
 .tile.rarity {

@@ -14,21 +14,25 @@
         TextOptions.TextFormattingMode="Display">
     <Window.Resources>
         <FontFamily x:Key="Display">pack://application:,,,/Assets/Fonts/#Barlow Condensed</FontFamily>
+        <!-- Replaced from the app theme in ApplyTheme. -->
         <SolidColorBrush x:Key="Muted" Color="#A9AFBC" />
+        <SolidColorBrush x:Key="OverlayText" Color="White" />
+        <SolidColorBrush x:Key="OverlayBackground" Color="#E60D0F14" />
+        <SolidColorBrush x:Key="OverlayAccent" Color="#4CB8FF" />
         <Style x:Key="Label" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="{StaticResource Display}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="12" />
-            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Foreground" Value="{DynamicResource Muted}" />
         </Style>
     </Window.Resources>
 
-    <Border CornerRadius="12" Background="#E60D0F14" BorderBrush="#26FFFFFF" BorderThickness="1"
+    <Border CornerRadius="12" Background="{DynamicResource OverlayBackground}" BorderBrush="#26FFFFFF" BorderThickness="1"
             Padding="14,10,14,12" MinWidth="230">
         <StackPanel>
             <DockPanel Margin="0,0,0,6">
                 <TextBlock x:Name="Timer" DockPanel.Dock="Right" Style="{StaticResource Label}" Foreground="#5FD86B" />
-                <TextBlock x:Name="Header" Style="{StaticResource Label}" Text="FORTNITE TRACKER" />
+                <TextBlock x:Name="Header" Style="{StaticResource Label}" Foreground="{DynamicResource OverlayAccent}" Text="FORTNITE TRACKER" />
             </DockPanel>
 
             <ItemsControl x:Name="Rows">
@@ -41,12 +45,12 @@
                                 <ColumnDefinition Width="44" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="{Binding Name}" FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold"
-                                       FontSize="13" Foreground="White" TextTrimming="CharacterEllipsis"
+                                       FontSize="13" Foreground="{DynamicResource OverlayText}" TextTrimming="CharacterEllipsis"
                                        MaxWidth="150" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="{Binding Kd}" Foreground="{Binding KdBrush}"
                                        FontFamily="{StaticResource Display}" FontWeight="ExtraBold" FontSize="20"
                                        Margin="12,0,0,0" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="2" Text="{Binding WinRate}" Foreground="{StaticResource Muted}"
+                            <TextBlock Grid.Column="2" Text="{Binding WinRate}" Foreground="{DynamicResource Muted}"
                                        FontFamily="{StaticResource Display}" FontWeight="SemiBold" FontSize="13"
                                        HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
@@ -62,7 +66,7 @@
                         <TextBlock x:Name="EliminatorKd" DockPanel.Dock="Right" FontFamily="{StaticResource Display}"
                                    FontWeight="ExtraBold" FontSize="20" Margin="12,0,0,0" />
                         <TextBlock x:Name="EliminatorName" FontFamily="Segoe UI Variable Text, Segoe UI" FontWeight="SemiBold"
-                                   FontSize="13" Foreground="White" TextTrimming="CharacterEllipsis" MaxWidth="170"
+                                   FontSize="13" Foreground="{DynamicResource OverlayText}" TextTrimming="CharacterEllipsis" MaxWidth="170"
                                    VerticalAlignment="Center" />
                     </DockPanel>
                     <TextBlock x:Name="EliminatorDetail" Style="{StaticResource Label}" FontWeight="SemiBold" />

@@ -8,14 +8,17 @@ public sealed class OverlayController
 {
     private readonly SettingsStore _settings;
     private readonly LobbyTracker _tracker;
+    private readonly ThemeStore _theme;
     private readonly Dispatcher _dispatcher;
     private OverlayWindow? _window;
 
-    public OverlayController(SettingsStore settings, LobbyTracker tracker, Dispatcher dispatcher)
+    public OverlayController(SettingsStore settings, LobbyTracker tracker, ThemeStore theme, Dispatcher dispatcher)
     {
         _settings = settings;
         _tracker = tracker;
+        _theme = theme;
         _dispatcher = dispatcher;
+        _theme.Changed += () => _dispatcher.InvokeAsync(Refresh);
         _tracker.Changed += _ => _dispatcher.InvokeAsync(Refresh);
         _settings.Changed += _ => _dispatcher.InvokeAsync(Refresh);
     }
@@ -33,6 +36,7 @@ public sealed class OverlayController
         }
 
         _window ??= new OverlayWindow();
+        _window.ApplyTheme(_theme.Colors);
         _window.Update(snapshot!);
         _window.SetCorner(_settings.OverlayCorner);
         if (!_window.IsVisible) _window.Show();

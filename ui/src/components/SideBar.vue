@@ -1,5 +1,7 @@
 <script setup lang="ts">
-export type Page = 'live' | 'leaderboard' | 'history' | 'me' | 'settings'
+import { theme } from '../composables/useTheme'
+
+export type Page = 'live' | 'leaderboard' | 'history' | 'me' | 'appearance' | 'settings'
 
 defineProps<{
   page: Page | 'profile'
@@ -22,7 +24,8 @@ const items: { id: Page; label: string; icon: string }[] = [
     <ul class="nav">
       <li v-for="item in items" :key="item.id">
         <button type="button" :class="{ active: page === item.id }" :aria-current="page === item.id ? 'page' : undefined" @click="emit('navigate', item.id)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path :d="item.icon" /></svg>
+          <img v-if="theme.icons[item.id]" class="custom-icon" :src="theme.icons[item.id]" alt="" />
+          <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path :d="item.icon" /></svg>
           <span>{{ item.label }}</span>
         </button>
       </li>
@@ -45,8 +48,19 @@ const items: { id: Page; label: string; icon: string }[] = [
 
       <ul class="nav">
         <li>
+          <button type="button" :class="{ active: page === 'appearance' }" @click="emit('navigate', 'appearance')">
+            <img v-if="theme.icons.appearance" class="custom-icon" :src="theme.icons.appearance" alt="" />
+            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.8-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z" />
+              <circle cx="7.5" cy="11" r="1.2" /><circle cx="10.5" cy="7" r="1.2" /><circle cx="15" cy="7.5" r="1.2" />
+            </svg>
+            <span>Appearance</span>
+          </button>
+        </li>
+        <li>
           <button type="button" :class="{ active: page === 'settings' }" @click="emit('navigate', 'settings')">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
+            <img v-if="theme.icons.settings" class="custom-icon" :src="theme.icons.settings" alt="" />
+            <svg v-else viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm7.4 4.1l1.6 1.2-1.7 3-1.9-.7a7 7 0 0 1-1.8 1l-.3 2H10.7l-.3-2a7 7 0 0 1-1.8-1l-1.9.7-1.7-3 1.6-1.2a7 7 0 0 1 0-2.1L5 9.8l1.7-3 1.9.7a7 7 0 0 1 1.8-1l.3-2h3.4l.3 2c.7.3 1.2.6 1.8 1l1.9-.7 1.7 3-1.6 1.2a7 7 0 0 1 0 2.1z" />
             </svg>
             <span>Settings</span>
@@ -68,7 +82,7 @@ const items: { id: Page; label: string; icon: string }[] = [
   gap: var(--s4);
   padding: var(--s4) var(--s3);
   border-right: 1px solid var(--border);
-  background: #0d1016;
+  background: var(--chrome-2);
 }
 .nav {
   list-style: none;
@@ -86,7 +100,7 @@ const items: { id: Page; label: string; icon: string }[] = [
   padding: 10px var(--s3);
   background: none;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   color: var(--muted);
   font-family: var(--display);
   font-weight: 700;
@@ -124,6 +138,13 @@ const items: { id: Page; label: string; icon: string }[] = [
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.custom-icon {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  object-fit: contain;
+  border-radius: 4px;
+}
 .bottom {
   display: flex;
   flex-direction: column;
@@ -132,7 +153,7 @@ const items: { id: Page; label: string; icon: string }[] = [
 .status {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: var(--s3);
   display: flex;
   flex-direction: column;
@@ -200,7 +221,7 @@ const items: { id: Page; label: string; icon: string }[] = [
   gap: 2px;
   background: color-mix(in srgb, var(--accent) 14%, var(--surface));
   border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: var(--s3);
   text-align: left;
   font-size: 13px;

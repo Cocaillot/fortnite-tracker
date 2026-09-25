@@ -126,6 +126,8 @@ export interface HostMessages {
   profile: PlayerProfile
   leaderboard: LeaderboardEntry[]
   windowState: { maximized: boolean; fullscreen: boolean }
+  /** The saved theme (format owned by composables/useTheme.ts), or null for the default look. */
+  theme: unknown
 }
 
 export type UiMessage =
@@ -140,6 +142,7 @@ export type UiMessage =
   | { type: 'profile'; accountId?: string | null; name?: string | null }
   | { type: 'follow'; accountId?: string | null; name: string; enabled: boolean }
   | { type: 'leaderboard' }
+  | { type: 'setTheme'; theme: object | null }
 
 interface WebView {
   postMessage(message: unknown): void

@@ -8,9 +8,9 @@ namespace FortniteTracker.Desktop;
 
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
-/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState.
+/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme.
 /// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
-/// profile, follow, leaderboard.
+/// profile, follow, leaderboard, setTheme.
 /// </summary>
 public sealed class UiBridge
 {
@@ -30,6 +30,7 @@ public sealed class UiBridge
     private readonly RankBook _ranks;
     private readonly SessionStore _sessions;
     private readonly PlayerDirectory _directory;
+    private readonly ThemeStore _theme;
     private CancellationTokenSource? _leaderboardRun;
     private CoreWebView2? _web;
     private Dispatcher? _dispatcher;
@@ -37,8 +38,9 @@ public sealed class UiBridge
     public UiBridge(
         LobbyTracker tracker, FortniteStatsService stats, SettingsStore settings,
         MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence,
-        RankBook ranks, SessionStore sessions, PlayerDirectory directory)
+        RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme)
     {
+        _theme = theme;
         _ranks = ranks;
         _sessions = sessions;
         _directory = directory;
@@ -101,6 +103,11 @@ public sealed class UiBridge
                 if (_tracker.Last is { } last) Send("snapshot", last);
                 SendSquadRanks();
                 SendWindowState();
+                SendTheme();
+                break;
+            case "setTheme":
+                // The UI owns the theme format; stored as-is (null = back to the default look).
+                _theme.Save(msg.Theme is { ValueKind: JsonValueKind.Object } t ? t.GetRawText() : null);
                 break;
             case "profile" when msg.AccountId is not null || !string.IsNullOrWhiteSpace(msg.Name):
                 Send("profile", await _directory.GetProfileAsync(msg.AccountId, msg.Name, CancellationToken.None));
@@ -150,6 +157,10 @@ public sealed class UiBridge
         updateVersion = _updates.ReadyVersion,
     });
 
+    // Sent raw: the UI parses its own format.
+    private void SendTheme() =>
+        _web?.PostWebMessageAsJson($"{{\"type\":\"theme\",\"data\":{_theme.Json ?? "null"}}}");
+
     private void SendHistory() => Send("history", _history.Recent(HistoryCount));
 
     private void SendSessions() => Send("sessions", _sessions.All.Reverse().Take(50).ToList());
@@ -180,5 +191,6 @@ public sealed class UiBridge
         _web?.PostWebMessageAsJson(JsonSerializer.Serialize(new { type, data }, Json));
 
     private sealed record UiMessage(
-        string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId);
+        string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId,
+        JsonElement? Theme);
 }

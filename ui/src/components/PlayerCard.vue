@@ -186,7 +186,7 @@ header {
   flex-direction: column;
   gap: 2px;
   background: var(--surface-2);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 6px 10px;
 }
 .rank-mode {
@@ -204,7 +204,7 @@ header {
   justify-content: center;
   gap: 2px;
   background: var(--surface-2);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: var(--s2) var(--s3);
   min-height: 62px;
 }
