@@ -1,5 +1,12 @@
 # Fortnite Tracker
 
+## ⬇️ [Download for Windows (FortniteTracker-win-Setup.exe)](https://github.com/Cocaillot/fortnite-tracker/releases/latest/download/FortniteTracker-win-Setup.exe)
+
+Run the downloaded file: it installs, adds a desktop shortcut and opens the app. Windows may say
+"Windows protected your PC" because the app isn't code-signed: click **More info → Run anyway**.
+On first launch, paste a free API key from [fortnite-api.com/dashboard](https://fortnite-api.com/dashboard).
+The app updates itself after that.
+
 A Windows companion app that runs next to Fortnite. It detects you and your party from Fortnite's
 own log file and shows:
 
