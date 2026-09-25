@@ -1,0 +1,156 @@
+name: Release
+
+# Builds, signs (through SignPath, once it is set up) and publishes a release to GitHub Releases,
+# where the app's auto-update finds it. Run it from Actions → Release → Run workflow.
+#
+# Signing needs, in the repository settings:
+#   - secret   SIGNPATH_API_TOKEN          (SignPath user token with submitter rights)
+#   - variable SIGNPATH_ORGANIZATION_ID
+#   - optional variables SIGNPATH_PROJECT_SLUG (default fortnite-tracker) and
+#     SIGNPATH_SIGNING_POLICY_SLUG (default release-signing)
+# Without the secret the release is built unsigned, exactly like scripts/release.ps1.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, e.g. 1.0.0
+        required: true
+
+permissions:
+  contents: write # create the release
+  actions: read # let SignPath fetch the uploaded artifacts
+
+concurrency: release
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ inputs.version }}
+      REPO_URL: https://github.com/${{ github.repository }}
+      SIGN: ${{ secrets.SIGNPATH_API_TOKEN != '' }}
+      SIGNPATH_PROJECT: ${{ vars.SIGNPATH_PROJECT_SLUG || 'fortnite-tracker' }}
+      SIGNPATH_POLICY: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG || 'release-signing' }}
+    steps:
+      - name: Check version
+        shell: pwsh
+        run: if ($env:VERSION -notmatch '^\d+\.\d+\.\d+$') { throw "Version must look like 1.2.3, got '$env:VERSION'" }
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        run: npm ci
+        working-directory: ui
+
+      - name: Restore tools
+        run: dotnet tool restore
+
+      - name: Test
+        run: dotnet test FortniteTracker.sln -c Release
+
+      # Self-contained, so friends don't need to install .NET first.
+      - name: Publish
+        run: dotnet publish src/FortniteTracker.Desktop -c Release -r win-x64 --self-contained true -p:Version=${{ env.VERSION }} -o publish
+
+      - name: Point updates at this repository
+        shell: pwsh
+        run: |
+          $path = 'publish/appsettings.json'
+          $settings = Get-Content $path -Raw | ConvertFrom-Json
+          $settings.Updates.Url = $env:REPO_URL
+          $settings | ConvertTo-Json -Depth 5 | Set-Content $path -Encoding utf8
+
+      # ---- Sign the app's own binaries ----
+      - name: Collect binaries to sign
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory to-sign | Out-Null
+          Copy-Item publish/FortniteTracker.exe, publish/FortniteTracker.dll, publish/FortniteTracker.Core.dll to-sign/
+
+      - name: Upload binaries to sign
+        id: upload-app
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned
+          path: to-sign/
+
+      - name: Sign binaries
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: app
+          github-artifact-id: ${{ steps.upload-app.outputs.artifact-id }}
+          wait-for-completion: true
+          # Each request is approved by hand in SignPath; leave time for that.
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed
+
+      - name: Use the signed binaries
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: Copy-Item signed/* publish/ -Force
+
+      # ---- Package ----
+      - name: Download previous release (for delta updates)
+        shell: pwsh
+        run: |
+          dotnet vpk download github --repoUrl $env:REPO_URL --token ${{ github.token }} -o releases
+          if ($LASTEXITCODE -ne 0) { Write-Host 'No previous release; building a full package only.' }
+          exit 0
+
+      - name: Pack
+        run: >
+          dotnet vpk pack --packId FortniteTracker --packVersion ${{ env.VERSION }} --packDir publish
+          --runtime win-x64 --mainExe FortniteTracker.exe --packTitle "Fortnite Tracker"
+          --icon src/FortniteTracker.Desktop/Assets/app.ico --framework webview2 --outputDir releases
+
+      # ---- Sign the installer ----
+      - name: Upload installer to sign
+        id: upload-setup
+        if: env.SIGN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-unsigned
+          path: releases/FortniteTracker-win-Setup.exe
+
+      - name: Sign installer
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ env.SIGNPATH_POLICY }}
+          artifact-configuration-slug: setup
+          github-artifact-id: ${{ steps.upload-setup.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-setup
+
+      - name: Use the signed installer
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: Copy-Item signed-setup/FortniteTracker-win-Setup.exe releases/ -Force
+
+      # ---- Publish ----
+      - name: Upload to GitHub Releases
+        run: >
+          dotnet vpk upload github --repoUrl ${{ env.REPO_URL }} --token ${{ github.token }} -o releases
+          --publish --releaseName "Fortnite Tracker ${{ env.VERSION }}" --tag v${{ env.VERSION }}

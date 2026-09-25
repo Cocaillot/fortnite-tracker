@@ -482,6 +482,7 @@ export const FR: Record<string, string> = {
   // What's new
   "What's new": 'Nouveautés',
   'Got it': 'Compris',
+  'Privacy policy': 'Politique de confidentialité',
   'Opens with Fortnite': "S'ouvre avec Fortnite",
   'Turn on "Open with Fortnite" in Settings: the app waits quietly in the tray and opens by itself when the game starts.':
     "Active « S'ouvrir avec Fortnite » dans les Paramètres : l'app attend discrètement dans la barre des tâches et s'ouvre toute seule au lancement du jeu.",

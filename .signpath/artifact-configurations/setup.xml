@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "setup": the installer Velopack builds from the signed app
+  (FortniteTracker-win-Setup.exe), uploaded by .github/workflows/release.yml.
+  Paste this into SignPath → project → Artifact Configurations, with the slug "setup".
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <zip-file>
+    <pe-file path="FortniteTracker-win-Setup.exe">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

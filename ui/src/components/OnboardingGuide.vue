@@ -77,6 +77,7 @@ const finish = () => send({ type: 'onboardingDone' })
           <p class="lead">
             {{ t('Your squad\'s stats and ranks, who eliminated you, your history and progress. Everything comes from Fortnite\'s own log files and public stats: nothing touches the game.') }}
           </p>
+          <a class="privacy" href="https://github.com/Cocaillot/fortnite-tracker/blob/main/PRIVACY.md" target="_blank" rel="noopener">{{ t('Privacy policy') }}</a>
           <span class="label">{{ t('Language') }}</span>
           <div class="seg" role="radiogroup" :aria-label="t('Language')">
             <button
@@ -246,6 +247,10 @@ h1 {
 .logo.custom {
   object-fit: contain;
   border-radius: 10px;
+}
+.privacy {
+  color: var(--accent);
+  font-size: 14px;
 }
 .label {
   margin-top: var(--s3);

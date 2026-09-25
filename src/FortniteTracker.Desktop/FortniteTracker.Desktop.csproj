@@ -9,7 +9,6 @@
     <!-- Only for the tray icon (NotifyIcon); WPF has no equivalent. -->
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>FortniteTracker</AssemblyName>
-    <Version>0.9.0</Version>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
     <!-- Program.Main runs Velopack's hooks before WPF starts. -->
     <StartupObject>FortniteTracker.Desktop.Program</StartupObject>

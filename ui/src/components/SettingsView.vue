@@ -228,7 +228,7 @@ function runData(action: 'csv' | 'backup' | 'restore') {
       <p v-if="dataResult" class="result">{{ dataResult }}</p>
     </div>
   </section>
-    <p class="about">Fortnite Tracker {{ settings.version }} · {{ t('Not affiliated with Epic Games') }} · {{ t('Font: Barlow (SIL OFL)') }}</p>
+    <p class="about">Fortnite Tracker {{ settings.version }} · {{ t('Not affiliated with Epic Games') }} · {{ t('Font: Barlow (SIL OFL)') }} · <a href="https://github.com/Cocaillot/fortnite-tracker/blob/main/PRIVACY.md" target="_blank" rel="noopener">{{ t('Privacy policy') }}</a> · MIT</p>
   </div>
 </template>
 
@@ -382,6 +382,9 @@ function runData(action: 'csv' | 'backup' | 'restore') {
   color: var(--faint);
   font-size: 12px;
   margin: 4px 0 0;
+}
+.about a {
+  color: inherit;
 }
 .lang {
   display: flex;

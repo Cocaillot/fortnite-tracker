@@ -130,20 +130,22 @@ Users can turn Rich Presence off in the app's Settings tab.
 
 ### Installer and auto-updates (Velopack + GitHub Releases)
 
-1. Push this repo to GitHub. A public repo lets installed copies check for updates without a token.
-2. Create a fine-grained token with **Contents: read and write** on the repo.
-3. Release:
+Releases are built on GitHub: **Actions → Release → Run workflow**, then enter the version
+(e.g. `1.0.0`). The workflow in `.github/workflows/release.yml` tests, builds, signs (see
+[Code signing policy](#code-signing-policy)), packages with Velopack and publishes the release.
 
-   ```powershell
-   $env:GITHUB_TOKEN = "<token>"
-   .\scripts\release.ps1 -Version 0.1.0 -RepoUrl https://github.com/<you>/<repo> -DiscordClientId <id> -Upload
-   ```
+To build or publish from your own PC instead (unsigned):
 
-4. Share this link in your Discord server. It always points at the newest installer:
+```powershell
+$env:GITHUB_TOKEN = "<token with Contents: read and write>"
+.\scripts\release.ps1 -Version 0.1.0 -RepoUrl https://github.com/<you>/<repo> -Upload
+```
 
-   `https://github.com/<you>/<repo>/releases/latest/download/FortniteTracker-win-Setup.exe`
+Share this link in your Discord server. It always points at the newest installer:
 
-For each new version, run the script again with a higher `-Version`. Installed copies check every
+`https://github.com/<you>/<repo>/releases/latest/download/FortniteTracker-win-Setup.exe`
+
+Each release needs a higher version. Installed copies check every
 4 hours, download the update in the background, and install it on the next start. Users can also
 pick "Restart to update" from the tray or the in-app banner.
 
@@ -151,9 +153,9 @@ Without `-Upload`, the script only builds `releases\FortniteTracker-win-Setup.ex
 Velopack refuses to package a version that isn't higher than one already in `releases\`. To
 rebuild the same version locally, delete that folder first.
 
-The installer isn't code-signed, so Windows SmartScreen shows "Windows protected your PC" the
-first time. Users click **More info → Run anyway**. Signing needs a code-signing certificate
-(`vpk pack --signParams`).
+Until releases are signed, Windows SmartScreen shows "Windows protected your PC" the first time.
+Users click **More info → Run anyway**. Even signed, SmartScreen can warn for a while until the
+certificate has built up download reputation.
 
 ## Usage
 
@@ -162,3 +164,30 @@ first time. Users click **More info → Run anyway**. Signing needs a code-signi
   right-click the tray icon to exit.
 - Private profiles show "Stats private". The player has to turn on public stats in Fortnite's
   settings (Account and Privacy).
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io), certificate by
+[SignPath Foundation](https://signpath.org).
+
+Only the app's own binaries (`FortniteTracker.exe`, `FortniteTracker.dll`,
+`FortniteTracker.Core.dll`) and the installer are signed. They are built from this repository by
+[GitHub Actions](.github/workflows/release.yml); third-party libraries and the .NET runtime ship as
+published by their authors.
+
+Team roles:
+
+- Committers and reviewers: [Cocaillot](https://github.com/Cocaillot)
+- Approvers: [Cocaillot](https://github.com/Cocaillot)
+
+Every signing request is approved by hand.
+
+## Privacy
+
+The app has no server and collects nothing. It talks to fortnite-api.com (player stats), GitHub
+(update check) and Discord (only for the features you turn on). Details: [PRIVACY.md](PRIVACY.md).
+
+## License
+
+[MIT](LICENSE). Fortnite is a trademark of Epic Games; this project is not affiliated with or
+endorsed by Epic Games.
