@@ -64,6 +64,7 @@ try {
             --packId FortniteTracker `
             --packVersion $Version `
             --packDir $publishDir `
+            --runtime win-x64 `
             --mainExe FortniteTracker.exe `
             --packTitle 'Fortnite Tracker' `
             --icon (Join-Path $project 'Assets\app.ico') `
