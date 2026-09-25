@@ -47,6 +47,8 @@ public partial class App : Application
                 services.AddSingleton(_ => new PlayerNotes(Path.Combine(storage, "notes.json")));
                 services.AddSingleton(_ => new StatsHistory(Path.Combine(storage, "stats-history.json")));
                 services.AddSingleton(_ => new GoalStore(storage));
+                services.AddHttpClient("discord-webhook", c => c.Timeout = TimeSpan.FromSeconds(10));
+                services.AddSingleton<DiscordRecapPoster>();
                 services.AddSingleton(_ => new ThemeStore(storage));
                 services.AddHttpClient("fortnite-api", c =>
                 {
@@ -109,6 +111,7 @@ public partial class App : Application
             _ = results.BackfillEliminatorsAsync(CancellationToken.None);
         };
         services.GetRequiredService<DiscordPresenceService>(); // starts following the tracker
+        services.GetRequiredService<DiscordRecapPoster>(); // posts a recap when Fortnite closes
 
         _window = services.GetRequiredService<MainWindow>();
         var theme = services.GetRequiredService<ThemeStore>();

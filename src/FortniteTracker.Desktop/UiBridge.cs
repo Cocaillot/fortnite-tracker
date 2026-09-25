@@ -9,9 +9,9 @@ namespace FortniteTracker.Desktop;
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
 /// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme, toast,
-/// matchDetail, teammates, notes, statsHistory, goals.
+/// matchDetail, teammates, notes, statsHistory, goals, recapResult.
 /// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
-/// profile, follow, leaderboard, setTheme, match, teammates, setNote, setGoals.
+/// profile, follow, leaderboard, setTheme, match, teammates, setNote, setGoals, setDiscordRecap, postRecap.
 /// </summary>
 public sealed class UiBridge
 {
@@ -36,6 +36,7 @@ public sealed class UiBridge
     private readonly PlayerNotes _notes;
     private readonly StatsHistory _statsHistory;
     private readonly GoalStore _goals;
+    private readonly DiscordRecapPoster _recap;
     private CancellationTokenSource? _leaderboardRun;
     private CoreWebView2? _web;
     private Dispatcher? _dispatcher;
@@ -44,8 +45,9 @@ public sealed class UiBridge
         LobbyTracker tracker, FortniteStatsService stats, SettingsStore settings,
         MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence,
         RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme, MatchInsights insights,
-        PlayerNotes notes, StatsHistory statsHistory, GoalStore goals)
+        PlayerNotes notes, StatsHistory statsHistory, GoalStore goals, DiscordRecapPoster recap)
     {
+        _recap = recap;
         _notes = notes;
         _statsHistory = statsHistory;
         _goals = goals;
@@ -123,6 +125,17 @@ public sealed class UiBridge
                 SendStatsHistory();
                 SendGoals();
                 break;
+            case "setDiscordRecap":
+                if (!string.IsNullOrWhiteSpace(msg.Url) && !DiscordRecapPoster.IsWebhookUrl(msg.Url))
+                {
+                    Send("recapResult", "That isn't a Discord webhook link. It starts with https://discord.com/api/webhooks/");
+                    break;
+                }
+                _settings.SetDiscordRecap(msg.Url, msg.Enabled ?? true);
+                break;
+            case "postRecap":
+                Send("recapResult", await _recap.PostLatestAsync(onlyIfNew: false));
+                break;
             case "setGoals":
                 // The UI owns the goal format; stored as-is.
                 _goals.Save(msg.Goals is { ValueKind: JsonValueKind.Array } g ? g.GetRawText() : "[]");
@@ -187,6 +200,7 @@ public sealed class UiBridge
         richPresence = new { available = _presence.Available, enabled = _settings.RichPresenceEnabled },
         notifyOnElimination = _settings.NotifyOnElimination,
         notifyRankChanges = _settings.NotifyRankChanges,
+        discordRecap = new { hasWebhook = DiscordRecapPoster.IsWebhookUrl(_settings.DiscordWebhookUrl), autoPost = _settings.AutoPostRecap },
         overlay = new { enabled = _settings.OverlayEnabled, corner = _settings.OverlayCorner.ToString() },
         version = _updates.CurrentVersion,
         updateVersion = _updates.ReadyVersion,
@@ -234,5 +248,5 @@ public sealed class UiBridge
 
     private sealed record UiMessage(
         string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId,
-        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals);
+        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals, string? Url);
 }

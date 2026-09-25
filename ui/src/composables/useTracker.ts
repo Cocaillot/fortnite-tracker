@@ -33,6 +33,7 @@ export function useTracker() {
   const matchDetail = ref<MatchDetail | null>(null)
   const teammates = ref<TeammateSummary[] | null>(null)
   const statsHistory = ref<StatsDay[]>([])
+  const recapResult = ref<string | null>(null)
 
   const unsubscribers: (() => void)[] = []
 
@@ -60,6 +61,7 @@ export function useTracker() {
       }),
       on('teammates', (t) => (teammates.value = t)),
       on('statsHistory', (h) => (statsHistory.value = h)),
+      on('recapResult', (r) => (recapResult.value = r)),
     )
     // Ask the host for the current state; it may have published before the page loaded.
     send({ type: 'ready' })
@@ -100,6 +102,15 @@ export function useTracker() {
     matchDetail,
     teammates,
     statsHistory,
+    recapResult,
+    setDiscordRecap: (url: string | null, enabled: boolean) => {
+      recapResult.value = null
+      send({ type: 'setDiscordRecap', url, enabled })
+    },
+    postRecap: () => {
+      recapResult.value = 'Posting…'
+      send({ type: 'postRecap' })
+    },
     showMatch: (m: MatchRecord) => {
       openMatch.value = m
       matchDetail.value = null

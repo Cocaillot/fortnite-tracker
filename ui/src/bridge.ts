@@ -171,6 +171,7 @@ export interface Settings {
   richPresence: { available: boolean; enabled: boolean }
   notifyOnElimination: boolean
   notifyRankChanges: boolean
+  discordRecap: { hasWebhook: boolean; autoPost: boolean }
   overlay: { enabled: boolean; corner: OverlayCorner }
   version: string
   updateVersion: string | null
@@ -195,6 +196,7 @@ export interface HostMessages {
   statsHistory: StatsDay[]
   /** Saved goals (format owned by composables/goals.ts). */
   goals: unknown
+  recapResult: string
 }
 
 export type UiMessage =
@@ -208,6 +210,8 @@ export type UiMessage =
   | { type: 'teammates' }
   | { type: 'setNote'; accountId: string | null; name: string; tags: string[]; text: string }
   | { type: 'setGoals'; goals: object[] }
+  | { type: 'setDiscordRecap'; url: string | null; enabled: boolean }
+  | { type: 'postRecap' }
   | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
   | { type: 'window'; action: 'drag' | 'minimize' | 'maximize' | 'fullscreen' | 'close' }

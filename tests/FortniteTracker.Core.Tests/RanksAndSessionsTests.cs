@@ -200,3 +200,57 @@ public sealed class PlayerNotesTests : IDisposable
         Assert.Empty(notes.All);
     }
 }
+
+public sealed class SessionRecapTests : IDisposable
+{
+    private readonly string _dir = Directory.CreateTempSubdirectory("ft-tests-").FullName;
+
+    public void Dispose() => Directory.Delete(_dir, recursive: true);
+
+    [Fact]
+    public void Recap_covers_the_last_session_only_with_rank_change_and_nemesis()
+    {
+        const string me = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1";
+        var t0 = new DateTime(2026, 9, 25, 2, 0, 0, DateTimeKind.Utc);
+        MatchRecord M(int startMin, int len, string? by = null, int? kills = null, bool? won = null) =>
+            new(t0.AddMinutes(startMin), t0.AddMinutes(startMin + len), "Ranked Duos", null, 2, true, by, kills, won);
+        var history = new List<MatchRecord>
+        {
+            M(-300, 10),                          // an earlier session, three hours before
+            M(0, 10, "Rival", 2), M(15, 12, "Rival", 5, won: false), M(30, 20, null, 7, won: true),
+        };
+        var ranks = new RankBook(Path.Combine(_dir, "ranks.json"));
+        ranks.Add([
+            new RankProgress(me, "ranked-blastberry-combined", 0, 0, 0.80, null, t0.AddMinutes(-5), "S"),
+            new RankProgress(me, "ranked-blastberry-combined", 1, 1, 0.40, null, t0.AddMinutes(55), "S"),
+        ]);
+
+        var r = SessionRecaps.Latest(history, [], ranks, me)!;
+
+        Assert.Equal(3, r.Matches);
+        Assert.Equal(42, r.Minutes);
+        Assert.Equal((1, 14), (r.Wins, r.Kills));
+        Assert.Equal("Rival", r.Nemesis);
+        Assert.Equal(["Reload: Bronze I → Bronze II (+60%)"], r.RankChanges);
+    }
+}
+
+public sealed class DiscordRecapSettingsTests : IDisposable
+{
+    private readonly string _dir = Directory.CreateTempSubdirectory("ft-tests-").FullName;
+
+    public void Dispose() => Directory.Delete(_dir, recursive: true);
+
+    [Fact]
+    public void Toggling_auto_post_keeps_the_webhook_and_empty_removes_it()
+    {
+        var s = new SettingsStore(settingsPath: Path.Combine(_dir, "settings.json"));
+        s.SetDiscordRecap("https://discord.com/api/webhooks/1/abc", true);
+
+        s.SetDiscordRecap(null, false);
+        Assert.Equal(("https://discord.com/api/webhooks/1/abc", false), (s.DiscordWebhookUrl, s.AutoPostRecap));
+
+        s.SetDiscordRecap("", false);
+        Assert.Null(s.DiscordWebhookUrl);
+    }
+}

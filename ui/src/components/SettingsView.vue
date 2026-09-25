@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import type { OverlayCorner, Settings } from '../bridge'
+import { ref } from 'vue'
 import ApiKeyForm from './ApiKeyForm.vue'
 
-defineProps<{ settings: Settings }>()
+const props = defineProps<{ settings: Settings; recapResult: string | null }>()
+const webhook = ref('')
 const emit = defineEmits<{
   saveKey: [key: string]
   richPresence: [enabled: boolean]
   notify: [enabled: boolean]
   notifyRanks: [enabled: boolean]
+  discordRecap: [url: string | null, autoPost: boolean]
+  postRecap: []
   overlay: [enabled?: boolean, corner?: OverlayCorner]
 }>()
 
@@ -98,6 +102,36 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
       </p>
     </div>
 
+    <div class="panel option recap">
+      <span class="text">Session recap on Discord</span>
+      <p class="hint flush">
+        Posts your matches, wins, kills, K/D and rank changes to a Discord channel. In your server: Channel settings →
+        Integrations → Webhooks → New webhook → Copy webhook URL, then paste it here.
+      </p>
+      <form class="row" @submit.prevent="emit('discordRecap', webhook, props.settings.discordRecap.autoPost); webhook = ''">
+        <input
+          v-model="webhook"
+          type="password"
+          autocomplete="off"
+          :placeholder="settings.discordRecap.hasWebhook ? 'Webhook saved. Paste a new one to replace it' : 'https://discord.com/api/webhooks/…'"
+          aria-label="Discord webhook link"
+        />
+        <button type="submit" class="btn-primary" :disabled="!webhook.trim()">Save</button>
+      </form>
+      <template v-if="settings.discordRecap.hasWebhook">
+        <label class="switch">
+          <input type="checkbox" :checked="settings.discordRecap.autoPost" @change="emit('discordRecap', null, checked($event))" />
+          <span class="track" aria-hidden="true" />
+          <span class="text small-text">Post automatically when I close Fortnite</span>
+        </label>
+        <div class="row">
+          <button type="button" class="ghost" @click="emit('postRecap')">Post last session now</button>
+          <button type="button" class="ghost" @click="emit('discordRecap', '', false)">Remove webhook</button>
+        </div>
+      </template>
+      <p v-if="recapResult" class="result">{{ recapResult }}</p>
+    </div>
+
     <div class="panel option shortcuts">
       <span class="text">Shortcuts</span>
       <dl>
@@ -120,6 +154,35 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
 }
 .settings > * {
   padding: var(--s5);
+}
+.recap .hint.flush {
+  margin: var(--s2) 0 var(--s3);
+}
+.recap .row {
+  margin: var(--s3) 0 0;
+}
+.small-text {
+  font-size: 15px;
+}
+.ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+}
+.ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.result {
+  margin: var(--s3) 0 0;
+  color: var(--accent);
+  font-weight: 600;
 }
 .shortcuts dl {
   display: grid;

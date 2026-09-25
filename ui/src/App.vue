@@ -28,6 +28,9 @@ const {
   matchDetail,
   teammates,
   statsHistory,
+  recapResult,
+  setDiscordRecap,
+  postRecap,
   showMatch,
   closeMatch,
   loadTeammates,
@@ -169,10 +172,13 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
         <SettingsView
           v-else-if="page === 'settings' && settings"
           :settings="settings"
+          :recap-result="recapResult"
           @save-key="saveApiKey"
           @rich-presence="setRichPresence"
           @notify="setNotify"
           @notify-ranks="setNotifyRanks"
+          @discord-recap="setDiscordRecap"
+          @post-recap="postRecap"
           @overlay="setOverlay"
         />
         </Transition>

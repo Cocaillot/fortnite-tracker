@@ -33,6 +33,19 @@ public sealed class SettingsStore
     public bool RichPresenceEnabled => _settings.RichPresence;
     public bool NotifyOnElimination => _settings.NotifyOnElimination;
     public bool NotifyRankChanges => _settings.NotifyRankChanges;
+    public string? DiscordWebhookUrl => _settings.DiscordWebhookUrl;
+    public bool AutoPostRecap => _settings.AutoPostRecap;
+    public DateTime? LastRecapPostedUtc => _settings.LastRecapPostedUtc;
+
+    /// <param name="webhookUrl">null keeps the saved link; empty removes it.</param>
+    public void SetDiscordRecap(string? webhookUrl, bool autoPost) => Update(s => s with
+    {
+        DiscordWebhookUrl = webhookUrl is null ? s.DiscordWebhookUrl : string.IsNullOrWhiteSpace(webhookUrl) ? null : webhookUrl.Trim(),
+        AutoPostRecap = autoPost,
+    }, apiKeyChanged: false);
+
+    public void SetLastRecapPosted(DateTime sessionStartUtc) =>
+        Update(s => s with { LastRecapPostedUtc = sessionStartUtc }, apiKeyChanged: false);
     public bool OverlayEnabled => _settings.Overlay;
     public OverlayCorner OverlayCorner => _settings.OverlayCorner;
     public IReadOnlyList<FollowedPlayer> Followed => _settings.Followed ?? [];
@@ -96,5 +109,8 @@ public sealed class SettingsStore
         bool Overlay = false,
         OverlayCorner OverlayCorner = OverlayCorner.TopRight,
         List<FollowedPlayer>? Followed = null,
-        bool NotifyRankChanges = true);
+        bool NotifyRankChanges = true,
+        string? DiscordWebhookUrl = null,
+        bool AutoPostRecap = true,
+        DateTime? LastRecapPostedUtc = null);
 }
