@@ -17,7 +17,9 @@ public sealed record RankProgress(
     // Leaderboard position, only meaningful at Unreal.
     int? Position,
     // Null when the player never played this track (the log shows 1970-01-01).
-    DateTime? LastUpdatedUtc)
+    DateTime? LastUpdatedUtc,
+    // Each season of a mode is a separate track with its own ID.
+    string TrackGuid = "")
 {
     public string RankName => RankNames.Name(this);
     public string HighestName => LastUpdatedUtc is null ? "Unranked" : RankNames.Name(Highest);
@@ -125,15 +127,30 @@ public static class RankNames
     };
 }
 
+/// <summary>A rank at one point in time, for rank history graphs.</summary>
+public sealed record RankPoint(DateTime At, int Current, double Progress);
+
+/// <summary>A rank that moved within one season, e.g. Silver I → Silver II.</summary>
+public sealed record RankChange(RankProgress Before, RankProgress After)
+{
+    public bool IsUp => After.Current > Before.Current;
+}
+
 /// <summary>
-/// Everyone's latest known ranks: you, party members and friends, as they appear in the log.
-/// Persisted in ranks.json so friends' ranks survive restarts.
+/// Everyone's ranks as they appear in the log (you, party members, friends): every season of every
+/// mode, plus a history of rank points per season. Fortnite re-sends ranks after most matches, each
+/// with its update time, which is what builds the history. Persisted in ranks.json.
 /// </summary>
 public sealed class RankBook
 {
+    private const int MaxPointsPerSeason = 400;
+
     private readonly string _path;
     private readonly object _gate = new();
-    private readonly Dictionary<string, Dictionary<string, RankProgress>> _ranks = new();
+    // account → (mode, season) → newest entry
+    private readonly Dictionary<string, Dictionary<(string Track, string Guid), RankProgress>> _ranks = new();
+    // (account, mode, season) → points by time
+    private readonly Dictionary<(string Account, string Track, string Guid), SortedList<DateTime, RankPoint>> _history = new();
 
     public RankBook(string? path = null)
     {
@@ -143,9 +160,37 @@ public sealed class RankBook
 
     public event Action? Changed;
 
+    /// <summary>A rank went up or down within a season (both entries dated; see <see cref="RankChange"/>).</summary>
+    public event Action<RankChange>? RankChanged;
+
+    /// <summary>One entry per mode: the season played most recently (or a never-played placeholder).</summary>
     public IReadOnlyList<RankProgress> For(string accountId)
     {
-        lock (_gate) return _ranks.TryGetValue(accountId, out var t) ? [.. t.Values] : [];
+        lock (_gate)
+        {
+            if (!_ranks.TryGetValue(accountId, out var seasons)) return [];
+            return seasons.Values
+                .GroupBy(r => r.Track)
+                .Select(g => g.MaxBy(r => r.LastUpdatedUtc ?? DateTime.MinValue)!)
+                .ToList();
+        }
+    }
+
+    /// <summary>Every season played, newest first.</summary>
+    public IReadOnlyList<RankProgress> Seasons(string accountId)
+    {
+        lock (_gate)
+        {
+            return _ranks.TryGetValue(accountId, out var seasons)
+                ? seasons.Values.Where(r => r.LastUpdatedUtc is not null).OrderByDescending(r => r.LastUpdatedUtc).ToList()
+                : [];
+        }
+    }
+
+    /// <summary>Rank points of the given season, oldest first.</summary>
+    public IReadOnlyList<RankPoint> History(string accountId, string track, string guid)
+    {
+        lock (_gate) return _history.TryGetValue((accountId, track, guid), out var points) ? [.. points.Values] : [];
     }
 
     public IReadOnlyCollection<string> Accounts
@@ -153,28 +198,44 @@ public sealed class RankBook
         get { lock (_gate) return [.. _ranks.Keys]; }
     }
 
-    /// <summary>The track a player plays most recently: their current rank for the mode they're in.</summary>
+    /// <summary>The mode a player played most recently: their current rank for the mode they're in.</summary>
     public RankProgress? Latest(string accountId) =>
         For(accountId).Where(r => r.LastUpdatedUtc is not null).MaxBy(r => r.LastUpdatedUtc);
 
     public void Add(IEnumerable<RankProgress> ranks, bool save = true)
     {
         var changed = false;
+        var moves = new List<RankChange>();
         lock (_gate)
         {
             foreach (var r in ranks)
             {
-                if (!_ranks.TryGetValue(r.AccountId, out var tracks)) _ranks[r.AccountId] = tracks = new();
-                // Keep the newest snapshot; a never-played entry doesn't replace a real one.
-                if (tracks.TryGetValue(r.Track, out var existing)
-                    && (r.LastUpdatedUtc ?? DateTime.MinValue) < (existing.LastUpdatedUtc ?? DateTime.MinValue)) continue;
-                if (existing == r) continue;
-                tracks[r.Track] = r;
+                if (r.LastUpdatedUtc is { } at)
+                {
+                    var key = (r.AccountId, r.Track, r.TrackGuid);
+                    if (!_history.TryGetValue(key, out var points)) _history[key] = points = new();
+                    if (!points.ContainsKey(at))
+                    {
+                        points[at] = new RankPoint(at, r.Current, r.Progress);
+                        if (points.Count > MaxPointsPerSeason) points.RemoveAt(0);
+                        changed = true;
+                    }
+                }
+
+                if (!_ranks.TryGetValue(r.AccountId, out var seasons)) _ranks[r.AccountId] = seasons = new();
+                // Keep the newest snapshot per season; a never-played entry doesn't replace a real one.
+                if (seasons.TryGetValue((r.Track, r.TrackGuid), out var existing))
+                {
+                    if ((r.LastUpdatedUtc ?? DateTime.MinValue) <= (existing.LastUpdatedUtc ?? DateTime.MinValue)) continue;
+                    if (existing.LastUpdatedUtc is not null && existing.Current != r.Current) moves.Add(new RankChange(existing, r));
+                }
+                seasons[(r.Track, r.TrackGuid)] = r;
                 changed = true;
             }
             if (changed && save) Save();
         }
         if (changed) Changed?.Invoke();
+        foreach (var move in moves) RankChanged?.Invoke(move);
     }
 
     public void Flush()
@@ -182,13 +243,30 @@ public sealed class RankBook
         lock (_gate) Save();
     }
 
+    private sealed record HistoryEntry(string AccountId, string Track, string Guid, List<RankPoint> Points);
+    private sealed record RankFile(List<RankProgress> Entries, List<HistoryEntry> History);
+
     private void Load()
     {
         try
         {
             if (!File.Exists(_path)) return;
-            var all = JsonSerializer.Deserialize<List<RankProgress>>(File.ReadAllText(_path)) ?? [];
-            Add(all, save: false);
+            var json = File.ReadAllText(_path);
+            // Before 0.8 the file was a plain list of entries without history.
+            if (json.TrimStart().StartsWith('['))
+            {
+                Add(JsonSerializer.Deserialize<List<RankProgress>>(json) ?? [], save: false);
+                return;
+            }
+            var file = JsonSerializer.Deserialize<RankFile>(json);
+            if (file is null) return;
+            foreach (var h in file.History)
+            {
+                var points = new SortedList<DateTime, RankPoint>();
+                foreach (var p in h.Points) points[p.At] = p;
+                _history[(h.AccountId, h.Track, h.Guid)] = points;
+            }
+            Add(file.Entries, save: false);
         }
         catch (Exception ex) when (ex is IOException or JsonException)
         {
@@ -198,8 +276,11 @@ public sealed class RankBook
     private void Save()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
+        var file = new RankFile(
+            [.. _ranks.Values.SelectMany(s => s.Values)],
+            [.. _history.Select(h => new HistoryEntry(h.Key.Account, h.Key.Track, h.Key.Guid, [.. h.Value.Values]))]);
         var tmp = _path + ".tmp";
-        File.WriteAllText(tmp, JsonSerializer.Serialize(_ranks.Values.SelectMany(t => t.Values).ToList()));
+        File.WriteAllText(tmp, JsonSerializer.Serialize(file));
         File.Move(tmp, _path, overwrite: true);
     }
 }
@@ -207,7 +288,7 @@ public sealed class RankBook
 /// <summary>Parses the HabaneroProgress entries of one log line (a line can hold several).</summary>
 public static partial class RankParser
 {
-    [GeneratedRegex(@"\{HabaneroProgress: \{LastUpdatedTime: '(?<at>[^']*)' / GameId: '[^']*', AccountId: '(?<id>[0-9a-f]{32})' / HabaneroType: '(?<track>[^']+)'.*? / Current rank: (?<cur>\d+) / Highest rank: (?<high>\d+) / CurrentPlayerPosition: (?<pos>-?\d+) / ProgressTowardsNextHabanero: (?<prog>[0-9.]+)\}")]
+    [GeneratedRegex(@"\{HabaneroProgress: \{LastUpdatedTime: '(?<at>[^']*)' / GameId: '[^']*', AccountId: '(?<id>[0-9a-f]{32})' / HabaneroType: '(?<track>[^']+)' / TrackGUID: '(?<guid>[^']*)' / Current rank: (?<cur>\d+) / Highest rank: (?<high>\d+) / CurrentPlayerPosition: (?<pos>-?\d+) / ProgressTowardsNextHabanero: (?<prog>[0-9.]+)\}")]
     private static partial Regex Entry();
 
     public static IReadOnlyList<RankProgress> Parse(string line)
@@ -226,7 +307,8 @@ public static partial class RankParser
                 int.Parse(m.Groups["high"].Value, CultureInfo.InvariantCulture),
                 double.Parse(m.Groups["prog"].Value, CultureInfo.InvariantCulture),
                 pos is > 0 and < int.MaxValue ? pos : null,
-                at));
+                at,
+                m.Groups["guid"].Value));
         }
         return list;
     }

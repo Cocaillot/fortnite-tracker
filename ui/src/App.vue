@@ -11,6 +11,7 @@ import SettingsView from './components/SettingsView.vue'
 import LeaderboardView from './components/LeaderboardView.vue'
 import ProfilePanel from './components/ProfilePanel.vue'
 import AppearanceView from './components/AppearanceView.vue'
+import ToastHost from './components/ToastHost.vue'
 
 const {
   snapshot,
@@ -29,6 +30,7 @@ const {
   saveApiKey,
   setRichPresence,
   setNotify,
+  setNotifyRanks,
   setOverlay,
   applyUpdate,
 } = useTracker()
@@ -153,11 +155,13 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
           @save-key="saveApiKey"
           @rich-presence="setRichPresence"
           @notify="setNotify"
+          @notify-ranks="setNotifyRanks"
           @overlay="setOverlay"
         />
         </Transition>
       </main>
     </div>
+    <ToastHost />
   </div>
 </template>
 

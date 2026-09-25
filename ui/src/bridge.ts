@@ -15,6 +15,8 @@ export interface RankProgress {
   progress: number
   position: number | null
   lastUpdatedUtc: string | null
+  /** Each season of a mode is a separate track. */
+  trackGuid: string
   rankName: string
   highestName: string
   /** Bronze, Silver, … Unreal; "Beyond" for 2026 values above Unreal; "Unranked". */
@@ -34,6 +36,16 @@ export interface PlayerProfile {
   lifetime: PlayerStats
   ranks: RankProgress[]
   encounters: { eliminatedYou: number; lastEliminatedYouUtc: string | null }
+  /** Every season played, newest first. */
+  seasons: RankProgress[]
+  /** Rank points of each mode's current season, keyed by mode. */
+  rankHistory: Record<string, RankPoint[]>
+}
+
+export interface RankPoint {
+  at: string
+  current: number
+  progress: number
 }
 
 export interface LeaderboardEntry {
@@ -111,6 +123,7 @@ export interface Settings {
   hasApiKey: boolean
   richPresence: { available: boolean; enabled: boolean }
   notifyOnElimination: boolean
+  notifyRankChanges: boolean
   overlay: { enabled: boolean; corner: OverlayCorner }
   version: string
   updateVersion: string | null
@@ -128,6 +141,7 @@ export interface HostMessages {
   windowState: { maximized: boolean; fullscreen: boolean }
   /** The saved theme (format owned by composables/useTheme.ts), or null for the default look. */
   theme: unknown
+  toast: { title: string; text: string; good: boolean }
 }
 
 export type UiMessage =
@@ -136,6 +150,7 @@ export type UiMessage =
   | { type: 'setApiKey'; key: string }
   | { type: 'setRichPresence'; enabled: boolean }
   | { type: 'setNotify'; enabled: boolean }
+  | { type: 'setNotifyRanks'; enabled: boolean }
   | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
   | { type: 'window'; action: 'drag' | 'minimize' | 'maximize' | 'fullscreen' | 'close' }

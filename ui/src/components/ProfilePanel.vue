@@ -3,6 +3,8 @@ import { computed, ref, watch } from 'vue'
 import { relationLabel, type ModeStats, type PlayerProfile } from '../bridge'
 import RankBadge from './RankBadge.vue'
 import PlayerAvatar from './PlayerAvatar.vue'
+import RankChart from './RankChart.vue'
+import { RANK_NAMES } from '../ranks'
 
 const props = defineProps<{ profile: PlayerProfile | null; loadingName: string | null; canGoBack: boolean }>()
 const emit = defineEmits<{ close: []; follow: [accountId: string | null, name: string, enabled: boolean] }>()
@@ -42,6 +44,21 @@ const playedRanks = computed(() =>
     ),
 )
 const neverPlayed = computed(() => (props.profile?.ranks ?? []).filter((r) => !r.lastUpdatedUtc))
+
+// Best rank of each mode across every season, e.g. Unreal in a season two years ago.
+function bestEver(track: string) {
+  const seasons = (props.profile?.seasons ?? []).filter((s) => s.track === track)
+  const best = seasons.reduce<(typeof seasons)[number] | null>((b, s) => (!b || s.highest > b.highest ? s : b), null)
+  return best ? { name: RANK_NAMES[best.highest] ?? `Rank ${best.highest}`, when: best.lastUpdatedUtc!, seasons: seasons.length } : null
+}
+
+// Modes with enough rank updates this season to draw a graph.
+const chartModes = computed(() =>
+  playedRanks.value.filter((r) => r.isCurrentSeason && (props.profile?.rankHistory[r.track]?.length ?? 0) >= 2),
+)
+const chartTrack = ref<string | null>(null)
+const activeChart = computed(() => chartModes.value.find((r) => r.track === chartTrack.value) ?? chartModes.value[0] ?? null)
+const chartPoints = computed(() => (activeChart.value ? (props.profile?.rankHistory[activeChart.value.track] ?? []) : []))
 
 const statusText: Record<string, string> = {
   Private: 'This player keeps their stats private. They can make them public in Fortnite settings.',
@@ -91,7 +108,7 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
       <div class="skeleton" style="height: 360px" />
     </div>
 
-    <div v-else class="columns">
+    <template v-else>
       <section class="card">
         <h2 class="card-title">Ranked modes</h2>
         <div v-if="playedRanks.length" class="table-wrap flat">
@@ -100,7 +117,8 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
               <tr>
                 <th>Mode</th>
                 <th>This season</th>
-                <th>Best</th>
+                <th title="Best rank this season">Best</th>
+                <th title="Best rank across every season">Best ever</th>
                 <th>Last played</th>
               </tr>
             </thead>
@@ -115,6 +133,12 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
                   <span v-else class="faint">Not played</span>
                 </td>
                 <td class="muted">{{ r.highestName }}</td>
+                <td>
+                  <template v-if="bestEver(r.track)">
+                    <span class="best-ever">{{ bestEver(r.track)!.name }}</span>
+                    <span class="faint small">{{ monthYear(bestEver(r.track)!.when) }}</span>
+                  </template>
+                </td>
                 <td class="muted">{{ monthYear(r.lastUpdatedUtc!) }}</td>
               </tr>
             </tbody>
@@ -128,6 +152,19 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
           }}
         </p>
         <p v-if="neverPlayed.length" class="never">Never played: {{ neverPlayed.map((r) => r.trackName).join(', ') }}</p>
+      </section>
+
+      <div class="columns" :class="{ single: !activeChart }">
+      <section v-if="activeChart" class="card">
+          <div class="chart-head">
+            <h2 class="card-title">Rank history this season</h2>
+            <select v-if="chartModes.length > 1" :value="activeChart.track" aria-label="Mode" @change="chartTrack = ($event.target as HTMLSelectElement).value">
+              <option v-for="r in chartModes" :key="r.track" :value="r.track">{{ r.trackName }}</option>
+            </select>
+            <span v-else class="muted">{{ activeChart.trackName }}</span>
+          </div>
+          <RankChart :points="chartPoints" />
+          <p class="note">{{ chartPoints.length }} rank updates this season, recorded after matches. Hover a point for its time.</p>
       </section>
 
       <section class="card">
@@ -169,7 +206,8 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
           <p v-if="selected && !placementsTracked" class="note">Top 10 / Top 25 aren't tracked for Ranked and limited-time modes.</p>
         </template>
       </section>
-    </div>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -260,6 +298,9 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
   gap: var(--s5);
   align-items: start;
 }
+.columns.single {
+  grid-template-columns: minmax(0, 1fr);
+}
 @media (max-width: 1180px) {
   .columns {
     grid-template-columns: minmax(0, 1fr);
@@ -291,6 +332,31 @@ tr.past .mode-name {
   border-radius: 3px;
   padding: 0 5px;
   margin-left: 4px;
+}
+.best-ever {
+  display: block;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 16px;
+  white-space: nowrap;
+}
+.small {
+  display: block;
+  font-size: 12px;
+}
+.chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s4);
+}
+.chart-head .card-title {
+  margin: 0;
+}
+.chart-head select {
+  padding: 4px 8px;
+  font-size: 13px;
 }
 .never,
 .note {

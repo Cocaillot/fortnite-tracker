@@ -8,7 +8,7 @@ namespace FortniteTracker.Desktop;
 
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
-/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme.
+/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme, toast.
 /// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
 /// profile, follow, leaderboard, setTheme.
 /// </summary>
@@ -68,6 +68,9 @@ public sealed class UiBridge
 
     /// <summary>Set by the window: whether it is maximised and in full screen, for the title bar buttons.</summary>
     public Func<(bool Maximized, bool Fullscreen)>? WindowStateProvider { get; set; }
+
+    /// <summary>An in-app pop-up (e.g. a rank change); "good" colours it as good news.</summary>
+    public void Toast(string title, string text, bool good) => Post(() => Send("toast", new { title, text, good }));
 
     public void SendWindowState()
     {
@@ -133,6 +136,9 @@ public sealed class UiBridge
             case "setNotify" when msg.Enabled is { } notify:
                 _settings.SetNotifyOnElimination(notify);
                 break;
+            case "setNotifyRanks" when msg.Enabled is { } notifyRanks:
+                _settings.SetNotifyRankChanges(notifyRanks);
+                break;
             case "setOverlay":
                 _settings.SetOverlay(
                     msg.Enabled ?? _settings.OverlayEnabled,
@@ -152,6 +158,7 @@ public sealed class UiBridge
         hasApiKey = _settings.HasApiKey,
         richPresence = new { available = _presence.Available, enabled = _settings.RichPresenceEnabled },
         notifyOnElimination = _settings.NotifyOnElimination,
+        notifyRankChanges = _settings.NotifyRankChanges,
         overlay = new { enabled = _settings.OverlayEnabled, corner = _settings.OverlayCorner.ToString() },
         version = _updates.CurrentVersion,
         updateVersion = _updates.ReadyVersion,

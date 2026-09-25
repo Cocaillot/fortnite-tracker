@@ -32,6 +32,7 @@ public sealed class SettingsStore
     public bool HasApiKey => !string.IsNullOrWhiteSpace(_settings.FortniteApiKey);
     public bool RichPresenceEnabled => _settings.RichPresence;
     public bool NotifyOnElimination => _settings.NotifyOnElimination;
+    public bool NotifyRankChanges => _settings.NotifyRankChanges;
     public bool OverlayEnabled => _settings.Overlay;
     public OverlayCorner OverlayCorner => _settings.OverlayCorner;
     public IReadOnlyList<FollowedPlayer> Followed => _settings.Followed ?? [];
@@ -58,6 +59,8 @@ public sealed class SettingsStore
     public void SetRichPresence(bool enabled) => Update(s => s with { RichPresence = enabled }, apiKeyChanged: false);
 
     public void SetNotifyOnElimination(bool enabled) => Update(s => s with { NotifyOnElimination = enabled }, apiKeyChanged: false);
+
+    public void SetNotifyRankChanges(bool enabled) => Update(s => s with { NotifyRankChanges = enabled }, apiKeyChanged: false);
 
     public void SetOverlay(bool enabled, OverlayCorner corner) =>
         Update(s => s with { Overlay = enabled, OverlayCorner = corner }, apiKeyChanged: false);
@@ -92,5 +95,6 @@ public sealed class SettingsStore
         bool NotifyOnElimination = true,
         bool Overlay = false,
         OverlayCorner OverlayCorner = OverlayCorner.TopRight,
-        List<FollowedPlayer>? Followed = null);
+        List<FollowedPlayer>? Followed = null,
+        bool NotifyRankChanges = true);
 }

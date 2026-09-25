@@ -110,6 +110,12 @@ public partial class App : Application
         _window.OverlayHotkey += _overlay.Toggle;
         _window.HiddenToTray += _tray.ShowStillRunningHint;
         _ = new EliminationNotifier(tracker, settings, (title, text) => Dispatcher.InvokeAsync(() => _tray.Notify(title, text)));
+        var bridge = services.GetRequiredService<UiBridge>();
+        _ = new RankAlerts(ranks, settings, tracker, stats, (title, text, good) =>
+        {
+            Dispatcher.InvokeAsync(() => _tray.Notify(title, text));
+            bridge.Toast(title, text, good);
+        });
         updates.UpdateReady += () => Dispatcher.InvokeAsync(() => _tray.ShowUpdateReady(updates.ReadyVersion!));
 
         // A second launch signals this instance to come to the front.

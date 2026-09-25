@@ -14,7 +14,11 @@ public sealed record PlayerProfile(
     PlayerStats Season,
     PlayerStats Lifetime,
     IReadOnlyList<RankProgress> Ranks,
-    Encounters Encounters);
+    Encounters Encounters,
+    // Every season played (all modes), newest first, for "best ever" and past seasons.
+    IReadOnlyList<RankProgress> Seasons,
+    // Rank points of the current season of each mode, keyed by mode.
+    IReadOnlyDictionary<string, IReadOnlyList<RankPoint>> RankHistory);
 
 public sealed record LeaderboardEntry(
     string? AccountId,
@@ -70,7 +74,12 @@ public sealed class PlayerDirectory(
             season,
             lifetime,
             id is null ? [] : ranks.For(id).OrderByDescending(r => r.LastUpdatedUtc).ToList(),
-            new Encounters(eliminations.Count, eliminations.FirstOrDefault()?.StartedUtc));
+            new Encounters(eliminations.Count, eliminations.FirstOrDefault()?.StartedUtc),
+            id is null ? [] : ranks.Seasons(id),
+            id is null
+                ? new Dictionary<string, IReadOnlyList<RankPoint>>()
+                : ranks.For(id).Where(r => r.LastUpdatedUtc is not null)
+                    .ToDictionary(r => r.Track, r => ranks.History(id, r.Track, r.TrackGuid)));
     }
 
     /// <summary>

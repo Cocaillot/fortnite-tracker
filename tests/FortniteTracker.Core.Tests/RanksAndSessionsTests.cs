@@ -112,3 +112,59 @@ public class TrackNameTests
         Assert.Equal(confirmed, RankNames.IsKnownTrack(track));
     }
 }
+
+public sealed class RankHistoryTests : IDisposable
+{
+    private readonly string _dir = Directory.CreateTempSubdirectory("ft-tests-").FullName;
+
+    public void Dispose() => Directory.Delete(_dir, recursive: true);
+
+    private const string Me = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1";
+    private static readonly DateTime T0 = DateTime.UtcNow.AddHours(-3);
+
+    private static RankProgress Reload(string guid, int current, double progress, DateTime at, int? highest = null) =>
+        new(Me, "ranked-blastberry-combined", current, highest ?? current, progress, null, at, guid);
+
+    [Fact]
+    public void Seasons_of_the_same_mode_are_kept_apart()
+    {
+        var book = new RankBook(Path.Combine(_dir, "ranks.json"));
+        book.Add([Reload("OLD", 4, 0.73, T0.AddDays(-80)), Reload("NOW", 1, 0.2, T0)]);
+
+        Assert.Equal("NOW", Assert.Single(book.For(Me)).TrackGuid);          // current season per mode
+        Assert.Equal(["NOW", "OLD"], book.Seasons(Me).Select(s => s.TrackGuid)); // every season
+    }
+
+    [Fact]
+    public void Rank_updates_build_a_history_and_report_changes()
+    {
+        var path = Path.Combine(_dir, "ranks.json");
+        var book = new RankBook(path);
+        var changes = new List<RankChange>();
+        book.RankChanged += changes.Add;
+
+        book.Add([Reload("NOW", 0, 0.14, T0)]);
+        book.Add([Reload("NOW", 0, 0.61, T0.AddMinutes(30))]);
+        book.Add([Reload("NOW", 1, 0.02, T0.AddMinutes(60))]);
+        book.Add([Reload("NOW", 1, 0.02, T0.AddMinutes(60))]); // the same update seen again
+
+        Assert.Equal([0.14, 0.61, 0.02], book.History(Me, "ranked-blastberry-combined", "NOW").Select(p => p.Progress));
+        var up = Assert.Single(changes);
+        Assert.True(up.IsUp);
+        Assert.Equal((0, 1), (up.Before.Current, up.After.Current));
+
+        // History survives a restart.
+        Assert.Equal(3, new RankBook(path).History(Me, "ranked-blastberry-combined", "NOW").Count);
+    }
+
+    [Fact]
+    public void Ranks_file_from_before_history_still_loads()
+    {
+        var path = Path.Combine(_dir, "ranks.json");
+        File.WriteAllText(path, $$"""[{"AccountId":"{{Me}}","Track":"ranked-br-combined","Current":6,"Highest":8,"Progress":0.5,"Position":null,"LastUpdatedUtc":"2026-09-01T10:00:00Z"}]""");
+
+        var r = Assert.Single(new RankBook(path).For(Me));
+
+        Assert.Equal(("ranked-br-combined", 6, ""), (r.Track, r.Current, r.TrackGuid));
+    }
+}

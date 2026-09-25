@@ -7,6 +7,7 @@ const emit = defineEmits<{
   saveKey: [key: string]
   richPresence: [enabled: boolean]
   notify: [enabled: boolean]
+  notifyRanks: [enabled: boolean]
   overlay: [enabled?: boolean, corner?: OverlayCorner]
 }>()
 
@@ -67,6 +68,15 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
         A Windows notification with their stats. If none appear during games, turn off Do Not Disturb for games in
         Windows Settings → System → Notifications.
       </p>
+    </div>
+
+    <div class="panel option">
+      <label class="switch">
+        <input type="checkbox" :checked="settings.notifyRankChanges" @change="emit('notifyRanks', checked($event))" />
+        <span class="track" aria-hidden="true" />
+        <span class="text">Rank change alerts</span>
+      </label>
+      <p class="hint">When you rank up or down, and when a friend or party member ranks up.</p>
     </div>
 
     <div class="panel option">
