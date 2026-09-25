@@ -170,8 +170,9 @@ public partial class App : Application
         ThreadPool.RegisterWaitForSingleObject(_showRequested,
             (_, _) => Dispatcher.InvokeAsync(() => _window.ShowAndActivate()), null, Timeout.Infinite, executeOnlyOnce: false);
 
-        if (background) WaitForFortnite();
+        if (background) _window.EnsureHandle(); // shortcuts work from the tray; the window opens with Fortnite
         else _window.Show();
+        WatchForFortnite(settings, openIfAlreadyRunning: background);
         await _host.StartAsync();
 
         // Once old logs are imported, look up eliminators that have no stats yet (for the dashboard).
@@ -184,19 +185,23 @@ public partial class App : Application
 
     private const string FortniteProcess = "FortniteClient-Win64-Shipping";
 
-    // The window (and its browser engine) is only created once Fortnite runs, so the app stays
-    // light while it waits. Shortcuts and the tray work in the meantime.
-    private void WaitForFortnite()
+    // "Open with Fortnite": whenever the game starts, show the window if it's hidden in the tray.
+    // The game process appears before its window, so the app comes up first and Fortnite then takes
+    // the front as usual. (WPF can't show a maximised window without activating it.)
+    // After a background start the window (and its browser engine) doesn't exist until then, so the
+    // app stays light while it waits.
+    private void WatchForFortnite(SettingsStore settings, bool openIfAlreadyRunning)
     {
-        _window!.EnsureHandle();
+        bool? wasRunning = openIfAlreadyRunning ? false : null; // null: first check only records the state
         var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
         timer.Tick += (_, _) =>
         {
-            var running = System.Diagnostics.Process.GetProcessesByName(FortniteProcess);
-            foreach (var p in running) p.Dispose();
-            if (running.Length == 0 && !_window.IsVisible) return;
-            timer.Stop();
-            if (!_window.IsVisible) _window.ShowWithoutFocus();
+            var processes = System.Diagnostics.Process.GetProcessesByName(FortniteProcess);
+            foreach (var p in processes) p.Dispose();
+            var running = processes.Length > 0;
+            var started = running && wasRunning == false;
+            wasRunning = running;
+            if (started && settings.LaunchWithFortnite && !_window!.IsVisible) _window.ShowAndActivate();
         };
         timer.Start();
     }

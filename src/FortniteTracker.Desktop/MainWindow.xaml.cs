@@ -106,14 +106,6 @@ public partial class MainWindow : Window
     /// <summary>Creates the native window without showing it, so global shortcuts work from the tray.</summary>
     public void EnsureHandle() => new WindowInteropHelper(this).EnsureHandle();
 
-    /// <summary>Shows the window without taking focus (e.g. while Fortnite is starting).</summary>
-    public void ShowWithoutFocus()
-    {
-        ShowActivated = false;
-        Show();
-        ShowActivated = true;
-    }
-
     public void ShowAndActivate()
     {
         Show();
