@@ -8,7 +8,7 @@ namespace FortniteTracker.Desktop;
 
 /// <summary>
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
-/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard.
+/// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState.
 /// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
 /// profile, follow, leaderboard.
 /// </summary>
@@ -61,8 +61,17 @@ public sealed class UiBridge
         _updates.UpdateReady += () => Post(SendSettings);
     }
 
-    /// <summary>Title bar buttons of the custom window chrome: "drag", "minimize", "close".</summary>
+    /// <summary>Title bar actions of the custom window chrome: drag, minimize, maximize, fullscreen, close.</summary>
     public event Action<string>? WindowCommand;
+
+    /// <summary>Set by the window: whether it is maximised and in full screen, for the title bar buttons.</summary>
+    public Func<(bool Maximized, bool Fullscreen)>? WindowStateProvider { get; set; }
+
+    public void SendWindowState()
+    {
+        if (WindowStateProvider?.Invoke() is { } state)
+            Send("windowState", new { maximized = state.Maximized, fullscreen = state.Fullscreen });
+    }
 
     public void Attach(CoreWebView2 web, Dispatcher dispatcher)
     {
@@ -91,6 +100,7 @@ public sealed class UiBridge
                 SendSessions();
                 if (_tracker.Last is { } last) Send("snapshot", last);
                 SendSquadRanks();
+                SendWindowState();
                 break;
             case "profile" when msg.AccountId is not null || !string.IsNullOrWhiteSpace(msg.Name):
                 Send("profile", await _directory.GetProfileAsync(msg.AccountId, msg.Name, CancellationToken.None));
@@ -124,7 +134,7 @@ public sealed class UiBridge
             case "applyUpdate":
                 _updates.ApplyAndRestart();
                 break;
-            case "window" when msg.Action is "drag" or "minimize" or "close":
+            case "window" when msg.Action is "drag" or "minimize" or "maximize" or "fullscreen" or "close":
                 WindowCommand?.Invoke(msg.Action);
                 break;
         }

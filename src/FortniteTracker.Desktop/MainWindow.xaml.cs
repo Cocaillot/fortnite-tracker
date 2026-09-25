@@ -4,30 +4,45 @@ using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Windows.Media;
 using Microsoft.Web.WebView2.Core;
 
 namespace FortniteTracker.Desktop;
 
 /// <summary>
-/// Hosts the Vue UI in WebView2. Closing the window hides it to the tray; the app keeps tracking.
+/// Hosts the Vue UI in WebView2 as a full desktop window with its own title bar (maximise, F11 full
+/// screen). Closing the window hides it to the tray; the app keeps tracking.
 /// </summary>
 public partial class MainWindow : Window
 {
     private const string DevServerUrl = "http://localhost:5173";
     private const string VirtualHost = "app.local";
 
+    // Space left around WebView2 when not maximised so the window edges can be grabbed for resizing.
+    private static readonly Thickness ResizeGrip = new(4);
+
     private readonly UiBridge _bridge;
+    private bool _fullscreen;
+    private WindowState _restoreState = WindowState.Maximized;
 
     public MainWindow(UiBridge bridge)
     {
         _bridge = bridge;
         InitializeComponent();
         _bridge.WindowCommand += OnWindowCommand;
+        _bridge.WindowStateProvider = () => (WindowState == WindowState.Maximized, _fullscreen);
+        StateChanged += (_, _) => OnStateChanged();
         Loaded += async (_, _) => await InitWebViewAsync();
     }
 
     /// <summary>Ctrl+Shift+O was pressed (works while Fortnite has focus).</summary>
     public event Action? OverlayHotkey;
+
+    /// <summary>Set before a real exit; otherwise closing only hides the window.</summary>
+    public bool AllowClose { get; set; }
+
+    /// <summary>Raised when the close button hid the window instead of exiting.</summary>
+    public event Action? HiddenToTray;
 
     private void OnWindowCommand(string command)
     {
@@ -41,21 +56,39 @@ public partial class MainWindow : Window
             case "minimize":
                 WindowState = WindowState.Minimized;
                 break;
+            case "maximize":
+                if (_fullscreen) SetFullscreen(false);
+                else WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+                break;
+            case "fullscreen":
+                SetFullscreen(!_fullscreen);
+                break;
             case "close":
                 Close(); // hides to the tray unless AllowClose is set
                 break;
         }
     }
 
-    /// <summary>Set before a real exit; otherwise closing only hides the window.</summary>
-    public bool AllowClose { get; set; }
+    private void SetFullscreen(bool on)
+    {
+        _fullscreen = on;
+        // Re-maximise so Windows asks for the new size (whole monitor vs. work area; see WM_GETMINMAXINFO).
+        WindowState = WindowState.Normal;
+        WindowState = WindowState.Maximized;
+        OnStateChanged();
+    }
 
-    /// <summary>Raised when the close button hid the window instead of exiting.</summary>
-    public event Action? HiddenToTray;
+    private void OnStateChanged()
+    {
+        if (WindowState != WindowState.Minimized) _restoreState = WindowState;
+        if (WindowState != WindowState.Maximized) _fullscreen = false;
+        WebView.Margin = WindowState == WindowState.Maximized ? new Thickness(0) : ResizeGrip;
+        _bridge.SendWindowState();
+    }
 
     public void ToggleVisibility()
     {
-        if (IsVisible && WindowState != WindowState.Minimized)
+        if (IsVisible && WindowState != WindowState.Minimized && IsActive)
         {
             Hide();
             return;
@@ -66,7 +99,7 @@ public partial class MainWindow : Window
     public void ShowAndActivate()
     {
         Show();
-        WindowState = WindowState.Normal;
+        if (WindowState == WindowState.Minimized) WindowState = _restoreState;
         Activate();
     }
 
@@ -93,7 +126,9 @@ public partial class MainWindow : Window
         var core = WebView.CoreWebView2;
         core.Settings.AreDefaultContextMenusEnabled = false;
         core.Settings.IsStatusBarEnabled = false;
+        core.Settings.IsZoomControlEnabled = false;
         _bridge.Attach(core, Dispatcher);
+        OnStateChanged();
 
         if (IsDevServerRunning())
         {
@@ -123,13 +158,40 @@ public partial class MainWindow : Window
 #endif
     }
 
-    // ---- Global hotkeys, even while Fortnite has focus: Ctrl+Shift+F window, Ctrl+Shift+O overlay ----
+    // ---- Win32: global hotkeys, title bar drag, rounded corners, maximised size ----
 
     private const int HotkeyId = 0x4654;
     private const int OverlayHotkeyId = 0x4655;
-    private const uint VkO = 0x4F;
+    private const int WmHotkey = 0x0312;
+    private const int WmGetMinMaxInfo = 0x0024;
     private const int WmNcLButtonDown = 0xA1, HtCaption = 2;
     private const int DwmwaWindowCornerPreference = 33, DwmwcpRound = 2;
+    private const int MonitorDefaultToNearest = 2;
+    private const uint ModControl = 0x0002, ModShift = 0x0004, ModNoRepeat = 0x4000;
+    private const uint VkF = 0x46, VkO = 0x4F;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Point32 { public int X, Y; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MinMaxInfo { public Point32 Reserved, MaxSize, MaxPosition, MinTrackSize, MaxTrackSize; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Rect32 { public int Left, Top, Right, Bottom; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private sealed class MonitorInfo
+    {
+        public int Size = Marshal.SizeOf<MonitorInfo>();
+        public Rect32 Monitor, Work;
+        public int Flags;
+    }
+
+    [DllImport("user32.dll")]
+    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+    [DllImport("user32.dll")]
+    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     [DllImport("user32.dll")]
     private static extern bool ReleaseCapture();
@@ -137,17 +199,14 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
 
+    [DllImport("user32.dll")]
+    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, int flags);
+
+    [DllImport("user32.dll")]
+    private static extern bool GetMonitorInfo(IntPtr monitor, MonitorInfo info);
+
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
-    private const int WmHotkey = 0x0312;
-    private const uint ModControl = 0x0002, ModShift = 0x0004, ModNoRepeat = 0x4000;
-    private const uint VkF = 0x46;
-
-    [DllImport("user32.dll")]
-    private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
-
-    [DllImport("user32.dll")]
-    private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -163,23 +222,49 @@ public partial class MainWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
-        UnregisterHotKey(new WindowInteropHelper(this).Handle, HotkeyId);
-        UnregisterHotKey(new WindowInteropHelper(this).Handle, OverlayHotkeyId);
+        var handle = new WindowInteropHelper(this).Handle;
+        UnregisterHotKey(handle, HotkeyId);
+        UnregisterHotKey(handle, OverlayHotkeyId);
         base.OnClosed(e);
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        if (msg == WmHotkey && wParam.ToInt32() == HotkeyId)
+        switch (msg)
         {
-            ToggleVisibility();
-            handled = true;
-        }
-        else if (msg == WmHotkey && wParam.ToInt32() == OverlayHotkeyId)
-        {
-            OverlayHotkey?.Invoke();
-            handled = true;
+            case WmHotkey when wParam.ToInt32() == HotkeyId:
+                ToggleVisibility();
+                handled = true;
+                break;
+            case WmHotkey when wParam.ToInt32() == OverlayHotkeyId:
+                OverlayHotkey?.Invoke();
+                handled = true;
+                break;
+            case WmGetMinMaxInfo:
+                FitMaximizedToMonitor(hwnd, lParam);
+                handled = true;
+                break;
         }
         return IntPtr.Zero;
+    }
+
+    // Without the standard frame, a maximised window would cover the taskbar and spill past the
+    // screen edges. Maximise to the monitor's work area, or the whole monitor in full screen.
+    private void FitMaximizedToMonitor(IntPtr hwnd, IntPtr lParam)
+    {
+        var mmi = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+        var info = new MonitorInfo();
+        if (GetMonitorInfo(MonitorFromWindow(hwnd, MonitorDefaultToNearest), info))
+        {
+            var area = _fullscreen ? info.Monitor : info.Work;
+            mmi.MaxPosition.X = area.Left - info.Monitor.Left;
+            mmi.MaxPosition.Y = area.Top - info.Monitor.Top;
+            mmi.MaxSize.X = area.Right - area.Left;
+            mmi.MaxSize.Y = area.Bottom - area.Top;
+        }
+        var dpi = VisualTreeHelper.GetDpi(this);
+        mmi.MinTrackSize.X = (int)(MinWidth * dpi.DpiScaleX);
+        mmi.MinTrackSize.Y = (int)(MinHeight * dpi.DpiScaleY);
+        Marshal.StructureToPtr(mmi, lParam, true);
     }
 }

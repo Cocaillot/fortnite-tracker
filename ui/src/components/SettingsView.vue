@@ -21,6 +21,13 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
 </script>
 
 <template>
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1>Settings</h1>
+        <p>Everything is stored on this PC only.</p>
+      </div>
+    </div>
   <section class="settings">
     <ApiKeyForm :has-key="settings.hasApiKey" @save="emit('saveKey', $event)" />
 
@@ -81,15 +88,44 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
       </p>
     </div>
 
-    <p class="about">Fortnite Tracker {{ settings.version }} · Not affiliated with Epic Games · Font: Barlow (SIL OFL)</p>
+    <div class="panel option shortcuts">
+      <span class="text">Shortcuts</span>
+      <dl>
+        <dt>Ctrl+Shift+F</dt><dd>Show or hide this window, even in game</dd>
+        <dt>Ctrl+Shift+O</dt><dd>Turn the in-game overlay on or off</dd>
+        <dt>F11</dt><dd>Full screen</dd>
+      </dl>
+    </div>
   </section>
+    <p class="about">Fortnite Tracker {{ settings.version }} · Not affiliated with Epic Games · Font: Barlow (SIL OFL)</p>
+  </div>
 </template>
 
 <style scoped>
 .settings {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+  gap: var(--s4);
+  align-items: start;
+}
+.settings > * {
+  padding: var(--s5);
+}
+.shortcuts dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--s2) var(--s4);
+  margin: var(--s3) 0 0;
+  font-size: 14px;
+}
+.shortcuts dt {
+  font-family: var(--display);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.shortcuts dd {
+  margin: 0;
+  color: var(--muted);
 }
 .option .hint {
   margin: 6px 0 0 52px;

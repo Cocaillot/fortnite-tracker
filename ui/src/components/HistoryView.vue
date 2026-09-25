@@ -7,7 +7,6 @@ const props = defineProps<{ matches: MatchRecord[]; sessions: SessionRecord[] }>
 const emit = defineEmits<{ open: [accountId: string | null, name: string | null] }>()
 
 const view = ref<'matches' | 'sessions'>('matches')
-
 type Range = 'today' | 'all'
 const range = ref<Range>('today')
 
@@ -59,25 +58,26 @@ const threatGroup: Record<Threat, string> = {
 // eliminates you most, counted only among eliminators whose stats are known.
 const nemesis = computed(() => {
   const s = summary.value
-  if (s.nemesis && s.nemesis.count >= 2) return { title: s.nemesis.value, detail: `eliminated you ${s.nemesis.count}×` }
-  if (s.topThreat && s.topThreat.count >= 2) {
-    return {
-      title: threatGroup[s.topThreat.value],
-      detail: `${s.topThreat.count} of ${s.withThreat} eliminators with known stats`,
-      threat: s.topThreat.value,
-    }
-  }
-  if (s.hidden >= 2) return { title: 'Streamer Mode', detail: `players hidden by Streamer Mode: ${s.hidden} of ${s.eliminated} eliminations` }
+  if (s.nemesis && s.nemesis.count >= 2) return { title: s.nemesis.value, detail: `eliminated you ${s.nemesis.count}×`, name: s.nemesis.value }
+  if (s.topThreat && s.topThreat.count >= 2)
+    return { title: threatGroup[s.topThreat.value], detail: `${s.topThreat.count} of ${s.withThreat} eliminators with known stats`, threat: s.topThreat.value }
+  if (s.hidden >= 2) return { title: 'Streamer Mode', detail: `hidden players: ${s.hidden} of ${s.eliminated} eliminations` }
   return null
 })
 
-const days = computed(() => {
-  const groups = new Map<string, MatchRecord[]>()
+// Matches grouped by day, newest first, flattened for the table (a header row per day).
+const rows = computed(() => {
+  const out: ({ kind: 'day'; label: string; count: number } | { kind: 'match'; m: MatchRecord })[] = []
+  let current = ''
   for (const m of inRange.value) {
     const key = dayKey(m.startedUtc)
-    groups.set(key, [...(groups.get(key) ?? []), m])
+    if (key !== current) {
+      current = key
+      out.push({ kind: 'day', label: dayLabel(key), count: inRange.value.filter((x) => dayKey(x.startedUtc) === key).length })
+    }
+    out.push({ kind: 'match', m })
   }
-  return [...groups.entries()].map(([key, matches]) => ({ label: dayLabel(key), matches }))
+  return out
 })
 
 function dayLabel(key: string) {
@@ -85,280 +85,247 @@ function dayLabel(key: string) {
   const diff = Math.round((new Date(new Date().toDateString()).getTime() - d.getTime()) / 86_400_000)
   if (diff === 0) return 'Today'
   if (diff === 1) return 'Yesterday'
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 
 function duration(m: MatchRecord) {
   const min = minutes(m)
-  if (min === null) return m.finished ? '' : 'Left early'
+  if (min === null) return '–'
   return min < 1 ? '<1 min' : `${Math.round(min)} min`
 }
 
 // Only your own party is known; random teammates filled by matchmaking aren't in the log.
-const party = (size: number) => (size === 1 ? 'No party' : `Party of ${size}`)
-const opponent = (name: string) => (isAnonymous(name) ? 'a Streamer Mode player' : name)
+const party = (size: number) => (size === 1 ? 'Solo / no party' : `Party of ${size}`)
 const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}` : `${min} min`)
 </script>
 
 <template>
-  <section class="history">
-    <div class="range views" role="tablist" aria-label="View">
-      <button type="button" role="tab" :aria-selected="view === 'matches'" :class="{ on: view === 'matches' }" @click="view = 'matches'">Matches</button>
-      <button type="button" role="tab" :aria-selected="view === 'sessions'" :class="{ on: view === 'sessions' }" @click="view = 'sessions'">Sessions</button>
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1>History</h1>
+        <p>Every match read from Fortnite's log, including recent sessions played before the app was installed.</p>
+      </div>
+      <div class="controls">
+        <div class="seg" role="tablist" aria-label="View">
+          <button type="button" role="tab" :aria-selected="view === 'matches'" :class="{ on: view === 'matches' }" @click="view = 'matches'">Matches</button>
+          <button type="button" role="tab" :aria-selected="view === 'sessions'" :class="{ on: view === 'sessions' }" @click="view = 'sessions'">Sessions</button>
+        </div>
+        <div v-if="view === 'matches'" class="seg" role="tablist" aria-label="Period">
+          <button type="button" role="tab" :aria-selected="range === 'today'" :class="{ on: range === 'today' }" @click="range = 'today'">Today</button>
+          <button type="button" role="tab" :aria-selected="range === 'all'" :class="{ on: range === 'all' }" @click="range = 'all'">All time</button>
+        </div>
+      </div>
     </div>
 
     <SessionsView v-if="view === 'sessions'" :matches="matches" :sessions="sessions" @open="(id, n) => emit('open', id, n)" />
 
     <template v-else>
-    <div class="range" role="tablist" aria-label="Period">
-      <button type="button" role="tab" :aria-selected="range === 'today'" :class="{ on: range === 'today' }" @click="range = 'today'">
-        Today
-      </button>
-      <button type="button" role="tab" :aria-selected="range === 'all'" :class="{ on: range === 'all' }" @click="range = 'all'">
-        All time
-      </button>
-    </div>
-
-    <div class="tiles">
-      <div class="tile"><span class="label">Matches</span><span class="value">{{ summary.count }}</span></div>
-      <div class="tile"><span class="label">Time played</span><span class="value">{{ hours(summary.played) }}</span></div>
-      <div class="tile" :title="summary.tracked ? `From ${summary.tracked} matches with tracked results` : 'Kills are tracked from matches played with 0.3.0 or later'">
-        <span class="label">Kills</span><span class="value">{{ summary.kills ?? '–' }}</span>
-      </div>
-      <div class="tile"><span class="label">Wins</span><span class="value" :class="{ gold: summary.wins }">{{ summary.wins }}</span></div>
-    </div>
-
-    <div v-if="summary.topMode || nemesis" class="insights">
-      <div v-if="summary.topMode" class="insight">
-        <span class="label">Most played</span>
-        <span class="big">{{ summary.topMode.value }}</span>
-        <span class="small">{{ summary.topMode.count }} of {{ summary.count }} matches</span>
-      </div>
-      <div v-if="nemesis" class="insight nemesis">
-        <span class="label">Nemesis</span>
-        <span class="big" :class="nemesis.threat ? `t-${nemesis.threat}` : ''">{{ nemesis.title }}</span>
-        <span class="small">
-          {{ nemesis.detail }}<template v-if="summary.avgEliminatorKd !== null"> · avg eliminator K/D {{ summary.avgEliminatorKd.toFixed(2) }}</template>
-        </span>
-      </div>
-    </div>
-
-    <p v-if="!inRange.length" class="empty">
-      {{ range === 'today' ? 'No matches yet today.' : 'Matches appear here as you play. Older sessions are imported from Fortnite\'s recent logs.' }}
-    </p>
-
-    <div v-for="day in days" :key="day.label" class="day">
-      <h2 class="section-title">{{ day.label }}</h2>
-      <ul>
-        <li v-for="m in day.matches" :key="m.startedUtc" :class="{ won: m.won }">
-          <span class="time">{{ time(m.startedUtc) }}</span>
-          <span class="mode" :title="m.playlist ?? undefined">
-            {{ m.mode }}
-            <span v-if="m.won" class="win">Win</span>
+      <div class="tiles">
+        <div class="tile"><span class="label">Matches</span><span class="value">{{ summary.count }}</span></div>
+        <div class="tile"><span class="label">Time in matches</span><span class="value">{{ hours(summary.played) }}</span></div>
+        <div class="tile" :title="summary.tracked ? `From ${summary.tracked} matches with tracked results` : 'Kills are tracked for matches played with the app running'">
+          <span class="label">Kills</span><span class="value">{{ summary.kills ?? '–' }}</span>
+        </div>
+        <div class="tile"><span class="label">Wins</span><span class="value" :class="{ gold: summary.wins }">{{ summary.wins }}</span></div>
+        <div class="tile wide">
+          <span class="label">Most played</span>
+          <span class="big">{{ summary.topMode?.value ?? '–' }}</span>
+          <span v-if="summary.topMode" class="small">{{ summary.topMode.count }} of {{ summary.count }} matches</span>
+        </div>
+        <div class="tile wide nemesis">
+          <span class="label">Nemesis</span>
+          <button
+            v-if="nemesis?.name"
+            type="button"
+            class="big link"
+            :title="`Open ${nemesis.name}'s profile`"
+            @click="emit('open', null, nemesis.name)"
+          >
+            {{ nemesis.title }}
+          </button>
+          <span v-else class="big" :class="nemesis?.threat ? `t-${nemesis.threat}` : ''">{{ nemesis?.title ?? '–' }}</span>
+          <span class="small">
+            {{ nemesis?.detail ?? 'Not enough eliminations yet' }}<template v-if="summary.avgEliminatorKd !== null"> · average eliminator K/D {{ summary.avgEliminatorKd.toFixed(2) }}</template>
           </span>
-          <span class="detail">
-            {{ party(m.squadSize) }}
-            <template v-if="m.eliminatedBy">
-              · by
-              <span
-                v-if="!isAnonymous(m.eliminatedBy)"
-                class="player-link"
-                :class="m.eliminatorThreat ? `t-${m.eliminatorThreat}` : ''"
-                role="button"
-                tabindex="0"
-                @click="emit('open', null, m.eliminatedBy)"
-                @keydown.enter="emit('open', null, m.eliminatedBy)"
-                >{{ m.eliminatedBy }}</span
-              >
-              <span v-else>{{ opponent(m.eliminatedBy) }}</span>
-              <template v-if="m.eliminatorThreat"> ({{ threatLabel[m.eliminatorThreat] }})</template>
+        </div>
+      </div>
+
+      <div v-if="!inRange.length" class="card empty">
+        {{ range === 'today' ? 'No matches yet today.' : "Matches appear here as you play. Older sessions are imported from Fortnite's recent logs." }}
+      </div>
+
+      <div v-else class="table-wrap">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Mode</th>
+              <th>Party</th>
+              <th>Result</th>
+              <th class="num" title="Kills are tracked for matches played with the app running">Kills</th>
+              <th class="num">Duration</th>
+              <th>Eliminated by</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="(row, i) in rows" :key="i">
+              <tr v-if="row.kind === 'day'" class="day">
+                <td colspan="7">{{ row.label }} <span class="faint">· {{ row.count }} {{ row.count === 1 ? 'match' : 'matches' }}</span></td>
+              </tr>
+              <tr v-else :class="{ won: row.m.won }">
+                <td class="muted">{{ time(row.m.startedUtc) }}</td>
+                <td class="mode" :title="row.m.playlist ?? undefined">{{ row.m.mode }}</td>
+                <td class="muted">{{ party(row.m.squadSize) }}</td>
+                <td>
+                  <span v-if="row.m.won" class="win">Victory</span>
+                  <span v-else-if="!row.m.finished" class="faint">Left early</span>
+                  <span v-else class="muted">Eliminated</span>
+                </td>
+                <td class="num">{{ row.m.kills ?? '–' }}</td>
+                <td class="num muted">{{ duration(row.m) }}</td>
+                <td>
+                  <template v-if="row.m.eliminatedBy">
+                    <button
+                      v-if="!isAnonymous(row.m.eliminatedBy)"
+                      type="button"
+                      class="link"
+                      :class="row.m.eliminatorThreat ? `t-${row.m.eliminatorThreat}` : ''"
+                      @click="emit('open', null, row.m.eliminatedBy)"
+                    >
+                      {{ row.m.eliminatedBy }}
+                    </button>
+                    <span v-else class="muted">Streamer Mode player</span>
+                    <span v-if="row.m.eliminatorThreat" class="threat faint"> · {{ threatLabel[row.m.eliminatorThreat] }}</span>
+                  </template>
+                  <span v-else class="faint">–</span>
+                </td>
+              </tr>
             </template>
-          </span>
-          <span class="right">
-            <span v-if="m.kills !== null" class="kills">{{ m.kills }} {{ m.kills === 1 ? 'kill' : 'kills' }}</span>
-            <span class="duration" :class="{ left: !m.finished }">{{ duration(m) }}</span>
-          </span>
-        </li>
-      </ul>
-    </div>
+          </tbody>
+        </table>
+      </div>
     </template>
-  </section>
+  </div>
 </template>
 
 <style scoped>
-.history {
+.controls {
   display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.range.views {
-  align-self: stretch;
-  display: flex;
-}
-.range.views button {
-  flex: 1;
-}
-.range {
-  display: inline-flex;
-  align-self: flex-start;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 2px;
-}
-.range button {
-  border: none;
-  background: none;
-  border-radius: 6px;
-  padding: 4px 12px;
-  color: var(--muted);
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.range button.on {
-  background: var(--surface-2);
-  color: var(--text);
+  gap: var(--s3);
+  flex-wrap: wrap;
 }
 .tiles {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) repeat(2, minmax(0, 1.6fr));
+  gap: var(--s3);
 }
-.tile,
-.insight {
+@media (max-width: 1250px) {
+  .tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .tile.wide {
+    grid-column: span 2;
+  }
+}
+.tile {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 8px 10px;
+  border-radius: var(--radius);
+  padding: var(--s4);
   display: flex;
   flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 .label {
   font-family: var(--display);
   font-weight: 700;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
-  white-space: nowrap;
 }
 .value {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 24px;
-  line-height: 1.1;
+  font-size: 34px;
+  line-height: 1.05;
   font-variant-numeric: tabular-nums;
 }
 .value.gold {
   color: var(--rarity-legendary);
 }
-.insights {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-}
 .big {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 19px;
+  font-size: 24px;
   line-height: 1.15;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
 }
 .nemesis .big {
   color: var(--danger);
 }
 .small {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
 }
-ul {
-  list-style: none;
-  margin: 0;
+.link {
+  background: none;
+  border: none;
   padding: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }
-li {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) auto;
-  grid-template-areas: 'time mode right' 'time detail right';
-  column-gap: 10px;
-  padding: 8px 12px;
-  border-top: 1px solid var(--border);
+.link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
-li:first-child {
-  border-top: none;
-}
-li.won {
-  background: linear-gradient(90deg, color-mix(in srgb, var(--rarity-legendary) 12%, transparent), transparent 60%);
-}
-.time {
-  grid-area: time;
+.empty {
   color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  align-self: center;
+  text-align: center;
 }
-.mode {
-  grid-area: mode;
+tr.day td {
+  background: var(--surface-2);
   font-family: var(--display);
   font-weight: 800;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding-top: var(--s2);
+  padding-bottom: var(--s2);
+}
+tr.won td {
+  background: color-mix(in srgb, var(--rarity-legendary) 9%, transparent);
+}
+td.mode {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 17px;
 }
 .win {
-  font-size: 11px;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #1d1400;
   background: var(--rarity-legendary);
   border-radius: 3px;
-  padding: 0 6px;
-  transform: skewX(-8deg);
-}
-.detail {
-  grid-area: detail;
-  font-size: 12px;
-  color: var(--muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.right {
-  grid-area: right;
-  align-self: center;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-}
-.kills {
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 15px;
-}
-.duration {
-  font-variant-numeric: tabular-nums;
-  font-size: 13px;
-}
-.duration.left {
-  color: var(--faint);
-  font-size: 12px;
+  padding: 1px 8px;
 }
 .t-Sweat { color: var(--danger); }
 .t-Skilled { color: var(--rarity-epic); }
 .t-Average { color: var(--rarity-rare); }
 .t-Casual { color: var(--rarity-uncommon); }
 .t-BotLikely { color: var(--rarity-common); }
+.threat {
+  font-size: 13px;
+}
 </style>

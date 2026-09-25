@@ -125,6 +125,7 @@ export interface HostMessages {
   sessions: SessionRecord[]
   profile: PlayerProfile
   leaderboard: LeaderboardEntry[]
+  windowState: { maximized: boolean; fullscreen: boolean }
 }
 
 export type UiMessage =
@@ -135,7 +136,7 @@ export type UiMessage =
   | { type: 'setNotify'; enabled: boolean }
   | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
-  | { type: 'window'; action: 'drag' | 'minimize' | 'close' }
+  | { type: 'window'; action: 'drag' | 'minimize' | 'maximize' | 'fullscreen' | 'close' }
   | { type: 'profile'; accountId?: string | null; name?: string | null }
   | { type: 'follow'; accountId?: string | null; name: string; enabled: boolean }
   | { type: 'leaderboard' }

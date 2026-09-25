@@ -4,8 +4,9 @@
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="Fortnite Tracker"
         Icon="Assets/app.ico"
-        Width="400" Height="680" MinWidth="340" MinHeight="420"
-        Topmost="True"
+        Width="1280" Height="800" MinWidth="960" MinHeight="620"
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized"
         WindowStyle="None"
         ResizeMode="CanResize"
         Background="#0B0D12">
@@ -13,6 +14,6 @@
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" ResizeBorderThickness="5" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
-    <!-- The margin keeps the edges outside WebView2 so they can still be grabbed for resizing. -->
+    <!-- The margin (removed when maximised) keeps the edges outside WebView2 so they can be grabbed. -->
     <wv2:WebView2 x:Name="WebView" Margin="4" DefaultBackgroundColor="#0B0D12" />
 </Window>

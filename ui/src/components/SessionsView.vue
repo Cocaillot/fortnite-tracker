@@ -101,15 +101,15 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
 
 <style scoped>
 .sessions {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: var(--s4);
 }
 .session {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border-radius: var(--radius);
+  padding: var(--s4) var(--s5);
 }
 .session.live {
   border-color: color-mix(in srgb, var(--live) 45%, var(--border));
@@ -123,7 +123,7 @@ header {
 .when {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 16px;
+  font-size: 20px;
 }
 .live-tag {
   font-family: var(--display);
@@ -149,8 +149,8 @@ header {
 }
 .tile {
   background: var(--surface-2);
-  border-radius: 8px;
-  padding: 5px 8px;
+  border-radius: 10px;
+  padding: var(--s2) var(--s3);
   display: flex;
   flex-direction: column;
 }
@@ -165,7 +165,7 @@ header {
 .value {
   font-family: var(--display);
   font-weight: 800;
-  font-size: 20px;
+  font-size: 28px;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
@@ -173,8 +173,8 @@ header {
   color: var(--rarity-legendary);
 }
 .detail {
-  margin: 8px 0 0;
-  font-size: 12px;
+  margin: var(--s3) 0 0;
+  font-size: 14px;
   color: var(--muted);
 }
 .source {

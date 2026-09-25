@@ -25,6 +25,7 @@ export function useTracker() {
   const profile = ref<PlayerProfile | null>(null)
   const profileLoading = ref<{ accountId: string | null; name: string | null } | null>(null)
   const leaderboard = ref<LeaderboardEntry[] | null>(null)
+  const windowState = ref({ maximized: true, fullscreen: false })
 
   const unsubscribers: (() => void)[] = []
 
@@ -46,6 +47,7 @@ export function useTracker() {
         profileLoading.value = null
       }),
       on('leaderboard', (l) => (leaderboard.value = l)),
+      on('windowState', (w) => (windowState.value = w)),
     )
     // Ask the host for the current state; it may have published before the page loaded.
     send({ type: 'ready' })
@@ -81,6 +83,7 @@ export function useTracker() {
     profile,
     profileLoading,
     leaderboard,
+    windowState,
     lookup,
     openProfile,
     closeProfile,
