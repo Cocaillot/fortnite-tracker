@@ -4,3 +4,5 @@ obj/
 *.user
 node_modules/
 src/FortniteTracker.Desktop/wwwroot/
+publish/
+releases/

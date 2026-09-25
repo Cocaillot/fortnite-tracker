@@ -1,9 +1,10 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { on, send, type LobbySnapshot, type Platform, type PlayerStats } from '../bridge'
+import { on, send, type LobbySnapshot, type MatchRecord, type Platform, type PlayerStats, type Settings } from '../bridge'
 
 export function useTracker() {
   const snapshot = ref<LobbySnapshot | null>(null)
-  const hasApiKey = ref(true)
+  const settings = ref<Settings | null>(null)
+  const history = ref<MatchRecord[]>([])
   const lookupResult = ref<PlayerStats | null>(null)
   const lookingUp = ref(false)
 
@@ -12,7 +13,8 @@ export function useTracker() {
   onMounted(() => {
     unsubscribers.push(
       on('snapshot', (s) => (snapshot.value = s)),
-      on('settings', (s) => (hasApiKey.value = s.hasApiKey)),
+      on('settings', (s) => (settings.value = s)),
+      on('history', (h) => (history.value = h)),
       on('lookupResult', (r) => {
         lookupResult.value = r
         lookingUp.value = false
@@ -30,9 +32,15 @@ export function useTracker() {
     send({ type: 'lookup', name, platform })
   }
 
-  function saveApiKey(key: string) {
-    send({ type: 'setApiKey', key })
+  return {
+    snapshot,
+    settings,
+    history,
+    lookupResult,
+    lookingUp,
+    lookup,
+    saveApiKey: (key: string) => send({ type: 'setApiKey', key }),
+    setRichPresence: (enabled: boolean) => send({ type: 'setRichPresence', enabled }),
+    applyUpdate: () => send({ type: 'applyUpdate' }),
   }
-
-  return { snapshot, hasApiKey, lookupResult, lookingUp, lookup, saveApiKey }
 }

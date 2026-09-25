@@ -18,7 +18,7 @@ public sealed class GameProcessWatcher(LobbyTracker tracker) : BackgroundService
         do
         {
             var running = IsRunning();
-            if (running != last) tracker.Handle(new GameRunningChanged(running));
+            if (running != last) tracker.Handle(new GameRunningChanged(running) { At = DateTime.UtcNow });
             last = running;
         }
         while (await timer.WaitForNextTickAsync(ct));

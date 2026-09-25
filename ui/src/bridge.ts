@@ -1,4 +1,4 @@
-// Messages exchanged with the .NET host through WebView2 (see MainWindow.xaml.cs).
+// Messages exchanged with the .NET host through WebView2 (see UiBridge.cs).
 
 export type StatsStatus = 'Ok' | 'Private' | 'NotFound' | 'NoApiKey' | 'Error'
 export type Platform = 'epic' | 'psn' | 'xbl'
@@ -18,12 +18,31 @@ export interface LobbySnapshot {
   gameRunning: boolean
   inMatch: boolean
   localName: string | null
+  mode: string
+  matchStartedUtc: string | null
   squad: PlayerStats[]
+}
+
+export interface MatchRecord {
+  startedUtc: string
+  endedUtc: string | null
+  mode: string
+  playlist: string | null
+  squadSize: number
+  finished: boolean
+}
+
+export interface Settings {
+  hasApiKey: boolean
+  richPresence: { available: boolean; enabled: boolean }
+  version: string
+  updateVersion: string | null
 }
 
 export interface HostMessages {
   snapshot: LobbySnapshot
-  settings: { hasApiKey: boolean }
+  settings: Settings
+  history: MatchRecord[]
   lookupResult: PlayerStats
 }
 
@@ -31,6 +50,8 @@ export type UiMessage =
   | { type: 'ready' }
   | { type: 'lookup'; name: string; platform: Platform }
   | { type: 'setApiKey'; key: string }
+  | { type: 'setRichPresence'; enabled: boolean }
+  | { type: 'applyUpdate' }
 
 interface WebView {
   postMessage(message: unknown): void

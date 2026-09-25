@@ -16,7 +16,7 @@ public sealed record PlayerStats(
 /// <summary>
 /// Season stats from fortnite-api.com, with caching, request de-duplication and rate limiting.
 /// </summary>
-public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, ApiKeyStore keys)
+public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, SettingsStore settings)
 {
     private readonly RateLimiter _limiter = new TokenBucketRateLimiter(new()
     {
@@ -40,7 +40,7 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Ap
 
     private Task<PlayerStats> GetCachedAsync(string key, string url, string? accountId, string? name, CancellationToken ct)
     {
-        if (!keys.HasKey) return Task.FromResult(new PlayerStats(accountId, name, StatsStatus.NoApiKey));
+        if (!settings.HasApiKey) return Task.FromResult(new PlayerStats(accountId, name, StatsStatus.NoApiKey));
 
         // Lazy<Task> collapses concurrent lookups for the same player into one upstream call.
         var entry = cache.GetOrCreate(key, e =>
@@ -81,7 +81,7 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Ap
             if (!lease.IsAcquired) return new(accountId, name, StatsStatus.Error);
 
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Authorization = new AuthenticationHeaderValue(keys.Key!);
+            request.Headers.Authorization = new AuthenticationHeaderValue(settings.ApiKey!);
             using var res = await http.SendAsync(request);
 
             switch (res.StatusCode)

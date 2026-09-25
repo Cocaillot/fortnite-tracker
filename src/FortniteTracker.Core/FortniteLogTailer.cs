@@ -18,6 +18,9 @@ public sealed class FortniteLogTailer(ILogger<FortniteLogTailer> logger) : Backg
 
     public event Action<string>? LineRead;
 
+    /// <summary>Raised each time a log file is opened: at startup and after Fortnite starts a new one.</summary>
+    public event Action? FileOpened;
+
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
@@ -51,6 +54,7 @@ public sealed class FortniteLogTailer(ILogger<FortniteLogTailer> logger) : Backg
         var pending = new StringBuilder();
         var chunk = new char[16 * 1024];
         logger.LogInformation("Following {LogPath}", LogPath);
+        FileOpened?.Invoke();
 
         while (!ct.IsCancellationRequested)
         {

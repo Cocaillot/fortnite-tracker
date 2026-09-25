@@ -10,7 +10,7 @@ public class LobbyTrackerTests
 
     // No API key: the stats service answers NoApiKey without touching the network.
     private static LobbyTracker CreateTracker() => new(
-        new FortniteStatsService(new HttpClient(), new MemoryCache(new MemoryCacheOptions()), new ApiKeyStore(settingsPath: Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"))))
+        new FortniteStatsService(new HttpClient(), new MemoryCache(new MemoryCacheOptions()), new SettingsStore(settingsPath: Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json"))))
     {
         Debounce = TimeSpan.FromMilliseconds(10),
     };

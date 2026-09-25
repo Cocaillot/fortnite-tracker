@@ -1,65 +1,42 @@
 namespace FortniteTracker.Core;
 
-public sealed record LobbySnapshot(bool GameRunning, bool InMatch, string? LocalName, IReadOnlyList<PlayerStats> Squad);
+public sealed record LobbySnapshot(
+    bool GameRunning,
+    bool InMatch,
+    string? LocalName,
+    string Mode,
+    DateTime? MatchStartedUtc,
+    IReadOnlyList<PlayerStats> Squad);
 
 /// <summary>
-/// Keeps the current state (you, your party, whether you're in a match) and publishes
-/// a debounced snapshot with stats whenever it changes.
+/// Live view of the current session: publishes a debounced snapshot with squad stats whenever
+/// the state changes, and forwards finished matches to history.
 /// </summary>
-public sealed class LobbyTracker(FortniteStatsService stats)
+public sealed class LobbyTracker
 {
+    private readonly FortniteStatsService _stats;
     private readonly object _gate = new();
-    private readonly List<string> _party = [];
-    private string? _selfId;
-    private string? _selfName;
-    private bool _inMatch;
-    private bool _gameRunning = true;
+    private readonly SessionState _state = new();
     private CancellationTokenSource? _debounce;
+
+    public LobbyTracker(FortniteStatsService stats)
+    {
+        _stats = stats;
+        _state.MatchCompleted += m => MatchCompleted?.Invoke(m);
+    }
 
     public LobbySnapshot? Last { get; private set; }
 
     public event Action<LobbySnapshot>? Changed;
+    public event Action<MatchRecord>? MatchCompleted;
 
     public TimeSpan Debounce { get; init; } = TimeSpan.FromMilliseconds(300);
 
     public void Handle(GameEvent e)
     {
-        lock (_gate)
-        {
-            switch (e)
-            {
-                case LocalPlayerDetected d:
-                    _selfId = d.AccountId;
-                    _selfName = d.DisplayName;
-                    _party.Remove(d.AccountId);
-                    break;
-                case PartyMemberJoined j when j.AccountId != _selfId && !_party.Contains(j.AccountId):
-                    _party.Add(j.AccountId);
-                    break;
-                case PartyMemberLeft l when l.AccountId == _selfId:
-                    _party.Clear();
-                    break;
-                case PartyMemberLeft l:
-                    _party.Remove(l.AccountId);
-                    break;
-                case LocalPartyLeft:
-                    _party.Clear();
-                    break;
-                case MatchStarted:
-                    _inMatch = true;
-                    break;
-                case MatchEnded:
-                    _inMatch = false;
-                    break;
-                case GameRunningChanged g:
-                    _gameRunning = g.Running;
-                    if (!g.Running) _inMatch = false; // closed mid-match: no placement line is written
-                    break;
-                default:
-                    return;
-            }
-        }
-        SchedulePublish();
+        bool changed;
+        lock (_gate) changed = _state.Apply(e);
+        if (changed) SchedulePublish();
     }
 
     /// <summary>Re-fetches stats for the current squad (e.g. after the API key changes).</summary>
@@ -85,20 +62,18 @@ public sealed class LobbyTracker(FortniteStatsService stats)
         }
 
         string[] ids;
-        bool inMatch, gameRunning;
-        string? selfName;
+        LobbySnapshot partial;
         lock (_gate)
         {
-            ids = _selfId is null ? [.. _party] : [_selfId, .. _party];
-            inMatch = _inMatch;
-            gameRunning = _gameRunning;
-            selfName = _selfName;
+            ids = _state.SelfId is null ? [.. _state.Party] : [_state.SelfId, .. _state.Party];
+            partial = new LobbySnapshot(
+                _state.GameRunning, _state.InMatch, _state.SelfName, _state.Mode, _state.MatchStartedUtc, []);
         }
 
-        var squad = await Task.WhenAll(ids.Select(id => stats.GetByAccountIdAsync(id, CancellationToken.None)));
+        var squad = await Task.WhenAll(ids.Select(id => _stats.GetByAccountIdAsync(id, CancellationToken.None)));
         if (ct.IsCancellationRequested) return; // a newer state is already on its way
 
-        var snapshot = new LobbySnapshot(gameRunning, inMatch, selfName, squad);
+        var snapshot = partial with { Squad = squad };
         Last = snapshot;
         Changed?.Invoke(snapshot);
     }

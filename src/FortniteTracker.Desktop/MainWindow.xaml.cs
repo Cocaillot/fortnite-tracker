@@ -1,57 +1,77 @@
+using System.ComponentModel;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Windows;
 using System.Windows.Interop;
-using FortniteTracker.Core;
 using Microsoft.Web.WebView2.Core;
 
 namespace FortniteTracker.Desktop;
 
 /// <summary>
-/// Hosts the Vue UI in WebView2 and bridges it to the Core services through web messages.
-/// Host → UI: snapshot, settings, lookupResult. UI → host: ready, lookup, setApiKey.
+/// Hosts the Vue UI in WebView2. Closing the window hides it to the tray; the app keeps tracking.
 /// </summary>
 public partial class MainWindow : Window
 {
     private const string DevServerUrl = "http://localhost:5173";
     private const string VirtualHost = "app.local";
 
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() },
-    };
+    private readonly UiBridge _bridge;
 
-    private readonly LobbyTracker _tracker;
-    private readonly FortniteStatsService _stats;
-    private readonly ApiKeyStore _keys;
-
-    public MainWindow(LobbyTracker tracker, FortniteStatsService stats, ApiKeyStore keys)
+    public MainWindow(UiBridge bridge)
     {
-        _tracker = tracker;
-        _stats = stats;
-        _keys = keys;
+        _bridge = bridge;
         InitializeComponent();
-
-        _tracker.Changed += snapshot => Dispatcher.InvokeAsync(() => Send("snapshot", snapshot));
-        _keys.Changed += () => Dispatcher.InvokeAsync(SendSettings);
         Loaded += async (_, _) => await InitWebViewAsync();
+    }
+
+    /// <summary>Set before a real exit; otherwise closing only hides the window.</summary>
+    public bool AllowClose { get; set; }
+
+    /// <summary>Raised when the close button hid the window instead of exiting.</summary>
+    public event Action? HiddenToTray;
+
+    public void ToggleVisibility()
+    {
+        if (IsVisible && WindowState != WindowState.Minimized)
+        {
+            Hide();
+            return;
+        }
+        ShowAndActivate();
+    }
+
+    public void ShowAndActivate()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!AllowClose)
+        {
+            e.Cancel = true;
+            Hide();
+            HiddenToTray?.Invoke();
+        }
+        base.OnClosing(e);
     }
 
     private async Task InitWebViewAsync()
     {
-        // Keep WebView2's profile out of the install folder, which may be read-only.
+        // Velopack installs and updates the app in %LOCALAPPDATA%\FortniteTracker and manages that
+        // folder, so WebView2's browser profile lives next to it rather than inside it.
         var userData = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FortniteTracker", "WebView2");
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "FortniteTracker.WebView2");
         var env = await CoreWebView2Environment.CreateAsync(userDataFolder: userData);
         await WebView.EnsureCoreWebView2Async(env);
 
         var core = WebView.CoreWebView2;
         core.Settings.AreDefaultContextMenusEnabled = false;
         core.Settings.IsStatusBarEnabled = false;
-        core.WebMessageReceived += OnWebMessage;
+        _bridge.Attach(core, Dispatcher);
 
         if (IsDevServerRunning())
         {
@@ -80,41 +100,6 @@ public partial class MainWindow : Window
         return false;
 #endif
     }
-
-    private async void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
-    {
-        UiMessage? msg;
-        try
-        {
-            msg = JsonSerializer.Deserialize<UiMessage>(e.WebMessageAsJson, Json);
-        }
-        catch (JsonException)
-        {
-            return;
-        }
-
-        switch (msg?.Type)
-        {
-            case "ready":
-                SendSettings();
-                if (_tracker.Last is { } last) Send("snapshot", last);
-                break;
-            case "lookup" when !string.IsNullOrWhiteSpace(msg.Name):
-                var result = await _stats.GetByNameAsync(msg.Name.Trim(), msg.Platform ?? "epic", CancellationToken.None);
-                Send("lookupResult", result);
-                break;
-            case "setApiKey" when !string.IsNullOrWhiteSpace(msg.Key):
-                _keys.Save(msg.Key);
-                break;
-        }
-    }
-
-    private void SendSettings() => Send("settings", new { hasApiKey = _keys.HasKey });
-
-    private void Send(string type, object data) =>
-        WebView.CoreWebView2?.PostWebMessageAsJson(JsonSerializer.Serialize(new { type, data }, Json));
-
-    private sealed record UiMessage(string Type, string? Name, string? Platform, string? Key);
 
     // ---- Global hotkey: Ctrl+Shift+F shows/hides the window, even while Fortnite has focus ----
 
@@ -151,17 +136,5 @@ public partial class MainWindow : Window
             handled = true;
         }
         return IntPtr.Zero;
-    }
-
-    private void ToggleVisibility()
-    {
-        if (IsVisible && WindowState != WindowState.Minimized)
-        {
-            Hide();
-            return;
-        }
-        Show();
-        WindowState = WindowState.Normal;
-        Activate();
     }
 }
