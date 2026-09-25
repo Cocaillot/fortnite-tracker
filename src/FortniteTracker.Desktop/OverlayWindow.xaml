@@ -61,7 +61,7 @@
             <Border x:Name="EliminatorPanel" Visibility="Collapsed" Margin="0,8,0,0" Padding="0,8,0,0"
                     BorderBrush="#26FFFFFF" BorderThickness="0,1,0,0">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource Label}" Foreground="#FF6B6B" Text="ELIMINATED BY" />
+                    <TextBlock x:Name="EliminatedLabel" Style="{StaticResource Label}" Foreground="#FF6B6B" Text="ELIMINATED BY" />
                     <DockPanel>
                         <TextBlock x:Name="EliminatorKd" DockPanel.Dock="Right" FontFamily="{StaticResource Display}"
                                    FontWeight="ExtraBold" FontSize="20" Margin="12,0,0,0" />

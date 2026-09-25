@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn } from '../i18n'
 import { computed, ref, watch } from 'vue'
 import type { LobbySnapshot, MatchRecord, RankProgress } from '../bridge'
 import { addGoal, describe, markDone, removeGoal, useGoalProgress, type Goal, type Period } from '../composables/goals'
@@ -50,51 +51,51 @@ function create() {
 <template>
   <section class="goals">
     <div class="head">
-      <h2 class="card-title">Goals</h2>
-      <button v-if="!adding" type="button" class="add" @click="openForm">+ Add goal</button>
+      <h2 class="card-title">{{ t('Goals') }}</h2>
+      <button v-if="!adding" type="button" class="add" @click="openForm">{{ t('+ Add goal') }}</button>
     </div>
 
     <form v-if="adding" class="form card" @submit.prevent="create">
-      <select v-model="kind" aria-label="Goal type">
-        <option value="rank" :disabled="!rankTracks.length">Reach a rank</option>
-        <option value="wins">Win matches</option>
-        <option value="matches">Play matches</option>
-        <option value="kills">Get kills</option>
-        <option value="kd">Season K/D</option>
+      <select v-model="kind" :aria-label="t('Goal type')">
+        <option value="rank" :disabled="!rankTracks.length">{{ t('Reach a rank') }}</option>
+        <option value="wins">{{ t('Win matches') }}</option>
+        <option value="matches">{{ t('Play matches') }}</option>
+        <option value="kills">{{ t('Get kills') }}</option>
+        <option value="kd">{{ t('Season K/D') }}</option>
       </select>
       <template v-if="kind === 'rank'">
-        <select v-model.number="rankTarget" aria-label="Target rank">
-          <option v-for="(n, i) in RANK_NAMES" :key="n" :value="i">{{ n }}</option>
+        <select v-model.number="rankTarget" :aria-label="t('Target rank')">
+          <option v-for="(n, i) in RANK_NAMES" :key="n" :value="i">{{ tn(n) }}</option>
         </select>
-        <span class="muted">in</span>
-        <select v-model="track" aria-label="Mode">
-          <option v-for="r in rankTracks" :key="r.track" :value="r.track">{{ r.trackName }}</option>
+        <span class="muted">{{ t('in') }}</span>
+        <select v-model="track" :aria-label="t('Mode')">
+          <option v-for="r in rankTracks" :key="r.track" :value="r.track">{{ tn(r.trackName) }}</option>
         </select>
       </template>
       <template v-else-if="kind === 'kd'">
-        <input v-model.number="kd" type="number" min="0.1" max="20" step="0.1" aria-label="Target K/D" />
+        <input v-model.number="kd" type="number" min="0.1" max="20" step="0.1" :aria-label="t('Target K/D')" />
       </template>
       <template v-else>
-        <input v-model.number="amount" type="number" min="1" max="500" aria-label="Target" />
-        <select v-model="period" aria-label="Period">
-          <option value="today">today</option>
-          <option value="week">this week</option>
+        <input v-model.number="amount" type="number" min="1" max="500" :aria-label="t('Target')" />
+        <select v-model="period" :aria-label="t('Period')">
+          <option value="today">{{ t('today') }}</option>
+          <option value="week">{{ t('this week') }}</option>
         </select>
       </template>
-      <button type="submit" class="btn-primary">Add</button>
-      <button type="button" class="cancel" @click="adding = false">Cancel</button>
+      <button type="submit" class="btn-primary">{{ t('Add') }}</button>
+      <button type="button" class="cancel" @click="adding = false">{{ t('Cancel') }}</button>
     </form>
 
     <p v-if="!progress.length && !adding" class="empty">
-      Set a target, like reaching Gold in Reload or winning 3 matches this week, and track it here.
+      {{ t('Set a target, like reaching Gold in Reload or winning 3 matches this week, and track it here.') }}
     </p>
 
     <ul v-else class="list">
       <li v-for="p in progress" :key="p.goal.id" class="goal" :class="{ done: p.value >= 1 }">
         <div class="row">
           <span class="title">{{ describe(p.goal) }}</span>
-          <span class="text">{{ p.value >= 1 ? 'Done ✓' : p.text }}</span>
-          <button type="button" class="remove" :aria-label="`Remove goal: ${describe(p.goal)}`" @click="removeGoal(p.goal.id)">×</button>
+          <span class="text">{{ p.value >= 1 ? t('Done ✓') : p.text }}</span>
+          <button type="button" class="remove" :aria-label="t('Remove goal: {goal}', { goal: describe(p.goal) })" @click="removeGoal(p.goal.id)">×</button>
         </div>
         <div class="bar"><span :style="{ width: `${Math.round(p.value * 100)}%` }" /></div>
       </li>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn, locale } from '../i18n'
 import { computed } from 'vue'
 import type { RankPoint } from '../bridge'
 
@@ -55,15 +56,15 @@ const area = computed(() => {
   return `${path.value} L${x(v[v.length - 1]!.t).toFixed(1)},${H - PAD.bottom} L${x(v[0]!.t).toFixed(1)},${H - PAD.bottom} Z`
 })
 
-const fmt = (t: number) => new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+const fmt = (t: number) => new Date(t).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 const last = computed(() => values.value[values.value.length - 1])
 </script>
 
 <template>
-  <svg class="chart" :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="`Rank over time, ${points.length} updates`">
+  <svg class="chart" :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="t('Rank over time, {n} updates', { n: points.length })">
     <g v-for="b in bands" :key="b.name" :class="`tier-${b.name}`">
       <rect :x="PAD.left" :y="b.top" :width="W - PAD.left - PAD.right" :height="b.height" class="band" />
-      <text :x="PAD.left - 8" :y="b.top + b.height / 2" class="band-label">{{ b.name }}</text>
+      <text :x="PAD.left - 8" :y="b.top + b.height / 2" class="band-label">{{ tn(b.name) }}</text>
     </g>
     <path :d="area" class="area" />
     <path :d="path" class="line" />

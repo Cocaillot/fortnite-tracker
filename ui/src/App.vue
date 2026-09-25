@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn } from './i18n'
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { isHosted, send } from './bridge'
 import { useTracker } from './composables/useTracker'
@@ -91,13 +92,13 @@ onUnmounted(() => {
 
 const status = computed(() => {
   const s = snapshot.value
-  if (!s) return { state: 'idle' as const, label: 'Waiting for Fortnite', timer: null, detail: null }
-  if (!s.gameRunning) return { state: 'idle' as const, label: 'Fortnite not running', timer: null, detail: null }
+  if (!s) return { state: 'idle' as const, label: t('Waiting for Fortnite'), timer: null, detail: null }
+  if (!s.gameRunning) return { state: 'idle' as const, label: t('Fortnite not running'), timer: null, detail: null }
   if (!s.inMatch)
-    return { state: 'lobby' as const, label: 'In lobby', timer: null, detail: s.mode !== 'Match' ? `${s.mode} selected` : null }
+    return { state: 'lobby' as const, label: t('In lobby'), timer: null, detail: s.mode !== 'Match' ? t('{mode} selected', { mode: tn(s.mode) }) : null }
   const secs = s.matchStartedUtc ? Math.max(0, Math.floor((now.value - Date.parse(s.matchStartedUtc)) / 1000)) : null
   const timer = secs === null ? null : `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
-  return { state: 'live' as const, label: s.mode, timer, detail: `Stats: ${s.statsLabel}` }
+  return { state: 'live' as const, label: tn(s.mode), timer, detail: t('Stats: {label}', { label: tn(s.statsLabel) }) }
 })
 
 const overlayOn = computed(() => settings.value?.overlay.enabled ?? false)
@@ -125,7 +126,7 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
       />
 
       <main ref="content" class="content">
-        <p v-if="!isHosted" class="notice">This page talks to the desktop app. Run it inside FortniteTracker.exe to see live data.</p>
+        <p v-if="!isHosted" class="notice">{{ t('This page talks to the desktop app. Run it inside FortniteTracker.exe to see live data.') }}</p>
 
         <div v-if="settings && !settings.hasApiKey && page !== 'settings' && page !== 'appearance'" class="key-banner">
           <ApiKeyForm :has-key="false" @save="saveApiKey" />
@@ -142,7 +143,7 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
         />
 
         <div v-else-if="page === 'me'" class="page">
-          <div class="page-header"><div><h1>My profile</h1><p>Launch Fortnite once so the app knows which account is yours.</p></div></div>
+          <div class="page-header"><div><h1>{{ t('My profile') }}</h1><p>{{ t('Launch Fortnite once so the app knows which account is yours.') }}</p></div></div>
         </div>
 
         <LiveView

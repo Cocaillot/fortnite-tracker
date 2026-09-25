@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../i18n'
 import { ref } from 'vue'
 
 const props = defineProps<{ hasKey: boolean }>()
@@ -15,14 +16,14 @@ function submit() {
 
 <template>
   <form class="panel" :class="{ attention: !props.hasKey }" @submit.prevent="submit">
-    <label for="api-key" class="title">Stats API key</label>
+    <label for="api-key" class="title">{{ t('Stats API key') }}</label>
     <p class="hint">
-      {{ props.hasKey ? 'A key is saved. Paste a new one to replace it.' : 'Get a free key at fortnite-api.com/dashboard to load stats.' }}
-      It's stored only on this PC.
+      {{ props.hasKey ? t('A key is saved. Paste a new one to replace it.') : t('Get a free key at fortnite-api.com/dashboard to load stats.') }}
+      {{ t("It's stored only on this PC.") }}
     </p>
     <div class="row">
-      <input id="api-key" v-model="key" type="password" autocomplete="off" placeholder="Paste key" />
-      <button type="submit" class="btn-primary">Save</button>
+      <input id="api-key" v-model="key" type="password" autocomplete="off" :placeholder="t('Paste key')" />
+      <button type="submit" class="btn-primary">{{ t('Save') }}</button>
     </div>
   </form>
 </template>

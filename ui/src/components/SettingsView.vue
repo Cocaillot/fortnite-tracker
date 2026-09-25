@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, langChoice, setLanguage, type LangChoice } from '../i18n'
 import type { OverlayCorner, Settings } from '../bridge'
 import { ref } from 'vue'
 import ApiKeyForm from './ApiKeyForm.vue'
@@ -15,6 +16,13 @@ const emit = defineEmits<{
   overlay: [enabled?: boolean, corner?: OverlayCorner]
 }>()
 
+const languages: { id: LangChoice; label: string }[] = [
+  { id: 'auto', label: 'Same as Windows' },
+  { id: 'en', label: 'English' },
+  { id: 'fr', label: 'Français' },
+]
+
+// Labels are English keys, translated where shown.
 const corners: { id: OverlayCorner; label: string }[] = [
   { id: 'TopLeft', label: 'Top left' },
   { id: 'TopRight', label: 'Top right' },
@@ -29,24 +37,42 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>Settings</h1>
-        <p>Everything is stored on this PC only.</p>
+        <h1>{{ t('Settings') }}</h1>
+        <p>{{ t('Everything is stored on this PC only.') }}</p>
       </div>
     </div>
   <section class="settings">
     <ApiKeyForm :has-key="settings.hasApiKey" @save="emit('saveKey', $event)" />
 
     <div class="panel option">
+      <span class="text">{{ t('Language') }}</span>
+      <div class="seg lang" role="radiogroup" :aria-label="t('Language')">
+        <button
+          v-for="l in languages"
+          :key="l.id"
+          type="button"
+          role="radio"
+          :aria-checked="langChoice === l.id"
+          :class="{ on: langChoice === l.id }"
+          @click="setLanguage(l.id)"
+        >
+          {{ l.id === 'auto' ? t(l.label) : l.label }}
+        </button>
+      </div>
+      <p class="hint">{{ t('Also used for notifications, the overlay and Discord recaps.') }}</p>
+    </div>
+
+    <div class="panel option">
       <label class="switch">
         <input type="checkbox" :checked="settings.overlay.enabled" @change="emit('overlay', checked($event))" />
         <span class="track" aria-hidden="true" />
-        <span class="text">In-game overlay</span>
+        <span class="text">{{ t('In-game overlay') }}</span>
       </label>
       <p class="hint">
-        A small bar with your squad's K/D, and your eliminator after a death. Clicks go through it. Shows while
-        Fortnite runs in <strong>Windowed Fullscreen</strong>. Shortcut: Ctrl+Shift+O.
+        {{ t("A small bar with your squad's K/D, and your eliminator after a death. Clicks go through it. Shows while Fortnite runs in") }}
+        <strong>{{ t('Windowed Fullscreen') }}</strong>. {{ t('Shortcut: Ctrl+Shift+O.') }}
       </p>
-      <div class="corners" role="radiogroup" aria-label="Overlay position">
+      <div class="corners" role="radiogroup" :aria-label="t('Overlay position')">
         <button
           v-for="c in corners"
           :key="c.id"
@@ -54,7 +80,7 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
           role="radio"
           :aria-checked="settings.overlay.corner === c.id"
           :class="['corner', c.id, { on: settings.overlay.corner === c.id }]"
-          :title="c.label"
+          :title="t(c.label)"
           @click="emit('overlay', undefined, c.id)"
         >
           <span class="dot" />
@@ -66,11 +92,10 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
       <label class="switch">
         <input type="checkbox" :checked="settings.notifyOnElimination" @change="emit('notify', checked($event))" />
         <span class="track" aria-hidden="true" />
-        <span class="text">Notify me who eliminated me</span>
+        <span class="text">{{ t('Notify me who eliminated me') }}</span>
       </label>
       <p class="hint">
-        A Windows notification with their stats. If none appear during games, turn off Do Not Disturb for games in
-        Windows Settings → System → Notifications.
+        {{ t('A Windows notification with their stats. If none appear during games, turn off Do Not Disturb for games in Windows Settings → System → Notifications.') }}
       </p>
     </div>
 
@@ -78,9 +103,9 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
       <label class="switch">
         <input type="checkbox" :checked="settings.notifyRankChanges" @change="emit('notifyRanks', checked($event))" />
         <span class="track" aria-hidden="true" />
-        <span class="text">Rank change alerts</span>
+        <span class="text">{{ t('Rank change alerts') }}</span>
       </label>
-      <p class="hint">When you rank up or down, and when a friend or party member ranks up.</p>
+      <p class="hint">{{ t('When you rank up or down, and when a friend or party member ranks up.') }}</p>
     </div>
 
     <div class="panel option">
@@ -92,56 +117,55 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
           @change="emit('richPresence', checked($event))"
         />
         <span class="track" aria-hidden="true" />
-        <span class="text">Show my stats on Discord</span>
+        <span class="text">{{ t('Show my stats on Discord') }}</span>
       </label>
       <p class="hint">
         <template v-if="settings.richPresence.available">
-          Shows your mode, party and K/D on your Discord profile while Fortnite runs.
+          {{ t('Shows your mode, party and K/D on your Discord profile while Fortnite runs.') }}
         </template>
-        <template v-else>Not available in this version yet.</template>
+        <template v-else>{{ t('Not available in this version yet.') }}</template>
       </p>
     </div>
 
     <div class="panel option recap">
-      <span class="text">Session recap on Discord</span>
+      <span class="text">{{ t('Session recap on Discord') }}</span>
       <p class="hint flush">
-        Posts your matches, wins, kills, K/D and rank changes to a Discord channel. In your server: Channel settings →
-        Integrations → Webhooks → New webhook → Copy webhook URL, then paste it here.
+        {{ t('Posts your matches, wins, kills, K/D and rank changes to a Discord channel. In your server: Channel settings → Integrations → Webhooks → New webhook → Copy webhook URL, then paste it here.') }}
       </p>
       <form class="row" @submit.prevent="emit('discordRecap', webhook, props.settings.discordRecap.autoPost); webhook = ''">
         <input
           v-model="webhook"
           type="password"
           autocomplete="off"
-          :placeholder="settings.discordRecap.hasWebhook ? 'Webhook saved. Paste a new one to replace it' : 'https://discord.com/api/webhooks/…'"
-          aria-label="Discord webhook link"
+          :placeholder="settings.discordRecap.hasWebhook ? t('Webhook saved. Paste a new one to replace it') : 'https://discord.com/api/webhooks/…'"
+          :aria-label="t('Discord webhook link')"
         />
-        <button type="submit" class="btn-primary" :disabled="!webhook.trim()">Save</button>
+        <button type="submit" class="btn-primary" :disabled="!webhook.trim()">{{ t('Save') }}</button>
       </form>
       <template v-if="settings.discordRecap.hasWebhook">
         <label class="switch">
           <input type="checkbox" :checked="settings.discordRecap.autoPost" @change="emit('discordRecap', null, checked($event))" />
           <span class="track" aria-hidden="true" />
-          <span class="text small-text">Post automatically when I close Fortnite</span>
+          <span class="text small-text">{{ t('Post automatically when I close Fortnite') }}</span>
         </label>
         <div class="row">
-          <button type="button" class="ghost" @click="emit('postRecap')">Post last session now</button>
-          <button type="button" class="ghost" @click="emit('discordRecap', '', false)">Remove webhook</button>
+          <button type="button" class="ghost" @click="emit('postRecap')">{{ t('Post last session now') }}</button>
+          <button type="button" class="ghost" @click="emit('discordRecap', '', false)">{{ t('Remove webhook') }}</button>
         </div>
       </template>
       <p v-if="recapResult" class="result">{{ recapResult }}</p>
     </div>
 
     <div class="panel option shortcuts">
-      <span class="text">Shortcuts</span>
+      <span class="text">{{ t('Shortcuts') }}</span>
       <dl>
-        <dt>Ctrl+Shift+F</dt><dd>Show or hide this window, even in game</dd>
-        <dt>Ctrl+Shift+O</dt><dd>Turn the in-game overlay on or off</dd>
-        <dt>F11</dt><dd>Full screen</dd>
+        <dt>{{ t('Ctrl+Shift+F') }}</dt><dd>{{ t('Show or hide this window, even in game') }}</dd>
+        <dt>{{ t('Ctrl+Shift+O') }}</dt><dd>{{ t('Turn the in-game overlay on or off') }}</dd>
+        <dt>F11</dt><dd>{{ t('Full screen') }}</dd>
       </dl>
     </div>
   </section>
-    <p class="about">Fortnite Tracker {{ settings.version }} · Not affiliated with Epic Games · Font: Barlow (SIL OFL)</p>
+    <p class="about">Fortnite Tracker {{ settings.version }} · {{ t('Not affiliated with Epic Games') }} · {{ t('Font: Barlow (SIL OFL)') }}</p>
   </div>
 </template>
 
@@ -302,5 +326,10 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
   color: var(--faint);
   font-size: 12px;
   margin: 4px 0 0;
+}
+.lang {
+  display: flex;
+  width: fit-content;
+  margin-top: 10px;
 }
 </style>

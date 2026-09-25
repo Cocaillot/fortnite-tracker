@@ -57,19 +57,19 @@ public sealed class DiscordPresenceService : IDisposable
         var you = s.Squad.FirstOrDefault(p => p.Status == StatsStatus.Ok && p.EpicName == s.LocalName)
                   ?? s.Squad.FirstOrDefault();
         var squadSize = Math.Max(1, s.Squad.Count);
-        var squadLabel = squadSize == 1 ? "solo" : $"squad of {squadSize}";
+        var squadLabel = squadSize == 1 ? Loc.T("solo") : Loc.T("squad of {0}", squadSize);
 
         var parts = new List<string>();
         if (you is { Status: StatsStatus.Ok, Kd: { } kd, WinRate: { } winRate })
-            parts.Add($"K/D {kd:0.00} · {winRate:0.#}% wins");
+            parts.Add(Loc.T("K/D {0:0.00} · {1:0.#}% wins", kd, winRate));
         var others = s.Squad.Where(p => p != you && p is { Status: StatsStatus.Ok, Kd: not null }).ToList();
         if (others.Count > 0)
-            parts.Add($"squad K/D {s.Squad.Where(p => p.Kd is not null).Average(p => p.Kd!.Value):0.00}");
+            parts.Add(Loc.T("squad K/D {0:0.00}", s.Squad.Where(p => p.Kd is not null).Average(p => p.Kd!.Value)));
 
         return new RichPresence
         {
-            Details = s.InMatch ? $"{s.Mode} · {squadLabel}" : $"In the lobby · {squadLabel}",
-            State = parts.Count > 0 ? string.Join(" · ", parts) : "Tracking stats",
+            Details = s.InMatch ? $"{Loc.Name(s.Mode)} · {squadLabel}" : $"{Loc.T("In lobby")} · {squadLabel}",
+            State = parts.Count > 0 ? string.Join(" · ", parts) : Loc.T("Tracking stats"),
             Timestamps = s is { InMatch: true, MatchStartedUtc: { } started } ? new Timestamps(started) : null,
             Assets = new Assets { LargeImageKey = "logo", LargeImageText = "Fortnite Tracker" },
         };

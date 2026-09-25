@@ -1,6 +1,7 @@
 import { computed, ref } from 'vue'
 import { on, send, statsFor, type LobbySnapshot, type MatchRecord, type RankProgress } from '../bridge'
 import { RANK_NAMES } from '../ranks'
+import { t, tn } from '../i18n'
 
 // Personal goals. The host stores the list as-is (goals.json); progress is computed here from
 // your ranks, match history and stats.
@@ -45,13 +46,12 @@ const since = (period: Period) => {
 export function describe(g: Goal): string {
   switch (g.kind) {
     case 'rank':
-      return `Reach ${RANK_NAMES[g.target] ?? `rank ${g.target}`} in ${g.trackName}`
+      return t('Reach {rank} in {mode}', { rank: tn(RANK_NAMES[g.target] ?? `Rank ${g.target}`), mode: tn(g.trackName) })
     case 'kd':
-      return `Season K/D of ${g.target.toFixed(2)}`
+      return t('Season K/D of {kd}', { kd: g.target.toFixed(2) })
     default: {
-      const what = g.kind === 'wins' ? 'Win' : g.kind === 'kills' ? 'Get' : 'Play'
-      const unit = g.kind === 'kills' ? 'kills' : 'matches'
-      return `${what} ${g.target} ${unit} ${g.period === 'today' ? 'today' : 'this week'}`
+      const key = { wins: 'Win {n} matches', kills: 'Get {n} kills', matches: 'Play {n} matches' }[g.kind]
+      return `${t(key, { n: g.target })} ${t(g.period === 'today' ? 'today' : 'this week')}`
     }
   }
 }
@@ -70,7 +70,7 @@ export function useGoalProgress(
         const r = ranks().find((x) => x.track === g.track && x.isCurrentSeason)
         const now = r ? r.current + r.progress : 0
         value = now / g.target
-        text = r ? `${r.rankName} ${Math.round(r.progress * 100)}%` : 'Not ranked yet'
+        text = r ? `${tn(r.rankName)} ${Math.round(r.progress * 100)}%` : t('Not ranked yet')
       } else if (g.kind === 'kd') {
         const s = snapshot()
         const me = s?.localName ? s.squad[0] : null

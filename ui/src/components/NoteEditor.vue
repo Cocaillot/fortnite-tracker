@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../i18n'
 import { computed, ref, watch } from 'vue'
 import { findNote, noteTags, notes, saveNote } from '../composables/notes'
 
@@ -28,7 +29,7 @@ const dirty = computed(
 )
 
 function toggle(tag: string) {
-  tags.value = tags.value.includes(tag) ? tags.value.filter((t) => t !== tag) : [...tags.value, tag]
+  tags.value = tags.value.includes(tag) ? tags.value.filter((x) => x !== tag) : [...tags.value, tag]
 }
 
 function save() {
@@ -39,17 +40,17 @@ function save() {
 
 <template>
   <section class="card notes">
-    <h2 class="card-title">Your notes</h2>
-    <div class="tags" role="group" aria-label="Tags">
-      <button v-for="t in noteTags" :key="t" type="button" class="tag" :class="{ on: tags.includes(t) }" :aria-pressed="tags.includes(t)" @click="toggle(t)">
-        {{ t }}
+    <h2 class="card-title">{{ t('Your notes') }}</h2>
+    <div class="tags" role="group" :aria-label="t('Tags')">
+      <button v-for="tag in noteTags" :key="tag" type="button" class="tag" :class="{ on: tags.includes(tag) }" :aria-pressed="tags.includes(tag)" @click="toggle(tag)">
+        {{ t(tag) }}
       </button>
     </div>
-    <textarea v-model="text" rows="2" maxlength="300" :placeholder="`Anything to remember about ${name}?`" aria-label="Note" />
+    <textarea v-model="text" rows="2" maxlength="300" :placeholder="t('Anything to remember about {name}?', { name })" :aria-label="t('Note')" />
     <div class="row">
-      <button type="button" class="btn-primary" :disabled="!dirty" @click="save">Save</button>
-      <span class="hint-small">Private to this PC. You'll get a reminder when you meet {{ name }} again.</span>
-      <span v-if="saved && !dirty" class="ok">Saved ✓</span>
+      <button type="button" class="btn-primary" :disabled="!dirty" @click="save">{{ t('Save') }}</button>
+      <span class="hint-small">{{ t("Private to this PC. You'll get a reminder when you meet {name} again.", { name }) }}</span>
+      <span v-if="saved && !dirty" class="ok">{{ t('Saved ✓') }}</span>
     </div>
   </section>
 </template>

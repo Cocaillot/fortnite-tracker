@@ -20,24 +20,24 @@ public static class StatText
 
     public static string Threat(Threat threat) => threat switch
     {
-        Core.Threat.BotLikely => "Bot?",
-        Core.Threat.Casual => "Casual",
-        Core.Threat.Average => "Average",
-        Core.Threat.Skilled => "Skilled",
-        Core.Threat.Sweat => "Sweat",
+        Core.Threat.BotLikely => Loc.T("Bot?"),
+        Core.Threat.Casual => Loc.T("Casual"),
+        Core.Threat.Average => Loc.T("Average"),
+        Core.Threat.Skilled => Loc.T("Skilled"),
+        Core.Threat.Sweat => Loc.T("Sweat"),
         _ => "",
     };
 
     /// <summary>The one-line summary used under a player's name, e.g. "K/D 6.81 · 16.4% wins · 128 matches".</summary>
     public static string Summary(PlayerStats p, string? bucket) => p.Status switch
     {
-        StatsStatus.Ok when p.For(bucket) is { } m => $"K/D {m.Kd:0.00} · {m.WinRate:0.#}% wins · {m.Matches} matches",
-        StatsStatus.Hidden => "Streamer Mode: name hidden",
-        StatsStatus.Private => "Stats private",
-        StatsStatus.NotFound => "No stats found, likely a bot",
-        StatsStatus.Loading => "Loading stats…",
-        StatsStatus.NoApiKey => "Add your API key to see stats",
-        _ => "Stats unavailable",
+        StatsStatus.Ok when p.For(bucket) is { } m => Loc.T("K/D {0:0.00} · {1:0.#}% wins · {2} matches", m.Kd, m.WinRate, m.Matches),
+        StatsStatus.Hidden => Loc.T("Streamer Mode: name hidden"),
+        StatsStatus.Private => Loc.T("Stats private"),
+        StatsStatus.NotFound => Loc.T("No stats found, likely a bot"),
+        StatsStatus.Loading => Loc.T("Loading stats…"),
+        StatsStatus.NoApiKey => Loc.T("Add your API key to see stats"),
+        _ => Loc.T("Stats unavailable"),
     };
 
     /// <summary>"2.3× your K/D" when both K/Ds are known, else null.</summary>
@@ -45,11 +45,11 @@ public static class StatText
     {
         if (opponent.For(bucket) is not { } theirs || you?.For(bucket) is not { Kd: > 0 } mine) return null;
         var ratio = theirs.Kd / mine.Kd;
-        return ratio >= 1 ? $"{ratio:0.0}× your K/D" : $"{1 / ratio:0.0}× lower K/D than you";
+        return ratio >= 1 ? Loc.T("{0:0.0}× your K/D", ratio) : Loc.T("{0:0.0}× lower K/D than you", 1 / ratio);
     }
 
     public static string DisplayName(PlayerStats p) =>
-        p.Status == StatsStatus.Hidden ? "Streamer Mode player" : p.EpicName ?? "Squad member";
+        p.Status == StatsStatus.Hidden ? Loc.T("Streamer Mode player") : p.EpicName ?? Loc.T("Squad member");
 
     private static SolidColorBrush Freeze(byte r, byte g, byte b)
     {

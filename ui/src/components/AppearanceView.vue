@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../i18n'
 import { computed, ref } from 'vue'
 import {
   defaultTheme,
@@ -12,6 +13,7 @@ import {
   type IconSlot,
 } from '../composables/useTheme'
 
+// Labels are English keys, translated where shown.
 const colorFields: { key: 'accent' | 'background' | 'surface' | 'text' | 'danger'; label: string; hint: string }[] = [
   { key: 'accent', label: 'Accent', hint: 'Buttons, highlights, active tab' },
   { key: 'background', label: 'Background', hint: 'Behind everything' },
@@ -51,7 +53,7 @@ async function pick(e: Event, maxSize: number, set: (url: string) => void) {
   try {
     set(await readImage(file, maxSize))
   } catch (err) {
-    error.value = (err as Error).message
+    error.value = t((err as Error).message)
   }
 }
 
@@ -69,10 +71,10 @@ async function exportTheme() {
   const json = JSON.stringify(theme)
   try {
     await navigator.clipboard.writeText(json)
-    message.value = `Theme copied (${Math.round(json.length / 1024)} KB). Paste it in Discord or send it to a friend.`
+    message.value = t('Theme copied ({kb} KB). Paste it in Discord or send it to a friend.', { kb: Math.round(json.length / 1024) })
   } catch {
     importText.value = json
-    message.value = 'Copying was blocked; the theme is in the box below: select it and copy it.'
+    message.value = t('Copying was blocked; the theme is in the box below: select it and copy it.')
   }
 }
 
@@ -84,15 +86,15 @@ function importTheme() {
     if (!next) throw new Error()
     replaceTheme(next)
     importText.value = ''
-    message.value = 'Theme imported.'
+    message.value = t('Theme imported.')
   } catch {
-    error.value = "That text isn't a Fortnite Tracker theme. Paste the whole text a friend exported."
+    error.value = t("That text isn't a Fortnite Tracker theme. Paste the whole text a friend exported.")
   }
 }
 
 function resetAll() {
   replaceTheme(defaultTheme())
-  message.value = 'Back to the default look.'
+  message.value = t('Back to the default look.')
 }
 
 const fontIds = Object.keys(fonts) as FontId[]
@@ -102,17 +104,17 @@ const fontIds = Object.keys(fonts) as FontId[]
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>Appearance</h1>
-        <p>Make the app yours: colours, fonts, icons and a background image. Changes apply instantly and are saved on this PC.</p>
+        <h1>{{ t('Appearance') }}</h1>
+        <p>{{ t('Make the app yours: colours, fonts, icons and a background image. Changes apply instantly and are saved on this PC.') }}</p>
       </div>
-      <button type="button" class="ghost" @click="resetAll">Reset to default</button>
+      <button type="button" class="ghost" @click="resetAll">{{ t('Reset to default') }}</button>
     </div>
 
     <p v-if="error" class="alert error" role="alert">{{ error }}</p>
     <p v-else-if="message" class="alert" role="status">{{ message }}</p>
 
     <section class="card">
-      <h2 class="card-title">Themes</h2>
+      <h2 class="card-title">{{ t('Themes') }}</h2>
       <div class="presets">
         <button
           v-for="p in presets"
@@ -129,20 +131,20 @@ const fontIds = Object.keys(fonts) as FontId[]
             <span class="mini-line" :style="{ background: p.colors.text }" />
             <span class="mini-line short" :style="{ background: p.colors.text }" />
           </span>
-          <span class="preset-name">{{ p.name }}</span>
+          <span class="preset-name">{{ t(p.name) }}</span>
         </button>
       </div>
     </section>
 
     <div class="grid">
       <section class="card">
-        <h2 class="card-title">Colours</h2>
+        <h2 class="card-title">{{ t('Colours') }}</h2>
         <div class="colors">
           <label v-for="f in colorFields" :key="f.key" class="color">
-            <input v-model="theme[f.key]" type="color" :aria-label="f.label" />
+            <input v-model="theme[f.key]" type="color" :aria-label="t(f.label)" />
             <span class="color-text">
-              <span class="color-label">{{ f.label }}</span>
-              <span class="hint-small">{{ f.hint }}</span>
+              <span class="color-label">{{ t(f.label) }}</span>
+              <span class="hint-small">{{ t(f.hint) }}</span>
             </span>
             <code>{{ theme[f.key] }}</code>
           </label>
@@ -150,83 +152,83 @@ const fontIds = Object.keys(fonts) as FontId[]
       </section>
 
       <section class="card">
-        <h2 class="card-title">Text &amp; shape</h2>
+        <h2 class="card-title">{{ t('Text & shape') }}</h2>
         <label class="field">
-          <span class="field-label">Headings &amp; numbers font</span>
+          <span class="field-label">{{ t('Headings & numbers font') }}</span>
           <select v-model="theme.displayFont">
-            <option v-for="id in fontIds" :key="id" :value="id">{{ fonts[id].label }}</option>
+            <option v-for="id in fontIds" :key="id" :value="id">{{ t(fonts[id].label) }}</option>
           </select>
         </label>
         <label class="field">
-          <span class="field-label">Body text font</span>
+          <span class="field-label">{{ t('Body text font') }}</span>
           <select v-model="theme.bodyFont">
-            <option v-for="id in fontIds" :key="id" :value="id">{{ fonts[id].label }}</option>
+            <option v-for="id in fontIds" :key="id" :value="id">{{ t(fonts[id].label) }}</option>
           </select>
         </label>
         <label class="field">
-          <span class="field-label">Size <b>{{ Math.round(theme.scale * 100) }}%</b></span>
+          <span class="field-label">{{ t('Size') }} <b>{{ Math.round(theme.scale * 100) }}%</b></span>
           <input v-model.number="theme.scale" type="range" min="0.85" max="1.3" step="0.05" />
         </label>
         <label class="field">
-          <span class="field-label">Corner roundness <b>{{ theme.radius }} px</b></span>
+          <span class="field-label">{{ t('Corner roundness') }} <b>{{ theme.radius }} px</b></span>
           <input v-model.number="theme.radius" type="range" min="0" max="24" step="1" />
         </label>
       </section>
 
       <section class="card">
-        <h2 class="card-title">Icons</h2>
-        <p class="hint-small">PNG, JPG, WebP, GIF or SVG. Square images work best; they're scaled to 128 px.</p>
+        <h2 class="card-title">{{ t('Icons') }}</h2>
+        <p class="hint-small">{{ t("PNG, JPG, WebP, GIF or SVG. Square images work best; they're scaled to 128 px.") }}</p>
         <div class="icon-row logo-row">
           <span class="icon-preview">
             <img v-if="theme.logo" :src="theme.logo" alt="" />
             <svg v-else viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="12" width="4.5" height="8" rx="1" /><rect x="9.75" y="8" width="4.5" height="12" rx="1" /><rect x="16.5" y="4" width="4.5" height="16" rx="1" /></svg>
           </span>
-          <span class="icon-name">App logo</span>
-          <label class="ghost small">Upload<input type="file" accept="image/*" hidden @change="pick($event, 128, (u) => (theme.logo = u))" /></label>
-          <button v-if="theme.logo" type="button" class="ghost small" @click="theme.logo = null">Reset</button>
+          <span class="icon-name">{{ t('App logo') }}</span>
+          <label class="ghost small">{{ t('Upload') }}<input type="file" accept="image/*" hidden @change="pick($event, 128, (u) => (theme.logo = u))" /></label>
+          <button v-if="theme.logo" type="button" class="ghost small" @click="theme.logo = null">{{ t('Reset') }}</button>
         </div>
         <div v-for="s in iconSlots" :key="s.id" class="icon-row">
           <span class="icon-preview">
             <img v-if="theme.icons[s.id]" :src="theme.icons[s.id]" alt="" />
             <span v-else class="faint">–</span>
           </span>
-          <span class="icon-name">{{ s.label }}</span>
-          <label class="ghost small">Upload<input type="file" accept="image/*" hidden @change="pick($event, 128, setIcon(s.id))" /></label>
-          <button v-if="theme.icons[s.id]" type="button" class="ghost small" @click="clearIcon(s.id)">Reset</button>
+          <span class="icon-name">{{ t(s.label) }}</span>
+          <label class="ghost small">{{ t('Upload') }}<input type="file" accept="image/*" hidden @change="pick($event, 128, setIcon(s.id))" /></label>
+          <button v-if="theme.icons[s.id]" type="button" class="ghost small" @click="clearIcon(s.id)">{{ t('Reset') }}</button>
         </div>
       </section>
 
       <section class="card">
-        <h2 class="card-title">Background image</h2>
+        <h2 class="card-title">{{ t('Background image') }}</h2>
         <div class="wallpaper" :style="{ backgroundImage: theme.wallpaper ? `url(${theme.wallpaper})` : undefined }">
-          <span v-if="!theme.wallpaper" class="faint">No background image</span>
+          <span v-if="!theme.wallpaper" class="faint">{{ t('No background image') }}</span>
         </div>
         <div class="row">
-          <label class="ghost">{{ theme.wallpaper ? 'Change image' : 'Choose image' }}<input type="file" accept="image/*" hidden @change="pick($event, 1920, (u) => (theme.wallpaper = u))" /></label>
-          <button v-if="theme.wallpaper" type="button" class="ghost" @click="theme.wallpaper = null">Remove</button>
+          <label class="ghost">{{ theme.wallpaper ? t('Change image') : t('Choose image') }}<input type="file" accept="image/*" hidden @change="pick($event, 1920, (u) => (theme.wallpaper = u))" /></label>
+          <button v-if="theme.wallpaper" type="button" class="ghost" @click="theme.wallpaper = null">{{ t('Remove') }}</button>
         </div>
         <template v-if="theme.wallpaper">
           <label class="field">
-            <span class="field-label">Darken <b>{{ theme.wallpaperDim }}%</b></span>
+            <span class="field-label">{{ t('Darken') }} <b>{{ theme.wallpaperDim }}%</b></span>
             <input v-model.number="theme.wallpaperDim" type="range" min="30" max="95" step="5" />
           </label>
           <label class="check">
             <input v-model="theme.glass" type="checkbox" />
-            Glass panels (see-through, blurred)
+            {{ t('Glass panels (see-through, blurred)') }}
           </label>
         </template>
       </section>
     </div>
 
     <section class="card">
-      <h2 class="card-title">Share a theme</h2>
-      <p class="hint-small">Export copies your whole look, images included, as text you can paste in Discord. To use a friend's theme, paste it below.</p>
+      <h2 class="card-title">{{ t('Share a theme') }}</h2>
+      <p class="hint-small">{{ t("Export copies your whole look, images included, as text you can paste in Discord. To use a friend's theme, paste it below.") }}</p>
       <div class="row">
-        <button type="button" class="btn-primary" @click="exportTheme">Copy my theme</button>
+        <button type="button" class="btn-primary" @click="exportTheme">{{ t('Copy my theme') }}</button>
       </div>
-      <textarea v-model="importText" rows="3" placeholder="Paste a theme here…" aria-label="Theme to import" />
+      <textarea v-model="importText" rows="3" :placeholder="t('Paste a theme here…')" :aria-label="t('Theme to import')" />
       <div class="row">
-        <button type="button" class="ghost" :disabled="!importText.trim()" @click="importTheme">Import</button>
+        <button type="button" class="ghost" :disabled="!importText.trim()" @click="importTheme">{{ t('Import') }}</button>
       </div>
     </section>
   </div>

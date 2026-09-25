@@ -46,7 +46,8 @@ public partial class OverlayWindow : Window
 
     public void Update(LobbySnapshot s)
     {
-        Header.Text = (s.InMatch ? s.Mode : "In lobby").ToUpperInvariant() + $"  ·  {s.StatsLabel.ToUpperInvariant()}";
+        Header.Text = (s.InMatch ? Loc.Name(s.Mode) : Loc.T("In lobby")).ToUpperInvariant() + $"  ·  {Loc.Name(s.StatsLabel).ToUpperInvariant()}";
+        EliminatedLabel.Text = Loc.T("ELIMINATED BY");
         _matchStartedUtc = s.InMatch ? s.MatchStartedUtc : null;
         UpdateTimer();
 

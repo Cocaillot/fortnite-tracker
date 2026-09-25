@@ -34,6 +34,10 @@ public sealed class SettingsStore
     public bool NotifyOnElimination => _settings.NotifyOnElimination;
     public bool NotifyRankChanges => _settings.NotifyRankChanges;
     public string? DiscordWebhookUrl => _settings.DiscordWebhookUrl;
+    /// <summary>"en", "fr", or null to follow the Windows language.</summary>
+    public string? Language => _settings.Language;
+
+    public void SetLanguage(string? language) => Update(s => s with { Language = language }, apiKeyChanged: false);
     public bool AutoPostRecap => _settings.AutoPostRecap;
     public DateTime? LastRecapPostedUtc => _settings.LastRecapPostedUtc;
 
@@ -112,5 +116,6 @@ public sealed class SettingsStore
         bool NotifyRankChanges = true,
         string? DiscordWebhookUrl = null,
         bool AutoPostRecap = true,
-        DateTime? LastRecapPostedUtc = null);
+        DateTime? LastRecapPostedUtc = null,
+        string? Language = null);
 }

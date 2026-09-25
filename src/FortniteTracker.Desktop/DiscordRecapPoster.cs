@@ -56,23 +56,23 @@ public sealed class DiscordRecapPoster
     public async Task<string> PostLatestAsync(bool onlyIfNew)
     {
         var url = _settings.DiscordWebhookUrl;
-        if (!IsWebhookUrl(url)) return "Add a Discord webhook link first.";
+        if (!IsWebhookUrl(url)) return Loc.T("Add a Discord webhook link first.");
 
         var recap = SessionRecaps.Latest(_history.Recent(300), _sessions.All, _ranks, _tracker.SelfId);
-        if (recap is null) return "No session to post yet.";
-        if (onlyIfNew && _settings.LastRecapPostedUtc is { } last && last >= recap.StartedUtc) return "Already posted.";
+        if (recap is null) return Loc.T("No session to post yet.");
+        if (onlyIfNew && _settings.LastRecapPostedUtc is { } last && last >= recap.StartedUtc) return Loc.T("Already posted.");
 
         try
         {
             using var res = await _http.PostAsJsonAsync(url, Payload(recap));
-            if (!res.IsSuccessStatusCode) return $"Discord refused the post ({(int)res.StatusCode}). Check the webhook link.";
+            if (!res.IsSuccessStatusCode) return Loc.T("Discord refused the post ({0}). Check the webhook link.", (int)res.StatusCode);
         }
         catch (HttpRequestException)
         {
-            return "Couldn't reach Discord. Check your connection.";
+            return Loc.T("Couldn't reach Discord. Check your connection.");
         }
         _settings.SetLastRecapPosted(recap.StartedUtc);
-        return "Posted to Discord ✓";
+        return Loc.T("Posted to Discord ✓");
     }
 
     private object Payload(SessionRecap r)
@@ -81,13 +81,13 @@ public sealed class DiscordRecapPoster
         var hours = r.Minutes >= 60 ? $"{(int)(r.Minutes / 60)}h{(int)(r.Minutes % 60):00}" : $"{(int)r.Minutes} min";
         var fields = new List<object>
         {
-            new { name = "Matches", value = r.Matches.ToString(CultureInfo.InvariantCulture), inline = true },
-            new { name = "Wins", value = r.Wins?.ToString(CultureInfo.InvariantCulture) ?? "–", inline = true },
-            new { name = "Kills", value = r.Kills?.ToString(CultureInfo.InvariantCulture) ?? "–", inline = true },
+            new { name = Loc.T("Matches"), value = r.Matches.ToString(CultureInfo.InvariantCulture), inline = true },
+            new { name = Loc.T("Wins"), value = r.Wins?.ToString(CultureInfo.InvariantCulture) ?? "–", inline = true },
+            new { name = Loc.T("Kills"), value = r.Kills?.ToString(CultureInfo.InvariantCulture) ?? "–", inline = true },
         };
         if (r.Kd is { } kd) fields.Add(new { name = "K/D", value = kd.ToString("0.00", CultureInfo.InvariantCulture), inline = true });
-        if (r.RankChanges.Count > 0) fields.Add(new { name = "Rank", value = string.Join("\n", r.RankChanges), inline = false });
-        if (r.Nemesis is { } nemesis) fields.Add(new { name = "Nemesis", value = nemesis, inline = true });
+        if (r.RankChanges.Count > 0) fields.Add(new { name = Loc.T("Rank"), value = Loc.Name(string.Join("\n", r.RankChanges)), inline = false });
+        if (r.Nemesis is { } nemesis) fields.Add(new { name = Loc.T("Nemesis"), value = nemesis, inline = true });
 
         var accent = _theme.Colors.Accent;
         return new
@@ -97,8 +97,8 @@ public sealed class DiscordRecapPoster
             {
                 new
                 {
-                    title = $"Session recap · {r.StartedUtc.ToLocalTime().ToString("ddd d MMM", CultureInfo.InvariantCulture)}",
-                    description = $"{name} played {r.Matches} {(r.Matches == 1 ? "match" : "matches")} ({hours}), mostly {r.TopMode}.",
+                    title = Loc.T("Session recap · {0}", r.StartedUtc.ToLocalTime().ToString("ddd d MMM", Loc.Culture)),
+                    description = Loc.T("{0} played {1} {2} ({3}), mostly {4}.", name, r.Matches, Loc.T(r.Matches == 1 ? "match" : "matches"), hours, Loc.Name(r.TopMode ?? "")),
                     color = (accent.R << 16) | (accent.G << 8) | accent.B,
                     fields,
                     footer = new { text = "Fortnite Tracker" },

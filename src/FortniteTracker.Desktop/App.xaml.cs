@@ -102,6 +102,10 @@ public partial class App : Application
                 statsHistory.Record(DateOnly.FromDateTime(DateTime.Now), overall);
         };
         var settings = services.GetRequiredService<SettingsStore>();
+        // French when chosen, or when Windows is in French and nothing was chosen.
+        void ApplyLanguage() => Loc.Language = settings.Language
+            ?? (System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "fr" ? "fr" : "en");
+        ApplyLanguage();
         var results = services.GetRequiredService<MatchResultTracker>(); // follows the tracker from here on
         settings.Changed += apiKeyChanged =>
         {
@@ -120,7 +124,12 @@ public partial class App : Application
         theme.Changed += () => Dispatcher.InvokeAsync(() => _window.ApplyTheme(theme.Colors));
         _tray = new TrayIcon(_window.ToggleVisibility, _overlay.Toggle, ApplyUpdate, ExitApp);
         _tray.SetOverlayChecked(settings.OverlayEnabled);
-        settings.Changed += _ => Dispatcher.InvokeAsync(() => _tray.SetOverlayChecked(settings.OverlayEnabled));
+        settings.Changed += _ => Dispatcher.InvokeAsync(() =>
+        {
+            ApplyLanguage();
+            _tray.ApplyLanguage();
+            _tray.SetOverlayChecked(settings.OverlayEnabled);
+        });
         _window.OverlayHotkey += _overlay.Toggle;
         _window.HiddenToTray += _tray.ShowStillRunningHint;
         _ = new EliminationNotifier(tracker, settings, (title, text) => Dispatcher.InvokeAsync(() => _tray.Notify(title, text)));

@@ -4,7 +4,7 @@ namespace FortniteTracker.Desktop;
 
 /// <summary>
 /// Announces rank changes as they happen: yours (up or down) and friends' or party members'
-/// rank-ups, e.g. "Shinothia reached Diamond III in Reload". Changes found while importing old
+/// rank-ups, e.g. "Alex reached Diamond III in Reload". Changes found while importing old
 /// logs are not announced.
 /// </summary>
 public sealed class RankAlerts
@@ -36,8 +36,8 @@ public sealed class RankAlerts
         if (after.AccountId == _tracker.SelfId)
         {
             _notify(
-                change.IsUp ? $"Rank up! {after.RankName}" : $"Rank down: {after.RankName}",
-                $"{after.TrackName}: {change.Before.RankName} → {after.RankName}",
+                change.IsUp ? Loc.T("Rank up! {0}", Loc.Name(after.RankName)) : Loc.T("Rank down: {0}", Loc.Name(after.RankName)),
+                $"{Loc.Name(after.TrackName)}: {Loc.Name(change.Before.RankName)} → {Loc.Name(after.RankName)}",
                 change.IsUp);
             return;
         }
@@ -45,7 +45,7 @@ public sealed class RankAlerts
         // Friends and party: celebrate rank-ups only.
         if (!change.IsUp) return;
         var stats = await _stats.GetByAccountIdAsync(after.AccountId, CancellationToken.None);
-        var who = stats.EpicName ?? "A friend";
-        _notify($"{who} ranked up", $"{who} reached {after.RankName} in {after.TrackName}", true);
+        var who = stats.EpicName ?? Loc.T("A friend");
+        _notify(Loc.T("{0} ranked up", who), Loc.T("{0} reached {1} in {2}", who, Loc.Name(after.RankName), Loc.Name(after.TrackName)), true);
     }
 }

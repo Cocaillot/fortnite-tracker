@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn } from '../i18n'
 import { computed, onMounted, ref } from 'vue'
 import { relationLabel, type LeaderboardEntry, type Relation, type RankProgress } from '../bridge'
 import RankBadge from './RankBadge.vue'
@@ -13,6 +14,7 @@ type View = 'ranks' | 'stats'
 const view = ref<View>('ranks')
 
 type Filter = 'all' | 'Friend' | 'Party' | 'Followed'
+// Labels are English keys, translated where shown.
 const filters: { id: Filter; label: string }[] = [
   { id: 'all', label: 'Everyone' },
   { id: 'Friend', label: 'Friends' },
@@ -86,7 +88,7 @@ const loaded = computed(() => props.entries?.filter((e) => e.stats.status !== 'L
 const total = computed(() => props.entries?.length ?? 0)
 
 const displayName = (e: LeaderboardEntry) =>
-  e.name ?? (e.stats.status === 'Private' ? 'Private profile' : e.stats.status === 'Loading' ? 'Loadingâ€¦' : 'Unknown player')
+  e.name ?? t(e.stats.status === 'Private' ? 'Private profile' : e.stats.status === 'Loading' ? 'Loadingâ€¦' : 'Unknown player')
 
 function formatStat(e: LeaderboardEntry, key: StatKey) {
   const o = e.stats.overall
@@ -110,7 +112,10 @@ const podium = computed(() => {
   ]
 })
 const sortLabel = computed(
-  () => modes.value.find((m) => m.track === activeSort.value)?.name ?? statColumns.find((c) => c.key === activeSort.value)?.label ?? '',
+  () => {
+    const mode = modes.value.find((m) => m.track === activeSort.value)?.name
+    return mode ? tn(mode) : t(statColumns.find((c) => c.key === activeSort.value)?.label ?? '')
+  },
 )
 const sortIsMode = computed(() => modes.value.some((m) => m.track === activeSort.value))
 
@@ -121,29 +126,29 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>Leaderboard</h1>
-        <p>You, your party, friends who played ranked this season, and players you follow. Click a column to sort, or a player to open their profile.</p>
+        <h1>{{ t('Leaderboard') }}</h1>
+        <p>{{ t('You, your party, friends who played ranked this season, and players you follow. Click a column to sort, or a player to open their profile.') }}</p>
       </div>
-      <div class="seg" role="tablist" aria-label="Columns">
-        <button type="button" role="tab" :aria-selected="view === 'ranks'" :class="{ on: view === 'ranks' }" @click="view = 'ranks'; sortKey = null">Ranks</button>
-        <button type="button" role="tab" :aria-selected="view === 'stats'" :class="{ on: view === 'stats' }" @click="view = 'stats'; sortKey = null">Stats</button>
+      <div class="seg" role="tablist" :aria-label="t('Columns')">
+        <button type="button" role="tab" :aria-selected="view === 'ranks'" :class="{ on: view === 'ranks' }" @click="view = 'ranks'; sortKey = null">{{ t('Ranks') }}</button>
+        <button type="button" role="tab" :aria-selected="view === 'stats'" :class="{ on: view === 'stats' }" @click="view = 'stats'; sortKey = null">{{ t('Stats') }}</button>
       </div>
     </div>
 
     <div class="toolbar">
-      <div class="seg" role="tablist" aria-label="Show">
+      <div class="seg" role="tablist" :aria-label="t('Show')">
         <button v-for="f in filters" :key="f.id" type="button" role="tab" :aria-selected="filter === f.id" :class="{ on: filter === f.id }" @click="filter = f.id">
-          {{ f.label }}
+          {{ t(f.label) }}
         </button>
       </div>
-      <input v-model="text" class="filter" placeholder="Filter by name" aria-label="Filter by name" />
+      <input v-model="text" class="filter" :placeholder="t('Filter by name')" :aria-label="t('Filter by name')" />
       <span v-if="entries && loaded < total" class="progress" role="status">
-        Loading stats {{ loaded }}/{{ total }}
+        {{ t('Loading stats {n}/{total}', { n: loaded, total }) }}
         <span class="bar"><span :style="{ width: `${(100 * loaded) / Math.max(1, total)}%` }" /></span>
       </span>
     </div>
 
-    <div v-if="podium.length" class="podium-cards" :aria-label="`Top 3 by ${sortLabel}`">
+    <div v-if="podium.length" class="podium-cards" :aria-label="t('Top 3 by {what}', { what: sortLabel })">
       <button
         v-for="p in podium"
         :key="p.place"
@@ -155,7 +160,7 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
         <span class="medal">{{ p.place }}</span>
         <PlayerAvatar :name="p.e.name" :size="p.place === 1 ? 64 : 52" :you="p.e.relation === 'You'" />
         <span class="step-name">{{ displayName(p.e) }}</span>
-        <span class="step-rel">{{ relationLabel[p.e.relation] }}</span>
+        <span class="step-rel">{{ t(relationLabel[p.e.relation]) }}</span>
         <span class="step-value">
           <template v-if="sortIsMode">
             <RankBadge v-if="rankIn(p.e, activeSort)" :rank="rankIn(p.e, activeSort)!" size="md" />
@@ -169,26 +174,26 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
     </div>
 
     <div v-if="!entries" class="skeleton" style="height: 320px" />
-    <div v-else-if="!entries.length" class="card empty">Nobody to rank yet. Launch Fortnite once so your friends' ranks can be read from the game.</div>
+    <div v-else-if="!entries.length" class="card empty">{{ t("Nobody to rank yet. Launch Fortnite once so your friends' ranks can be read from the game.") }}</div>
 
     <div v-else class="table-wrap">
       <table class="data">
         <thead>
           <tr>
             <th class="pos">#</th>
-            <th>Player</th>
+            <th>{{ t('Player') }}</th>
             <template v-if="view === 'ranks'">
               <th
                 v-for="m in modes"
                 :key="m.track"
                 class="sortable"
                 :class="{ sorted: activeSort === m.track }"
-                :title="`Rank this season in ${m.name}. Click to sort.`"
+                :title="t('Rank this season in {mode}. Click to sort.', { mode: tn(m.name) })"
                 @click="sortBy(m.track)"
               >
-                {{ m.name }}{{ arrow(m.track) }}
+                {{ tn(m.name) }}{{ arrow(m.track) }}
               </th>
-              <th class="num sortable" :class="{ sorted: activeSort === 'kd' }" :title="statColumns[0].title" @click="sortBy('kd')">K/D{{ arrow('kd') }}</th>
+              <th class="num sortable" :class="{ sorted: activeSort === 'kd' }" :title="t(statColumns[0]!.title)" @click="sortBy('kd')">K/D{{ arrow('kd') }}</th>
             </template>
             <template v-else>
               <th
@@ -196,10 +201,10 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
                 :key="c.key"
                 class="num sortable"
                 :class="{ sorted: activeSort === c.key }"
-                :title="c.title"
+                :title="t(c.title)"
                 @click="sortBy(c.key)"
               >
-                {{ c.label }}{{ arrow(c.key) }}
+                {{ t(c.label) }}{{ arrow(c.key) }}
               </th>
             </template>
           </tr>
@@ -220,14 +225,14 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
                 <PlayerAvatar :name="e.name" :size="38" :you="e.relation === 'You'" />
                 <div>
                   <span class="player-name" :class="{ faint: !e.name }">{{ displayName(e) }}</span>
-                  <span class="rel" :class="e.relation">{{ relationLabel[e.relation] }}</span>
+                  <span class="rel" :class="e.relation">{{ t(relationLabel[e.relation]) }}</span>
                 </div>
               </div>
             </td>
             <template v-if="view === 'ranks'">
               <td v-for="m in modes" :key="m.track" class="rank-cell">
                 <RankBadge v-if="rankIn(e, m.track)" :rank="rankIn(e, m.track)!" size="md" />
-                <span v-else class="faint" title="Not ranked in this mode this season">â€“</span>
+                <span v-else class="faint" :title="t('Not ranked in this mode this season')">â€“</span>
               </td>
               <td class="num">
                 <span v-if="e.stats.status === 'Loading'" class="skeleton cell-skeleton" />
@@ -252,10 +257,10 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
     </div>
 
     <p class="legend">
-      Ranks are this season's, as Fortnite shares them for you, your party and friends; "â€“" means not ranked in that mode this season.
-      Stats are this season, all modes. K/D colours: <span class="r-Common key">under 1</span> <span class="r-Uncommon key">1â€“2</span>
+      {{ t('Ranks are this season\'s, as Fortnite shares them for you, your party and friends; "â€“" means not ranked in that mode this season.') }}
+      {{ t('Stats are this season, all modes. K/D colours:') }} <span class="r-Common key">{{ t('under 1') }}</span> <span class="r-Uncommon key">1â€“2</span>
       <span class="r-Rare key">2â€“3</span> <span class="r-Epic key">3â€“5</span> <span class="r-Legendary key">5+</span>.
-      Private profiles hide their name and stats.
+      {{ t('Private profiles hide their name and stats.') }}
     </p>
   </div>
 </template>

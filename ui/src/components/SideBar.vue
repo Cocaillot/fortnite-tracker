@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../i18n'
 import { theme } from '../composables/useTheme'
 
 export type Page = 'live' | 'leaderboard' | 'history' | 'me' | 'appearance' | 'settings'
@@ -20,21 +21,21 @@ const items: { id: Page; label: string; icon: string }[] = [
 </script>
 
 <template>
-  <nav class="sidebar" aria-label="Main">
+  <nav class="sidebar" :aria-label="t('Main')">
     <ul class="nav">
       <li v-for="item in items" :key="item.id">
         <button type="button" :class="{ active: page === item.id }" :aria-current="page === item.id ? 'page' : undefined" @click="emit('navigate', item.id)">
           <img v-if="theme.icons[item.id]" class="custom-icon" :src="theme.icons[item.id]" alt="" />
           <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path :d="item.icon" /></svg>
-          <span>{{ item.label }}</span>
+          <span>{{ t(item.label) }}</span>
         </button>
       </li>
     </ul>
 
     <div class="bottom">
       <button v-if="updateVersion" type="button" class="update" @click="emit('applyUpdate')">
-        <span class="update-title">Update ready</span>
-        <span>Restart to install {{ updateVersion }}</span>
+        <span class="update-title">{{ t('Update ready') }}</span>
+        <span>{{ t('Restart to install {v}', { v: updateVersion }) }}</span>
       </button>
 
       <div class="status" :class="status.state">
@@ -54,7 +55,7 @@ const items: { id: Page; label: string; icon: string }[] = [
               <path d="M12 3a9 9 0 0 0 0 18c1.1 0 1.8-.8 1.8-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.8-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z" />
               <circle cx="7.5" cy="11" r="1.2" /><circle cx="10.5" cy="7" r="1.2" /><circle cx="15" cy="7.5" r="1.2" />
             </svg>
-            <span>Appearance</span>
+            <span>{{ t('Appearance') }}</span>
           </button>
         </li>
         <li>
@@ -63,11 +64,11 @@ const items: { id: Page; label: string; icon: string }[] = [
             <svg v-else viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm7.4 4.1l1.6 1.2-1.7 3-1.9-.7a7 7 0 0 1-1.8 1l-.3 2H10.7l-.3-2a7 7 0 0 1-1.8-1l-1.9.7-1.7-3 1.6-1.2a7 7 0 0 1 0-2.1L5 9.8l1.7-3 1.9.7a7 7 0 0 1 1.8-1l.3-2h3.4l.3 2c.7.3 1.2.6 1.8 1l1.9-.7 1.7 3-1.6 1.2a7 7 0 0 1 0 2.1z" />
             </svg>
-            <span>Settings</span>
+            <span>{{ t('Settings') }}</span>
           </button>
         </li>
       </ul>
-      <p v-if="version" class="version">Version {{ version }}</p>
+      <p v-if="version" class="version">{{ t('Version {v}', { v: version }) }}</p>
     </div>
   </nav>
 </template>

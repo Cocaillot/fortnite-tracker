@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t } from '../i18n'
 import { ref } from 'vue'
 import { send } from '../bridge'
 import { theme } from '../composables/useTheme'
@@ -38,7 +39,7 @@ function submit() {
         <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8" />
         <path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
       </svg>
-      <input v-model="query" placeholder="Search a player (Epic, PSN or Xbox name) and press Enter" aria-label="Search a player" />
+      <input v-model="query" :placeholder="t('Search a player (Epic, PSN or Xbox name) and press Enter')" :aria-label="t('Search a player')" />
     </form>
 
     <div class="buttons" @mousedown.stop @dblclick.stop>
@@ -47,7 +48,7 @@ function submit() {
         class="icon"
         :class="{ on: overlayOn }"
         :aria-pressed="overlayOn"
-        title="In-game overlay (Ctrl+Shift+O)"
+        :title="t('In-game overlay (Ctrl+Shift+O)')"
         @click="emit('toggleOverlay')"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -55,17 +56,17 @@ function submit() {
           <rect x="12" y="7.5" width="6.5" height="4" rx="1" />
         </svg>
       </button>
-      <button type="button" class="icon" :title="fullscreen ? 'Exit full screen (F11)' : 'Full screen (F11)'" @click="send({ type: 'window', action: 'fullscreen' })">
+      <button type="button" class="icon" :title="fullscreen ? t('Exit full screen (F11)') : t('Full screen (F11)')" @click="send({ type: 'window', action: 'fullscreen' })">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <path v-if="!fullscreen" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
           <path v-else d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
         </svg>
       </button>
       <span class="sep" aria-hidden="true" />
-      <button type="button" class="icon" title="Minimize" @click="send({ type: 'window', action: 'minimize' })">
+      <button type="button" class="icon" :title="t('Minimize')" @click="send({ type: 'window', action: 'minimize' })">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="11.2" width="12" height="1.6" rx="0.8" /></svg>
       </button>
-      <button type="button" class="icon" :title="maximized ? 'Restore' : 'Maximize'" @click="send({ type: 'window', action: 'maximize' })">
+      <button type="button" class="icon" :title="maximized ? t('Restore') : t('Maximize')" @click="send({ type: 'window', action: 'maximize' })">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">
           <rect v-if="!maximized" x="6" y="6" width="12" height="12" rx="1.5" />
           <template v-else>
@@ -74,7 +75,7 @@ function submit() {
           </template>
         </svg>
       </button>
-      <button type="button" class="icon close" title="Close to tray (keeps tracking)" @click="send({ type: 'window', action: 'close' })">
+      <button type="button" class="icon close" :title="t('Close to tray (keeps tracking)')" @click="send({ type: 'window', action: 'close' })">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M7 7l10 10M17 7L7 17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
         </svg>

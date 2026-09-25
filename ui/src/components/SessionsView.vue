@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn, locale } from '../i18n'
 import { computed } from 'vue'
 import { isAnonymous, type MatchRecord, type SessionRecord } from '../bridge'
 
@@ -62,38 +63,38 @@ function summary(g: Session) {
 }
 
 const isLive = (g: Session) => Date.now() - g.end < GAP_MS
-const day = (t: number) => new Date(t).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
-const time = (t: number) => new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}` : `${min} min`)
+const day = (t: number) => new Date(t).toLocaleDateString(locale(), { weekday: 'short', day: 'numeric', month: 'short' })
+const time = (t: number) => new Date(t).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
+const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}` : `${min} min`)
 </script>
 
 <template>
   <div class="sessions">
-    <p v-if="!groups.length" class="empty">Sessions appear here as you play.</p>
+    <p v-if="!groups.length" class="empty">{{ t('Sessions appear here as you play.') }}</p>
     <article v-for="g in groups" :key="g.start" class="session" :class="{ live: isLive(g) }">
       <template v-for="s in [summary(g)]" :key="0">
         <header>
           <span class="when">{{ day(g.start) }} · {{ time(g.start) }}–{{ time(g.end) }}</span>
-          <span v-if="isLive(g)" class="live-tag">Now</span>
+          <span v-if="isLive(g)" class="live-tag">{{ t('Now') }}</span>
           <span class="dur">{{ hours(s.minutes) }}</span>
         </header>
         <div class="tiles">
-          <div class="tile"><span class="label">Matches</span><span class="value">{{ g.matches.length }}</span></div>
-          <div class="tile"><span class="label">Kills</span><span class="value">{{ s.kills ?? '–' }}</span></div>
-          <div class="tile"><span class="label">Wins</span><span class="value" :class="{ gold: s.wins }">{{ s.wins }}</span></div>
+          <div class="tile"><span class="label">{{ t('Matches') }}</span><span class="value">{{ g.matches.length }}</span></div>
+          <div class="tile"><span class="label">{{ t('Kills') }}</span><span class="value">{{ s.kills ?? '–' }}</span></div>
+          <div class="tile"><span class="label">{{ t('Wins') }}</span><span class="value" :class="{ gold: s.wins }">{{ s.wins }}</span></div>
           <div class="tile">
-            <span class="label">{{ s.kd !== null ? 'K/D' : 'Win %' }}</span>
+            <span class="label">{{ s.kd !== null ? 'K/D' : t('Win %') }}</span>
             <span class="value">{{ s.kd !== null ? s.kd.toFixed(2) : s.winRate !== null ? s.winRate.toFixed(0) : '–' }}</span>
           </div>
         </div>
         <p class="detail">
-          <template v-if="s.mode">Mostly {{ s.mode[0] }}</template>
+          <template v-if="s.mode">{{ t('Mostly {mode}', { mode: tn(s.mode[0]) }) }}</template>
           <template v-if="s.nemesis && s.nemesis[1] >= 2">
-            · eliminated {{ s.nemesis[1] }}× by
+            · {{ t('eliminated {n}× by', { n: s.nemesis[1] }) }}
             <span class="player-link" role="button" tabindex="0" @click="emit('open', null, s.nemesis[0])" @keydown.enter="emit('open', null, s.nemesis[0])">{{ s.nemesis[0] }}</span>
           </template>
         </p>
-        <p v-if="!s.fromStats" class="source">Kills and wins from tracked matches only; full session stats need 0.4.0 or later.</p>
+        <p v-if="!s.fromStats" class="source">{{ t('Kills and wins from tracked matches only; full session stats need 0.4.0 or later.') }}</p>
       </template>
     </article>
   </div>

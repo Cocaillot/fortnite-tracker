@@ -32,6 +32,6 @@ public sealed class EliminationNotifier
         parts.Add(StatText.Summary(e, s.StatsBucket));
         if (StatText.VersusYou(e, s.Squad.FirstOrDefault(), s.StatsBucket) is { } versus) parts.Add(versus);
 
-        _notify($"Eliminated by {StatText.DisplayName(e)}", string.Join(" · ", parts));
+        _notify(Loc.T("Eliminated by {0}", StatText.DisplayName(e)), string.Join(" · ", parts));
     }
 }

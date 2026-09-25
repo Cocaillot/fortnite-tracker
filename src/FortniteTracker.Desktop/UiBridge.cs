@@ -128,10 +128,13 @@ public sealed class UiBridge
             case "setDiscordRecap":
                 if (!string.IsNullOrWhiteSpace(msg.Url) && !DiscordRecapPoster.IsWebhookUrl(msg.Url))
                 {
-                    Send("recapResult", "That isn't a Discord webhook link. It starts with https://discord.com/api/webhooks/");
+                    Send("recapResult", Loc.T("That isn't a Discord webhook link. It starts with https://discord.com/api/webhooks/"));
                     break;
                 }
                 _settings.SetDiscordRecap(msg.Url, msg.Enabled ?? true);
+                break;
+            case "setLanguage" when msg.Lang is "en" or "fr" or "auto":
+                _settings.SetLanguage(msg.Lang == "auto" ? null : msg.Lang);
                 break;
             case "postRecap":
                 Send("recapResult", await _recap.PostLatestAsync(onlyIfNew: false));
@@ -200,6 +203,8 @@ public sealed class UiBridge
         richPresence = new { available = _presence.Available, enabled = _settings.RichPresenceEnabled },
         notifyOnElimination = _settings.NotifyOnElimination,
         notifyRankChanges = _settings.NotifyRankChanges,
+        language = _settings.Language ?? "auto",
+        effectiveLanguage = Loc.Language,
         discordRecap = new { hasWebhook = DiscordRecapPoster.IsWebhookUrl(_settings.DiscordWebhookUrl), autoPost = _settings.AutoPostRecap },
         overlay = new { enabled = _settings.OverlayEnabled, corner = _settings.OverlayCorner.ToString() },
         version = _updates.CurrentVersion,
@@ -248,5 +253,5 @@ public sealed class UiBridge
 
     private sealed record UiMessage(
         string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId,
-        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals, string? Url);
+        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals, string? Url, string? Lang);
 }

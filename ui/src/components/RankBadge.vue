@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn, locale } from '../i18n'
 import { computed } from 'vue'
 import type { RankProgress } from '../bridge'
 import RankEmblem from './RankEmblem.vue'
@@ -14,10 +15,10 @@ const division = computed(() => (props.rank.current < 9 && !unranked.value ? (pr
 // Unreal has a leaderboard position instead of progress.
 const showProgress = computed(() => !unranked.value && props.rank.position === null && props.rank.tier !== 'Beyond')
 const title = computed(() => {
-  const parts = [`${props.rank.trackName}: ${props.rank.rankName}`]
-  if (showProgress.value) parts.push(`${Math.round(props.rank.progress * 100)}% to next rank`)
-  if (!unranked.value) parts.push(`best ${props.rank.highestName}`)
-  if (props.rank.lastUpdatedUtc) parts.push(`updated ${new Date(props.rank.lastUpdatedUtc).toLocaleDateString('en-GB')}`)
+  const parts = [`${tn(props.rank.trackName)}: ${tn(props.rank.rankName)}`]
+  if (showProgress.value) parts.push(t('{p}% to next rank', { p: Math.round(props.rank.progress * 100) }))
+  if (!unranked.value) parts.push(t('best {rank}', { rank: tn(props.rank.highestName) }))
+  if (props.rank.lastUpdatedUtc) parts.push(t('updated {date}', { date: new Date(props.rank.lastUpdatedUtc).toLocaleDateString(locale()) }))
   return parts.join(' · ')
 })
 </script>
@@ -26,7 +27,7 @@ const title = computed(() => {
   <span class="rank" :class="[`tier-${rank.tier}`, size, { past: !rank.isCurrentSeason }]" :title="title">
     <RankEmblem :tier="rank.tier" :division="division" :size="size === 'md' ? 26 : 18" />
     <span class="text">
-      <span class="name">{{ showTrack ? `${rank.trackName} · ` : '' }}{{ rank.rankName }}</span>
+      <span class="name">{{ showTrack ? `${tn(rank.trackName)} · ` : '' }}{{ tn(rank.rankName) }}</span>
       <span v-if="showProgress" class="bar"><span :style="{ width: `${Math.round(rank.progress * 100)}%` }" /></span>
     </span>
   </span>

@@ -1,16 +1,17 @@
 <script setup lang="ts">
+import { t } from '../i18n'
 import { dismissToast as dismiss, toasts } from '../composables/toasts'
 </script>
 
 <template>
   <div class="toasts" aria-live="polite">
     <TransitionGroup name="toast">
-      <div v-for="t in toasts" :key="t.id" class="toast" :class="{ good: t.good }" role="status">
+      <div v-for="toast in toasts" :key="toast.id" class="toast" :class="{ good: toast.good }" role="status">
         <div class="body">
-          <strong>{{ t.title }}</strong>
-          <span>{{ t.text }}</span>
+          <strong>{{ toast.title }}</strong>
+          <span>{{ toast.text }}</span>
         </div>
-        <button type="button" class="close" aria-label="Dismiss" @click="dismiss(t.id)">×</button>
+        <button type="button" class="close" :aria-label="t('Dismiss')" @click="dismiss(toast.id)">×</button>
       </div>
     </TransitionGroup>
   </div>

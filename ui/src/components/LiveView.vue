@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn } from '../i18n'
 import { computed } from 'vue'
 import type { LobbySnapshot, MatchRecord, RankProgress } from '../bridge'
 import PlayerCard from './PlayerCard.vue'
@@ -30,26 +31,26 @@ const today = computed(() => {
     matches: ms.length,
     wins: ms.filter((m) => m.won).length,
     kills: tracked.length ? tracked.reduce((s, m) => s + (m.kills ?? 0), 0) : null,
-    time: minutes >= 60 ? `${Math.floor(minutes / 60)}h ${String(Math.round(minutes % 60)).padStart(2, '0')}` : `${Math.round(minutes)} min`,
+    time: minutes >= 60 ? `${Math.floor(minutes / 60)} h ${String(Math.round(minutes % 60)).padStart(2, '0')}` : `${Math.round(minutes)} min`,
   }
 })
 
 const heroState = computed(() => {
   const s = props.snapshot
-  if (!s) return { cls: 'idle', title: 'Waiting for Fortnite', line: 'Start the game and everything here fills in automatically.' }
-  if (!s.gameRunning) return { cls: 'idle', title: 'Fortnite not running', line: 'Launch Fortnite to start tracking.' }
-  const party = s.squad.length > 1 ? `Party of ${s.squad.length}` : 'No party'
-  if (!s.inMatch) return { cls: 'lobby', title: 'In the lobby', line: `${s.mode !== 'Match' ? `${s.mode} selected · ` : ''}${party}` }
-  return { cls: 'live', title: s.mode, line: `In a match · ${party} · stats shown: ${s.statsLabel}` }
+  if (!s) return { cls: 'idle', title: t('Waiting for Fortnite'), line: t('Start the game and everything here fills in automatically.') }
+  if (!s.gameRunning) return { cls: 'idle', title: t('Fortnite not running'), line: t('Launch Fortnite to start tracking.') }
+  const party = s.squad.length > 1 ? t('Party of {n}', { n: s.squad.length }) : t('No party')
+  if (!s.inMatch) return { cls: 'lobby', title: t('In the lobby'), line: `${s.mode !== 'Match' ? `${t('{mode} selected', { mode: tn(s.mode) })} · ` : ''}${party}` }
+  return { cls: 'live', title: tn(s.mode), line: t('In a match · {party} · stats shown: {label}', { party, label: tn(s.statsLabel) }) }
 })
 
 const subtitle = computed(() => {
   const s = props.snapshot
-  if (!s) return 'Waiting for Fortnite. Your squad appears here as soon as the game starts.'
-  if (!s.gameRunning) return 'Fortnite is not running. Launch it and your squad shows up automatically.'
+  if (!s) return t('Waiting for Fortnite. Your squad appears here as soon as the game starts.')
+  if (!s.gameRunning) return t('Fortnite is not running. Launch it and your squad shows up automatically.')
   return s.inMatch
-    ? `In a ${s.mode} match. Stats shown are for ${s.statsLabel}.`
-    : `In the lobby. After a match, the player who eliminated you appears on the right.`
+    ? t('In a {mode} match. Stats shown are for {label}.', { mode: tn(s.mode), label: tn(s.statsLabel) })
+    : t('In the lobby. After a match, the player who eliminated you appears on the right.')
 })
 </script>
 
@@ -57,23 +58,23 @@ const subtitle = computed(() => {
   <div class="page">
     <section class="hero" :class="heroState.cls">
       <div class="hero-main">
-        <span class="hero-kicker"><span class="dot" aria-hidden="true" />Live</span>
+        <span class="hero-kicker"><span class="dot" aria-hidden="true" />{{ t('Live') }}</span>
         <h1 class="hero-title">{{ heroState.title }}</h1>
         <p class="hero-line">{{ heroState.line }}</p>
       </div>
-      <div v-if="heroState.cls === 'live' && timer" class="hero-timer" aria-label="Match time">{{ timer }}</div>
-      <dl class="hero-stats" aria-label="Today">
-        <div><dt>Matches today</dt><dd>{{ today.matches }}</dd></div>
-        <div><dt>Wins</dt><dd :class="{ gold: today.wins }">{{ today.wins }}</dd></div>
-        <div :title="today.kills === null ? 'Kills are measured for matches played while the app is open' : undefined"><dt>Kills</dt><dd>{{ today.kills ?? '–' }}</dd></div>
-        <div><dt>Time played</dt><dd>{{ today.time }}</dd></div>
+      <div v-if="heroState.cls === 'live' && timer" class="hero-timer" :aria-label="t('Match time')">{{ timer }}</div>
+      <dl class="hero-stats" :aria-label="t('Today')">
+        <div><dt>{{ t('Matches today') }}</dt><dd>{{ today.matches }}</dd></div>
+        <div><dt>{{ t('Wins') }}</dt><dd :class="{ gold: today.wins }">{{ today.wins }}</dd></div>
+        <div :title="today.kills === null ? t('Kills are measured for matches played while the app is open') : undefined"><dt>{{ t('Kills') }}</dt><dd>{{ today.kills ?? '–' }}</dd></div>
+        <div><dt>{{ t('Time played') }}</dt><dd>{{ today.time }}</dd></div>
       </dl>
     </section>
     <p class="subtitle">{{ subtitle }}</p>
 
     <div class="columns">
       <section class="squad">
-        <h2 class="card-title">Your squad</h2>
+        <h2 class="card-title">{{ t('Your squad') }}</h2>
         <TransitionGroup v-if="snapshot?.squad.length" name="list" tag="div" class="list">
           <PlayerCard
             v-for="(p, i) in snapshot.squad"
@@ -88,19 +89,19 @@ const subtitle = computed(() => {
           />
         </TransitionGroup>
         <div v-else class="empty-state">
-          <p>No squad yet.</p>
-          <span>Start Fortnite; you and your party members are detected from the game's log.</span>
+          <p>{{ t('No squad yet.') }}</p>
+          <span>{{ t("Start Fortnite; you and your party members are detected from the game's log.") }}</span>
         </div>
       </section>
 
       <div class="side">
       <section class="elimination">
-        <h2 class="card-title">Last elimination</h2>
+        <h2 class="card-title">{{ t('Last elimination') }}</h2>
         <Transition name="slide" mode="out-in">
           <div v-if="snapshot?.eliminatedBy" :key="snapshot.lastMatchStartedUtc ?? ''" class="list">
             <PlayerCard :player="snapshot.eliminatedBy" :bucket="bucket" :mode-label="label" :you="you" variant="eliminator" @open="onOpen" />
             <template v-if="snapshot.spectated.length">
-              <h3 class="sub-title">Also spectated</h3>
+              <h3 class="sub-title">{{ t('Also spectated') }}</h3>
               <PlayerCard
                 v-for="p in snapshot.spectated"
                 :key="p.epicName ?? ''"
@@ -114,12 +115,12 @@ const subtitle = computed(() => {
             </template>
           </div>
           <div v-else class="empty-state">
-            <p>Nobody has eliminated you yet.</p>
-            <span>When your team is eliminated, their stats, threat level and how they compare to you show up here.</span>
+            <p>{{ t('Nobody has eliminated you yet.') }}</p>
+            <span>{{ t('When your team is eliminated, their stats, threat level and how they compare to you show up here.') }}</span>
           </div>
         </Transition>
       </section>
-      <GoalsCard :snapshot="snapshot" :ranks="myRanks" :history="history" @completed="(t) => showToast('Goal completed!', t, true)" />
+      <GoalsCard :snapshot="snapshot" :ranks="myRanks" :history="history" @completed="(text) => showToast(t('Goal completed!'), text, true)" />
       </div>
     </div>
   </div>

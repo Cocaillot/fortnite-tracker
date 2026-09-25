@@ -175,6 +175,10 @@ export interface Settings {
   overlay: { enabled: boolean; corner: OverlayCorner }
   version: string
   updateVersion: string | null
+  /** What the user picked; "auto" follows the Windows language. */
+  language: 'en' | 'fr' | 'auto'
+  /** The language in use. */
+  effectiveLanguage: 'en' | 'fr'
 }
 
 export interface HostMessages {
@@ -219,6 +223,7 @@ export type UiMessage =
   | { type: 'follow'; accountId?: string | null; name: string; enabled: boolean }
   | { type: 'leaderboard' }
   | { type: 'setTheme'; theme: object | null }
+  | { type: 'setLanguage'; lang: 'en' | 'fr' | 'auto' }
 
 interface WebView {
   postMessage(message: unknown): void

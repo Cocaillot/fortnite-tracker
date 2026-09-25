@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, locale } from '../i18n'
 import { computed, ref } from 'vue'
 import type { MatchRecord, StatsDay } from '../bridge'
 import TrendChart from './TrendChart.vue'
@@ -14,7 +15,7 @@ const days = computed(() => {
   for (let i = span.value - 1; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
-    out.push({ key: dayKey(d), label: d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) })
+    out.push({ key: dayKey(d), label: d.toLocaleDateString(locale(), { day: 'numeric', month: 'short' }) })
   }
   return out
 })
@@ -58,33 +59,33 @@ const fmtMin = (v: number) => (v >= 60 ? `${Math.floor(v / 60)}h${String(Math.ro
 
 <template>
   <div class="trends">
-    <div class="seg" role="tablist" aria-label="Period">
+    <div class="seg" role="tablist" :aria-label="t('Period')">
       <button v-for="n in [7, 14, 30] as const" :key="n" type="button" role="tab" :aria-selected="span === n" :class="{ on: span === n }" @click="span = n">
-        {{ n }} days
+        {{ t('{n} days', { n }) }}
       </button>
     </div>
 
     <div class="grid">
       <section class="card">
-        <h3 class="card-title">Matches per day</h3>
+        <h3 class="card-title">{{ t('Matches per day') }}</h3>
         <TrendChart :points="matchesPerDay" />
       </section>
       <section class="card">
-        <h3 class="card-title">Time in matches</h3>
+        <h3 class="card-title">{{ t('Time in matches') }}</h3>
         <TrendChart :points="minutesPerDay" :format="fmtMin" color="var(--rarity-epic)" />
       </section>
       <section class="card">
-        <h3 class="card-title">Your K/D each day</h3>
+        <h3 class="card-title">{{ t('Your K/D each day') }}</h3>
         <TrendChart v-if="hasSnapshots" :points="dailyKd" kind="line" :format="(v) => v.toFixed(2)" color="var(--live)" />
-        <p v-else class="muted">Builds up from today: the app saves your season stats once a day while it's open.</p>
+        <p v-else class="muted">{{ t("Builds up from today: the app saves your season stats once a day while it's open.") }}</p>
       </section>
       <section class="card">
-        <h3 class="card-title">Season K/D &amp; win rate</h3>
+        <h3 class="card-title">{{ t('Season K/D & win rate') }}</h3>
         <template v-if="hasSnapshots">
           <TrendChart :points="seasonKd" kind="line" :format="(v) => v.toFixed(2)" />
           <TrendChart :points="seasonWinRate" kind="line" :format="(v) => `${v.toFixed(1)}%`" color="var(--rarity-legendary)" />
         </template>
-        <p v-else class="muted">Builds up from today: one point per day you play with the app open.</p>
+        <p v-else class="muted">{{ t('Builds up from today: one point per day you play with the app open.') }}</p>
       </section>
     </div>
   </div>

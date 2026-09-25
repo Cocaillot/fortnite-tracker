@@ -32,15 +32,15 @@ public sealed class NoteAlerts
         // Stay quiet while the log is replayed at startup.
         if (match is not { } started || !LobbyTracker.IsLive(s.LastMatchEndedUtc ?? started)) return;
 
-        var people = s.Squad.Skip(1).Select(p => (p.AccountId, p.EpicName, Role: "is in your party"))
-            .Concat(s.EliminatedBy is { } e ? [(e.AccountId, e.EpicName, Role: "eliminated you")] : [])
-            .Concat(s.Spectated.Select(p => (p.AccountId, p.EpicName, Role: "is in this match")));
+        var people = s.Squad.Skip(1).Select(p => (p.AccountId, p.EpicName, Role: Loc.T("is in your party")))
+            .Concat(s.EliminatedBy is { } e ? [(e.AccountId, e.EpicName, Role: Loc.T("eliminated you"))] : [])
+            .Concat(s.Spectated.Select(p => (p.AccountId, p.EpicName, Role: Loc.T("is in this match"))));
 
         foreach (var (id, name, role) in people)
         {
             if (_notes.Find(id, name) is not { } note || !_announced.Add(note.Name)) continue;
             var detail = string.Join(" · ", note.Tags.Concat(string.IsNullOrWhiteSpace(note.Text) ? [] : [$"\"{note.Text}\""]));
-            _notify($"You met {note.Name} again", $"{note.Name} {role}. {detail}");
+            _notify(Loc.T("You met {0} again", note.Name), $"{note.Name} {role}. {detail}");
         }
     }
 }

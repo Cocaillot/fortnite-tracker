@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn, locale } from '../i18n'
 import { computed, onMounted, onUnmounted } from 'vue'
 import type { MatchDetail, MatchRecord } from '../bridge'
 import PlayerCard from './PlayerCard.vue'
@@ -12,9 +13,9 @@ const minutes = computed(() =>
   props.match.endedUtc ? Math.round((Date.parse(props.match.endedUtc) - Date.parse(props.match.startedUtc)) / 60_000) : null,
 )
 const when = computed(() =>
-  new Date(props.match.startedUtc).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }),
+  new Date(props.match.startedUtc).toLocaleString(locale(), { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }),
 )
-const result = computed(() => (props.match.won ? 'Victory' : !props.match.finished ? 'Left early' : 'Eliminated'))
+const result = computed(() => t(props.match.won ? 'Victory' : !props.match.finished ? 'Left early' : 'Eliminated'))
 
 function onKey(e: KeyboardEvent) {
   if (e.key === 'Escape') emit('close')
@@ -25,55 +26,55 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 
 <template>
   <div class="scrim" @click.self="emit('close')">
-    <aside class="drawer" role="dialog" aria-modal="true" :aria-label="`${match.mode} match details`">
+    <aside class="drawer" role="dialog" aria-modal="true" :aria-label="t('{mode} match details', { mode: tn(match.mode) })">
       <header>
         <div>
           <span class="kicker">{{ when }}</span>
-          <h2>{{ match.mode }}</h2>
+          <h2>{{ tn(match.mode) }}</h2>
         </div>
-        <button type="button" class="close" aria-label="Close" @click="emit('close')">×</button>
+        <button type="button" class="close" :aria-label="t('Close')" @click="emit('close')">×</button>
       </header>
 
       <div class="facts">
-        <div class="fact" :class="{ win: match.won, left: !match.finished }"><span>Result</span><strong>{{ result }}</strong></div>
-        <div class="fact"><span>Kills</span><strong>{{ match.kills ?? '–' }}</strong></div>
-        <div class="fact"><span>Duration</span><strong>{{ minutes !== null ? `${minutes} min` : '–' }}</strong></div>
-        <div class="fact"><span>Party</span><strong>{{ match.squadSize === 1 ? 'Solo' : match.squadSize }}</strong></div>
+        <div class="fact" :class="{ win: match.won, left: !match.finished }"><span>{{ t('Result') }}</span><strong>{{ result }}</strong></div>
+        <div class="fact"><span>{{ t('Kills') }}</span><strong>{{ match.kills ?? '–' }}</strong></div>
+        <div class="fact"><span>{{ t('Duration') }}</span><strong>{{ minutes !== null ? `${minutes} min` : '–' }}</strong></div>
+        <div class="fact"><span>{{ t('Party') }}</span><strong>{{ match.squadSize === 1 ? t('Solo') : match.squadSize }}</strong></div>
       </div>
 
       <div v-if="!detail" class="skeleton" style="height: 220px" />
 
       <template v-else>
         <section v-if="detail.rank" class="rank-move" :class="{ up: detail.rank.delta > 0, down: detail.rank.delta < 0 }">
-          <span class="label">Rank · {{ detail.rank.trackName }}</span>
+          <span class="label">{{ t('Rank') }} · {{ tn(detail.rank.trackName) }}</span>
           <div class="move">
-            <span>{{ detail.rank.beforeName }} <small>{{ Math.round(detail.rank.before.progress * 100) }}%</small></span>
+            <span>{{ tn(detail.rank.beforeName) }} <small>{{ Math.round(detail.rank.before.progress * 100) }}%</small></span>
             <span class="arrow" aria-hidden="true">→</span>
-            <span>{{ detail.rank.afterName }} <small>{{ Math.round(detail.rank.after.progress * 100) }}%</small></span>
+            <span>{{ tn(detail.rank.afterName) }} <small>{{ Math.round(detail.rank.after.progress * 100) }}%</small></span>
             <strong class="delta">{{ detail.rank.delta > 0 ? '+' : '' }}{{ detail.rank.delta }}%</strong>
           </div>
         </section>
 
         <section v-if="detail.eliminator">
-          <h3 class="card-title">Eliminated by</h3>
-          <PlayerCard :player="detail.eliminator" :bucket="null" mode-label="All modes" variant="eliminator" @open="(id, n) => emit('open', id, n)" />
+          <h3 class="card-title">{{ t('Eliminated by') }}</h3>
+          <PlayerCard :player="detail.eliminator" :bucket="null" :mode-label="t('All modes')" variant="eliminator" @open="(id, n) => emit('open', id, n)" />
         </section>
 
         <section v-if="detail.party.length">
-          <h3 class="card-title">Your party</h3>
+          <h3 class="card-title">{{ t('Your party') }}</h3>
           <ul class="party">
-            <li v-for="t in detail.party" :key="t.accountId">
-              <button type="button" @click="emit('open', t.accountId, null)">
-                <PlayerAvatar :name="t.name" :size="36" />
-                <span class="mate-name">{{ t.name ?? 'Private profile' }}</span>
-                <span v-if="t.stats.overall" class="stat-value" :class="`r-${t.stats.overall.kdRarity}`">{{ t.stats.overall.kd.toFixed(2) }} <small>K/D</small></span>
+            <li v-for="mate in detail.party" :key="mate.accountId">
+              <button type="button" @click="emit('open', mate.accountId, null)">
+                <PlayerAvatar :name="mate.name" :size="36" />
+                <span class="mate-name">{{ mate.name ?? t('Private profile') }}</span>
+                <span v-if="mate.stats.overall" class="stat-value" :class="`r-${mate.stats.overall.kdRarity}`">{{ mate.stats.overall.kd.toFixed(2) }} <small>K/D</small></span>
               </button>
             </li>
           </ul>
         </section>
 
         <p v-if="!detail.rank && !detail.eliminator && !detail.party.length" class="muted">
-          No more details for this match: it was played solo, without a rank update or an eliminator in the log.
+          {{ t('No more details for this match: it was played solo, without a rank update or an eliminator in the log.') }}
         </p>
       </template>
     </aside>

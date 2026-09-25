@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn } from '../i18n'
 import { computed } from 'vue'
 import { statsFor, threatLabel, type PlayerStats, type RankProgress } from '../bridge'
 import RankBadge from './RankBadge.vue'
@@ -23,6 +24,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ open: [accountId: string | null, name: string | null] }>()
 
+// English keys, translated where shown.
 const statusText: Partial<Record<PlayerStats['status'], string>> = {
   Private: 'Stats private: they can make them public in Fortnite settings.',
   NotFound: 'No stats found: likely a bot, or a name that changed.',
@@ -32,7 +34,7 @@ const statusText: Partial<Record<PlayerStats['status'], string>> = {
 }
 
 const name = computed(() =>
-  props.player.status === 'Hidden' ? 'Streamer Mode player' : (props.player.epicName ?? props.fallbackName ?? 'Squad member'),
+  props.player.status === 'Hidden' ? t('Streamer Mode player') : (props.player.epicName ?? props.fallbackName ?? t('Squad member')),
 )
 const stats = computed(() => (props.player.status === 'Ok' ? statsFor(props.player, props.bucket) : null))
 const loading = computed(() => props.player.status === 'Loading')
@@ -52,8 +54,8 @@ const versus = computed(() => {
   if (!stats.value || !mine || mine.kd <= 0) return null
   const ratio = stats.value.kd / mine.kd
   return ratio >= 1
-    ? { text: `${ratio.toFixed(1)}× your K/D`, worse: true }
-    : { text: `${(1 / ratio).toFixed(1)}× lower K/D than you`, worse: false }
+    ? { text: t('{x}× your K/D', { x: ratio.toFixed(1) }), worse: true }
+    : { text: t('{x}× lower K/D than you', { x: (1 / ratio).toFixed(1) }), worse: false }
 })
 </script>
 
@@ -63,19 +65,19 @@ const versus = computed(() => {
       <span v-if="loading" class="skeleton avatar-skeleton" />
       <PlayerAvatar v-else :name="player.status === 'Hidden' ? '?' : name" :size="46" :you="isYou" />
       <span v-if="loading" class="skeleton name-skeleton" />
-      <button v-else-if="canOpen" type="button" class="name link" :title="`Open ${name}'s profile`" @click="open">{{ name }}</button>
+      <button v-else-if="canOpen" type="button" class="name link" :title="t('Open {name}\'s profile', { name })" @click="open">{{ name }}</button>
       <span v-else class="name">{{ name }}</span>
-      <span v-if="isYou" class="tag you">You</span>
+      <span v-if="isYou" class="tag you">{{ t('You') }}</span>
       <span v-if="player.threat && variant !== 'squad'" class="tag threat" :class="`t-${player.threat}`">
-        {{ threatLabel[player.threat] }}
+        {{ t(threatLabel[player.threat]) }}
       </span>
-      <span v-for="t in note?.tags ?? []" :key="t" class="tag note-tag" :title="note?.text || 'Your tag'">{{ t }}</span>
-      <span v-if="stats && modeLabel" class="mode">{{ modeLabel }} stats</span>
+      <span v-for="tag in note?.tags ?? []" :key="tag" class="tag note-tag" :title="note?.text || t('Your tag')">{{ t(tag) }}</span>
+      <span v-if="stats && modeLabel" class="mode">{{ t('{mode} stats', { mode: tn(modeLabel) }) }}</span>
     </header>
 
-    <div v-if="seasonRanks.length" class="ranks" aria-label="Ranks this season">
+    <div v-if="seasonRanks.length" class="ranks" :aria-label="t('Ranks this season')">
       <span v-for="r in seasonRanks" :key="r.track" class="rank-chip">
-        <span class="rank-mode">{{ r.trackName }}</span>
+        <span class="rank-mode">{{ tn(r.trackName) }}</span>
         <RankBadge :rank="r" size="md" />
       </span>
     </div>
@@ -85,19 +87,19 @@ const versus = computed(() => {
     </div>
 
     <div v-else-if="stats" class="stats">
-      <div class="tile rarity" :class="`r-${stats.kdRarity}`" title="Kills per death">
+      <div class="tile rarity" :class="`r-${stats.kdRarity}`" :title="t('Kills per death')">
         <span class="label">K/D</span><span class="value">{{ stats.kd.toFixed(2) }}</span>
       </div>
-      <div class="tile rarity" :class="`r-${stats.winRateRarity}`" title="Share of matches won">
-        <span class="label">Win rate</span><span class="value">{{ stats.winRate.toFixed(1) }}%</span>
+      <div class="tile rarity" :class="`r-${stats.winRateRarity}`" :title="t('Share of matches won')">
+        <span class="label">{{ t('Win rate') }}</span><span class="value">{{ stats.winRate.toFixed(1) }}%</span>
       </div>
-      <div class="tile"><span class="label">Wins</span><span class="value plain">{{ stats.wins }}</span></div>
-      <div class="tile"><span class="label">Matches</span><span class="value plain">{{ stats.matches }}</span></div>
-      <div class="tile"><span class="label">Kills</span><span class="value plain">{{ stats.kills }}</span></div>
-      <div class="tile"><span class="label">Kills / match</span><span class="value plain">{{ stats.killsPerMatch.toFixed(2) }}</span></div>
+      <div class="tile"><span class="label">{{ t('Wins') }}</span><span class="value plain">{{ stats.wins }}</span></div>
+      <div class="tile"><span class="label">{{ t('Matches') }}</span><span class="value plain">{{ stats.matches }}</span></div>
+      <div class="tile"><span class="label">{{ t('Kills') }}</span><span class="value plain">{{ stats.kills }}</span></div>
+      <div class="tile"><span class="label">{{ t('Kills / match') }}</span><span class="value plain">{{ stats.killsPerMatch.toFixed(2) }}</span></div>
     </div>
 
-    <p v-else class="status">{{ statusText[player.status] }}</p>
+    <p v-else class="status">{{ t(statusText[player.status] ?? '') }}</p>
 
     <p v-if="versus" class="versus" :class="{ worse: versus.worse }">{{ versus.text }}</p>
   </article>

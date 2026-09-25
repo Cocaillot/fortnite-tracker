@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn, tp, locale } from '../i18n'
 import { computed, ref, watch } from 'vue'
 import { relationLabel, type ModeStats, type PlayerProfile } from '../bridge'
 import RankBadge from './RankBadge.vue'
@@ -23,6 +24,7 @@ watch(
   },
 )
 
+// English keys, translated where shown.
 const modeNames: Record<string, string> = { overall: 'All modes', solo: 'Solo', duo: 'Duos', squad: 'Squads', ltm: 'Ranked & LTMs' }
 
 const stats = computed(() => (props.profile ? (window_.value === 'season' ? props.profile.season : props.profile.lifetime) : null))
@@ -50,7 +52,7 @@ const neverPlayed = computed(() => (props.profile?.ranks ?? []).filter((r) => !r
 function bestEver(track: string) {
   const seasons = (props.profile?.seasons ?? []).filter((s) => s.track === track)
   const best = seasons.reduce<(typeof seasons)[number] | null>((b, s) => (!b || s.highest > b.highest ? s : b), null)
-  return best ? { name: RANK_NAMES[best.highest] ?? `Rank ${best.highest}`, when: best.lastUpdatedUtc!, seasons: seasons.length } : null
+  return best ? { name: tn(RANK_NAMES[best.highest] ?? `Rank ${best.highest}`), when: best.lastUpdatedUtc!, seasons: seasons.length } : null
 }
 
 // Modes with enough rank updates this season to draw a graph.
@@ -61,6 +63,7 @@ const chartTrack = ref<string | null>(null)
 const activeChart = computed(() => chartModes.value.find((r) => r.track === chartTrack.value) ?? chartModes.value[0] ?? null)
 const chartPoints = computed(() => (activeChart.value ? (props.profile?.rankHistory[activeChart.value.track] ?? []) : []))
 
+// English keys, translated where shown.
 const statusText: Record<string, string> = {
   Private: 'This player keeps their stats private. They can make them public in Fortnite settings.',
   NotFound: 'No stats found: likely a bot, or a name that changed.',
@@ -73,26 +76,26 @@ const statusText: Record<string, string> = {
 const placementsTracked = computed(() => !!selected.value && (selected.value.top25 > 0 || selected.value.matches < 10))
 const pct = (part: number, total: number) => (total ? `${((100 * part) / total).toFixed(1)}%` : '–')
 const hours = (min: number) => (min >= 60 ? `${Math.round(min / 60)} h` : `${min} min`)
-const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+const when = (iso: string) => new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+const monthYear = (iso: string) => new Date(iso).toLocaleDateString(locale(), { month: 'short', year: 'numeric' })
 </script>
 
 <template>
   <div class="page">
-    <button v-if="canGoBack" type="button" class="back" @click="emit('close')">‹ Back</button>
+    <button v-if="canGoBack" type="button" class="back" @click="emit('close')">‹ {{ t('Back') }}</button>
 
     <header class="hero card">
       <PlayerAvatar :name="profile?.name ?? loadingName" :size="92" :you="profile?.relation === 'You'" />
       <div class="identity">
         <h1 class="name">{{ profile?.name ?? loadingName }}</h1>
         <div v-if="profile" class="chips">
-          <span class="chip" :class="profile.relation">{{ relationLabel[profile.relation] }}</span>
-          <span v-if="profile.season.battlePassLevel" class="chip muted">Battle Pass level {{ profile.season.battlePassLevel }}</span>
+          <span class="chip" :class="profile.relation">{{ t(relationLabel[profile.relation]) }}</span>
+          <span v-if="profile.season.battlePassLevel" class="chip muted">{{ t('Battle Pass level {n}', { n: profile.season.battlePassLevel }) }}</span>
           <span v-if="profile.together" class="together">
-            {{ profile.together.matches }} {{ profile.together.matches === 1 ? 'match' : 'matches' }} together<template v-if="profile.together.wins">, {{ profile.together.wins }} {{ profile.together.wins === 1 ? 'win' : 'wins' }}</template>
+            {{ tp(profile.together.matches, '{n} match together', '{n} matches together') }}<template v-if="profile.together.wins">, {{ tp(profile.together.wins, '{n} win', '{n} wins') }}</template>
           </span>
           <span v-if="profile.encounters.eliminatedYou" class="encounter">
-            Eliminated you {{ profile.encounters.eliminatedYou }}×<template v-if="profile.encounters.lastEliminatedYouUtc">, last on {{ when(profile.encounters.lastEliminatedYouUtc) }}</template>
+            {{ t('Eliminated you {n}×', { n: profile.encounters.eliminatedYou }) }}<template v-if="profile.encounters.lastEliminatedYouUtc">, {{ t('last on {date}', { date: when(profile.encounters.lastEliminatedYouUtc) }) }}</template>
           </span>
         </div>
         <div v-else class="skeleton" style="width: 220px; height: 22px" />
@@ -103,7 +106,7 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
         :class="profile.followed ? 'following' : 'btn-primary'"
         @click="emit('follow', profile.accountId, profile.name, !profile.followed)"
       >
-        {{ profile.followed ? 'Following ✓' : 'Follow' }}
+        {{ profile.followed ? t('Following ✓') : t('Follow') }}
       </button>
     </header>
 
@@ -118,34 +121,34 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
       <p v-if="!profile.ranks.length" class="no-ranks">
         {{
           profile.relation === 'Opponent' || profile.relation === 'Followed'
-            ? "Ranks: Fortnite only shares them for you, your party and your friends."
-            : "Ranks: no ranked matches found."
+            ? t('Ranks: Fortnite only shares them for you, your party and your friends.')
+            : t('Ranks: no ranked matches found.')
         }}
       </p>
       <section v-else class="card">
-        <h2 class="card-title">Ranked modes</h2>
+        <h2 class="card-title">{{ t('Ranked modes') }}</h2>
         <div v-if="playedRanks.length" class="table-wrap flat">
           <table class="data">
             <thead>
               <tr>
-                <th>Mode</th>
-                <th>This season</th>
-                <th title="Best rank this season">Best</th>
-                <th title="Best rank across every season">Best ever</th>
-                <th>Last played</th>
+                <th>{{ t('Mode') }}</th>
+                <th>{{ t('This season') }}</th>
+                <th :title="t('Best rank this season')">{{ t('Best') }}</th>
+                <th :title="t('Best rank across every season')">{{ t('Best ever') }}</th>
+                <th>{{ t('Last played') }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="r in playedRanks" :key="r.track" :class="{ past: !r.isCurrentSeason }">
                 <td class="mode-name">
-                  {{ r.trackName }}
-                  <span v-if="!r.trackNameConfirmed" class="codename" :title="`Fortnite codename: ${r.track}`">codename</span>
+                  {{ tn(r.trackName) }}
+                  <span v-if="!r.trackNameConfirmed" class="codename" :title="t('Fortnite codename: {c}', { c: r.track })">{{ t('codename') }}</span>
                 </td>
                 <td>
                   <RankBadge v-if="r.isCurrentSeason" :rank="r" size="md" />
-                  <span v-else class="faint">Not played</span>
+                  <span v-else class="faint">{{ t('Not played') }}</span>
                 </td>
-                <td class="muted">{{ r.highestName }}</td>
+                <td class="muted">{{ tn(r.highestName) }}</td>
                 <td>
                   <template v-if="bestEver(r.track)">
                     <span class="best-ever">{{ bestEver(r.track)!.name }}</span>
@@ -160,63 +163,63 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { m
         <p v-else class="muted">
           {{
             profile.relation === 'Opponent' || profile.relation === 'Followed'
-              ? 'Fortnite only shares ranks for you, your party and your friends.'
-              : 'No ranked matches found.'
+              ? t('Fortnite only shares ranks for you, your party and your friends.')
+              : t('No ranked matches found.')
           }}
         </p>
-        <p v-if="neverPlayed.length" class="never">Never played: {{ neverPlayed.map((r) => r.trackName).join(', ') }}</p>
+        <p v-if="neverPlayed.length" class="never">{{ t('Never played: {list}', { list: neverPlayed.map((r) => tn(r.trackName)).join(', ') }) }}</p>
       </section>
 
       <div class="columns" :class="{ single: !activeChart }">
       <section v-if="activeChart" class="card">
           <div class="chart-head">
-            <h2 class="card-title">Rank history this season</h2>
-            <select v-if="chartModes.length > 1" :value="activeChart.track" aria-label="Mode" @change="chartTrack = ($event.target as HTMLSelectElement).value">
-              <option v-for="r in chartModes" :key="r.track" :value="r.track">{{ r.trackName }}</option>
+            <h2 class="card-title">{{ t('Rank history this season') }}</h2>
+            <select v-if="chartModes.length > 1" :value="activeChart.track" :aria-label="t('Mode')" @change="chartTrack = ($event.target as HTMLSelectElement).value">
+              <option v-for="r in chartModes" :key="r.track" :value="r.track">{{ tn(r.trackName) }}</option>
             </select>
-            <span v-else class="muted">{{ activeChart.trackName }}</span>
+            <span v-else class="muted">{{ tn(activeChart.trackName) }}</span>
           </div>
           <RankChart :points="chartPoints" />
-          <p class="note">{{ chartPoints.length }} rank updates this season, recorded after matches. Hover a point for its time.</p>
+          <p class="note">{{ t('{n} rank updates this season, recorded after matches. Hover a point for its time.', { n: chartPoints.length }) }}</p>
       </section>
 
       <section class="card">
         <div class="stats-head">
-          <h2 class="card-title">Stats</h2>
-          <div class="seg" role="tablist" aria-label="Period">
-            <button type="button" role="tab" :aria-selected="window_ === 'season'" :class="{ on: window_ === 'season' }" @click="window_ = 'season'">Season</button>
-            <button type="button" role="tab" :aria-selected="window_ === 'lifetime'" :class="{ on: window_ === 'lifetime' }" @click="window_ = 'lifetime'">Lifetime</button>
+          <h2 class="card-title">{{ t('Stats') }}</h2>
+          <div class="seg" role="tablist" :aria-label="t('Period')">
+            <button type="button" role="tab" :aria-selected="window_ === 'season'" :class="{ on: window_ === 'season' }" @click="window_ = 'season'">{{ t('Season') }}</button>
+            <button type="button" role="tab" :aria-selected="window_ === 'lifetime'" :class="{ on: window_ === 'lifetime' }" @click="window_ = 'lifetime'">{{ t('Lifetime') }}</button>
           </div>
         </div>
 
-        <p v-if="stats && stats.status !== 'Ok'" class="muted">{{ statusText[stats.status] ?? 'Stats unavailable.' }}</p>
+        <p v-if="stats && stats.status !== 'Ok'" class="muted">{{ t(statusText[stats.status] ?? 'Stats unavailable.') }}</p>
         <template v-else-if="stats">
-          <div class="modes" role="tablist" aria-label="Mode">
+          <div class="modes" role="tablist" :aria-label="t('Mode')">
             <button v-for="m in modes" :key="m" type="button" role="tab" :aria-selected="mode === m" :class="{ on: mode === m }" @click="mode = m">
-              {{ modeNames[m] }}
+              {{ t(modeNames[m] ?? m) }}
             </button>
           </div>
           <div v-if="selected" class="grid">
-            <div class="tile rarity" :class="`r-${selected.kdRarity}`" title="Kills per death">
+            <div class="tile rarity" :class="`r-${selected.kdRarity}`" :title="t('Kills per death')">
               <span class="label">K/D</span><span class="value">{{ selected.kd.toFixed(2) }}</span>
             </div>
-            <div class="tile rarity" :class="`r-${selected.winRateRarity}`" title="Share of matches won">
-              <span class="label">Win rate</span><span class="value">{{ selected.winRate.toFixed(1) }}%</span>
+            <div class="tile rarity" :class="`r-${selected.winRateRarity}`" :title="t('Share of matches won')">
+              <span class="label">{{ t('Win rate') }}</span><span class="value">{{ selected.winRate.toFixed(1) }}%</span>
             </div>
-            <div class="tile"><span class="label">Wins</span><span class="value plain">{{ selected.wins }}</span></div>
-            <div class="tile"><span class="label">Matches</span><span class="value plain">{{ selected.matches }}</span></div>
-            <div class="tile"><span class="label">Kills</span><span class="value plain">{{ selected.kills }}</span></div>
-            <div class="tile"><span class="label">Kills / match</span><span class="value plain">{{ selected.killsPerMatch.toFixed(2) }}</span></div>
-            <div class="tile" title="Share of matches finished in the top 10">
+            <div class="tile"><span class="label">{{ t('Wins') }}</span><span class="value plain">{{ selected.wins }}</span></div>
+            <div class="tile"><span class="label">{{ t('Matches') }}</span><span class="value plain">{{ selected.matches }}</span></div>
+            <div class="tile"><span class="label">{{ t('Kills') }}</span><span class="value plain">{{ selected.kills }}</span></div>
+            <div class="tile"><span class="label">{{ t('Kills / match') }}</span><span class="value plain">{{ selected.killsPerMatch.toFixed(2) }}</span></div>
+            <div class="tile" :title="t('Share of matches finished in the top 10')">
               <span class="label">Top 10</span><span class="value plain">{{ placementsTracked ? pct(selected.top10, selected.matches) : '–' }}</span>
             </div>
-            <div class="tile" title="Share of matches finished in the top 25">
+            <div class="tile" :title="t('Share of matches finished in the top 25')">
               <span class="label">Top 25</span><span class="value plain">{{ placementsTracked ? pct(selected.top25, selected.matches) : '–' }}</span>
             </div>
-            <div class="tile"><span class="label">Time played</span><span class="value plain">{{ hours(selected.minutesPlayed) }}</span></div>
+            <div class="tile"><span class="label">{{ t('Time played') }}</span><span class="value plain">{{ hours(selected.minutesPlayed) }}</span></div>
           </div>
-          <p v-else class="muted">No matches in this mode.</p>
-          <p v-if="selected && !placementsTracked" class="note">Top 10 / Top 25 aren't tracked for Ranked and limited-time modes.</p>
+          <p v-else class="muted">{{ t('No matches in this mode.') }}</p>
+          <p v-if="selected && !placementsTracked" class="note">{{ t("Top 10 / Top 25 aren't tracked for Ranked and limited-time modes.") }}</p>
         </template>
       </section>
       </div>

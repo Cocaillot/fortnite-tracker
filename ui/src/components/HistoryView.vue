@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { t, tn, tp, locale } from '../i18n'
 import { computed, ref } from 'vue'
 import { isAnonymous, threatLabel, type MatchRecord, type SessionRecord, type Threat } from '../bridge'
 import SessionsView from './SessionsView.vue'
@@ -58,6 +59,7 @@ const summary = computed(() => {
   }
 })
 
+// English keys, translated where shown.
 const threatGroup: Record<Threat, string> = {
   Sweat: 'Sweats',
   Skilled: 'Skilled players',
@@ -70,10 +72,10 @@ const threatGroup: Record<Threat, string> = {
 // eliminates you most, counted only among eliminators whose stats are known.
 const nemesis = computed(() => {
   const s = summary.value
-  if (s.nemesis && s.nemesis.count >= 2) return { title: s.nemesis.value, detail: `eliminated you ${s.nemesis.count}×`, name: s.nemesis.value }
+  if (s.nemesis && s.nemesis.count >= 2) return { title: s.nemesis.value, detail: t('eliminated you {n}×', { n: s.nemesis.count }), name: s.nemesis.value }
   if (s.topThreat && s.topThreat.count >= 2)
-    return { title: threatGroup[s.topThreat.value], detail: `${s.topThreat.count} of ${s.withThreat} eliminators with known stats`, threat: s.topThreat.value }
-  if (s.hidden >= 2) return { title: 'Streamer Mode', detail: `hidden players: ${s.hidden} of ${s.eliminated} eliminations` }
+    return { title: t(threatGroup[s.topThreat.value]), detail: t('{n} of {total} eliminators with known stats', { n: s.topThreat.count, total: s.withThreat }), threat: s.topThreat.value }
+  if (s.hidden >= 2) return { title: t('Streamer Mode'), detail: t('hidden players: {n} of {total} eliminations', { n: s.hidden, total: s.eliminated }) }
   return null
 })
 
@@ -95,44 +97,46 @@ const rows = computed(() => {
 function dayLabel(key: string) {
   const d = new Date(key)
   const diff = Math.round((new Date(new Date().toDateString()).getTime() - d.getTime()) / 86_400_000)
-  if (diff === 0) return 'Today'
-  if (diff === 1) return 'Yesterday'
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+  if (diff === 0) return t('Today')
+  if (diff === 1) return t('Yesterday')
+  return d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+const time = (iso: string) => new Date(iso).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
 
 function duration(m: MatchRecord) {
   const min = minutes(m)
   if (min === null) return '–'
-  return min < 1 ? '<1 min' : `${Math.round(min)} min`
+  return min < 1 ? '< 1 min' : `${Math.round(min)} min`
 }
 
 // Only your own party is known; random teammates filled by matchmaking aren't in the log.
-const party = (size: number) => (size === 1 ? 'Solo / no party' : `Party of ${size}`)
-const untracked = 'Kills and wins are measured from your stats before and after each match, so they only exist for matches played while the app was open.'
-const periodLabel = computed(() => (range.value === 'today' ? 'Today' : 'All time'))
+const party = (size: number) => (size === 1 ? t('Solo / no party') : t('Party of {n}', { n: size }))
+const untracked = computed(() =>
+  t('Kills and wins are measured from your stats before and after each match, so they only exist for matches played while the app was open.'),
+)
+const periodLabel = computed(() => (range.value === 'today' ? t('Today') : t('All time')))
 
-const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, '0')}` : `${min} min`)
+const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}` : `${min} min`)
 </script>
 
 <template>
   <div class="page">
     <div class="page-header">
       <div>
-        <h1>History</h1>
-        <p>Every match read from Fortnite's log, including recent sessions played before the app was installed.</p>
+        <h1>{{ t('History') }}</h1>
+        <p>{{ t("Every match read from Fortnite's log, including recent sessions played before the app was installed.") }}</p>
       </div>
       <div class="controls">
-        <div class="seg" role="tablist" aria-label="View">
-          <button type="button" role="tab" :aria-selected="view === 'matches'" :class="{ on: view === 'matches' }" @click="view = 'matches'">Matches</button>
-          <button type="button" role="tab" :aria-selected="view === 'sessions'" :class="{ on: view === 'sessions' }" @click="view = 'sessions'">Sessions</button>
-          <button type="button" role="tab" :aria-selected="view === 'teammates'" :class="{ on: view === 'teammates' }" @click="view = 'teammates'">Teammates</button>
-          <button type="button" role="tab" :aria-selected="view === 'trends'" :class="{ on: view === 'trends' }" @click="view = 'trends'">Trends</button>
+        <div class="seg" role="tablist" :aria-label="t('View')">
+          <button type="button" role="tab" :aria-selected="view === 'matches'" :class="{ on: view === 'matches' }" @click="view = 'matches'">{{ t('Matches') }}</button>
+          <button type="button" role="tab" :aria-selected="view === 'sessions'" :class="{ on: view === 'sessions' }" @click="view = 'sessions'">{{ t('Sessions') }}</button>
+          <button type="button" role="tab" :aria-selected="view === 'teammates'" :class="{ on: view === 'teammates' }" @click="view = 'teammates'">{{ t('Teammates') }}</button>
+          <button type="button" role="tab" :aria-selected="view === 'trends'" :class="{ on: view === 'trends' }" @click="view = 'trends'">{{ t('Trends') }}</button>
         </div>
-        <div v-if="view === 'matches'" class="seg" role="tablist" aria-label="Period">
-          <button type="button" role="tab" :aria-selected="range === 'today'" :class="{ on: range === 'today' }" @click="range = 'today'">Today</button>
-          <button type="button" role="tab" :aria-selected="range === 'all'" :class="{ on: range === 'all' }" @click="range = 'all'">All time</button>
+        <div v-if="view === 'matches'" class="seg" role="tablist" :aria-label="t('Period')">
+          <button type="button" role="tab" :aria-selected="range === 'today'" :class="{ on: range === 'today' }" @click="range = 'today'">{{ t('Today') }}</button>
+          <button type="button" role="tab" :aria-selected="range === 'all'" :class="{ on: range === 'all' }" @click="range = 'all'">{{ t('All time') }}</button>
         </div>
       </div>
     </div>
@@ -144,79 +148,79 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
     <TeammatesView v-else-if="view === 'teammates'" :teammates="teammates" @refresh="emit('loadTeammates')" @open="(id, n) => emit('open', id, n)" />
 
     <template v-else>
-      <h2 class="period">{{ periodLabel }} <span class="faint">· {{ summary.count }} {{ summary.count === 1 ? 'match' : 'matches' }}</span></h2>
+      <h2 class="period">{{ periodLabel }} <span class="faint">· {{ tp(summary.count, '{n} match', '{n} matches') }}</span></h2>
       <div class="tiles">
-        <div class="tile"><span class="label">Matches</span><span class="value">{{ summary.count }}</span></div>
-        <div class="tile"><span class="label">Time in matches</span><span class="value">{{ hours(summary.played) }}</span></div>
+        <div class="tile"><span class="label">{{ t('Matches') }}</span><span class="value">{{ summary.count }}</span></div>
+        <div class="tile"><span class="label">{{ t('Time in matches') }}</span><span class="value">{{ hours(summary.played) }}</span></div>
         <div class="tile" :title="untracked">
-          <span class="label">Kills</span><span class="value">{{ summary.kills ?? '–' }}</span>
-          <span class="small">{{ summary.tracked ? `in ${summary.tracked} of ${summary.count} matches` : 'Counted from your next matches' }}</span>
+          <span class="label">{{ t('Kills') }}</span><span class="value">{{ summary.kills ?? '–' }}</span>
+          <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : t('Counted from your next matches') }}</span>
         </div>
         <div class="tile" :title="untracked">
-          <span class="label">Wins</span><span class="value" :class="{ gold: summary.wins }">{{ summary.tracked ? summary.wins : '–' }}</span>
-          <span class="small">{{ summary.tracked ? `in ${summary.tracked} of ${summary.count} matches` : 'Counted from your next matches' }}</span>
+          <span class="label">{{ t('Wins') }}</span><span class="value" :class="{ gold: summary.wins }">{{ summary.tracked ? summary.wins : '–' }}</span>
+          <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : t('Counted from your next matches') }}</span>
         </div>
         <div class="tile wide">
-          <span class="label">Most played</span>
-          <span class="big">{{ summary.topMode?.value ?? '–' }}</span>
-          <span v-if="summary.topMode" class="small">{{ summary.topMode.count }} of {{ summary.count }} matches</span>
+          <span class="label">{{ t('Most played') }}</span>
+          <span class="big">{{ summary.topMode ? tn(summary.topMode.value) : '–' }}</span>
+          <span v-if="summary.topMode" class="small">{{ t('{n} of {total} matches', { n: summary.topMode.count, total: summary.count }) }}</span>
         </div>
         <div class="tile wide nemesis">
-          <span class="label">Nemesis</span>
+          <span class="label">{{ t('Nemesis') }}</span>
           <button
             v-if="nemesis?.name"
             type="button"
             class="big link"
-            :title="`Open ${nemesis.name}'s profile`"
+            :title="t('Open {name}\'s profile', { name: nemesis.name })"
             @click="emit('open', null, nemesis.name)"
           >
             {{ nemesis.title }}
           </button>
           <span v-else class="big" :class="nemesis?.threat ? `t-${nemesis.threat}` : ''">{{ nemesis?.title ?? '–' }}</span>
           <span class="small">
-            {{ nemesis?.detail ?? 'Not enough eliminations yet' }}<template v-if="summary.avgEliminatorKd !== null"> · average eliminator K/D {{ summary.avgEliminatorKd.toFixed(2) }}</template>
+            {{ nemesis?.detail ?? t('Not enough eliminations yet') }}<template v-if="summary.avgEliminatorKd !== null"> · {{ t('average eliminator K/D {kd}', { kd: summary.avgEliminatorKd.toFixed(2) }) }}</template>
           </span>
         </div>
       </div>
 
       <div v-if="!inRange.length" class="card empty">
-        {{ range === 'today' ? 'No matches yet today.' : "Matches appear here as you play. Older sessions are imported from Fortnite's recent logs." }}
+        {{ range === 'today' ? t('No matches yet today.') : t("Matches appear here as you play. Older sessions are imported from Fortnite's recent logs.") }}
       </div>
 
       <div v-else class="table-wrap">
         <table class="data">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>Mode</th>
-              <th>Party</th>
-              <th>Result</th>
-              <th class="num" title="Kills are tracked for matches played with the app running">Kills</th>
-              <th class="num">Duration</th>
-              <th>Eliminated by</th>
+              <th>{{ t('Time') }}</th>
+              <th>{{ t('Mode') }}</th>
+              <th>{{ t('Party') }}</th>
+              <th>{{ t('Result') }}</th>
+              <th class="num" :title="t('Kills are tracked for matches played with the app running')">{{ t('Kills') }}</th>
+              <th class="num">{{ t('Duration') }}</th>
+              <th>{{ t('Eliminated by') }}</th>
             </tr>
           </thead>
           <tbody>
             <template v-for="(row, i) in rows" :key="i">
               <tr v-if="row.kind === 'day'" class="day">
-                <td colspan="7">{{ row.label }} <span class="faint">· {{ row.count }} {{ row.count === 1 ? 'match' : 'matches' }}</span></td>
+                <td colspan="7">{{ row.label }} <span class="faint">· {{ tp(row.count, '{n} match', '{n} matches') }}</span></td>
               </tr>
               <tr
                 v-else
                 class="clickable"
                 :class="{ won: row.m.won }"
                 tabindex="0"
-                title="Open match details"
+                :title="t('Open match details')"
                 @click="emit('match', row.m)"
                 @keydown.enter="emit('match', row.m)"
               >
                 <td class="muted">{{ time(row.m.startedUtc) }}</td>
-                <td class="mode" :title="row.m.playlist ?? undefined">{{ row.m.mode }}</td>
+                <td class="mode" :title="row.m.playlist ?? undefined">{{ tn(row.m.mode) }}</td>
                 <td class="muted">{{ party(row.m.squadSize) }}</td>
                 <td>
-                  <span v-if="row.m.won" class="win">Victory</span>
-                  <span v-else-if="!row.m.finished" class="faint">Left early</span>
-                  <span v-else class="muted">Eliminated</span>
+                  <span v-if="row.m.won" class="win">{{ t('Victory') }}</span>
+                  <span v-else-if="!row.m.finished" class="faint">{{ t('Left early') }}</span>
+                  <span v-else class="muted">{{ t('Eliminated') }}</span>
                 </td>
                 <td class="num" :title="row.m.kills === null ? untracked : undefined">{{ row.m.kills ?? '–' }}</td>
                 <td class="num muted">{{ duration(row.m) }}</td>
@@ -231,8 +235,8 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(m
                     >
                       {{ row.m.eliminatedBy }}
                     </button>
-                    <span v-else class="muted">Streamer Mode player</span>
-                    <span v-if="row.m.eliminatorThreat" class="threat faint"> · {{ threatLabel[row.m.eliminatorThreat] }}</span>
+                    <span v-else class="muted">{{ t('Streamer Mode player') }}</span>
+                    <span v-if="row.m.eliminatorThreat" class="threat faint"> · {{ t(threatLabel[row.m.eliminatorThreat]) }}</span>
                   </template>
                   <span v-else class="faint">–</span>
                 </td>
