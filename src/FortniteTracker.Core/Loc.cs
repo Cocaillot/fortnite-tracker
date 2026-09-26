@@ -24,7 +24,7 @@ public static class Loc
     private static readonly (string En, string Fr)[] Words =
     [
         ("Silver", "Argent"), ("Gold", "Or"), ("Platinum", "Platine"), ("Diamond", "Diamant"),
-        ("Elite", "Élite"), ("Unreal", "Irréel"), ("Unranked", "Non classé"), ("Ranked", "Classé"),
+        ("Elite", "Élite"), ("Tournament", "Tournoi"), ("Unranked", "Non classé"), ("Ranked", "Classé"),
         ("Squads", "Section"), ("Trios", "Trio"), ("Duos", "Duo"), ("Build", "Construction"),
         ("Zero Build", "Zéro construction"), ("Creative", "Créatif"),
     ];

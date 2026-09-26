@@ -41,7 +41,7 @@ public sealed class MatchHistoryTests : IDisposable
         Assert.Equal(new MatchRecord(
             new DateTime(2026, 9, 25, 2, 39, 5, 610, DateTimeKind.Utc),
             new DateTime(2026, 9, 25, 2, 40, 59, 328, DateTimeKind.Utc),
-            "Ranked Duos", "Playlist_Habanero_PiperBoot_Duos", SquadSize: 2, Finished: true,
+            "Ranked Reload Duos · Build", "Playlist_Habanero_PiperBoot_Duos", SquadSize: 2, Finished: true,
             EliminatedBy: "ライバル Rival 01"), matches[0] with { PartyIds = null });
         Assert.Equal([Mate], matches[0].PartyIds!);
         Assert.False(matches[1].Finished);
@@ -93,10 +93,17 @@ public sealed class MatchHistoryTests : IDisposable
     }
 
     [Theory]
-    [InlineData("Playlist_Habanero_RopeSmile_Solo", null, "Ranked Solo")]
-    [InlineData("Playlist_DefaultSquad", null, "Battle Royale Squads")]
+    [InlineData("Playlist_Habanero_RopeSmile_Solo", null, "Ranked Reload Solo · Build")]
+    [InlineData("Playlist_Habanero_NoBuild_PunchBerry_Solo", null, "Ranked Reload Solo · Zero Build")]
+    [InlineData("Playlist_HabaneroTrio", null, "Ranked Battle Royale Trios · Build")]
+    [InlineData("Playlist_Habanero_Sunflower_Duos", null, "Ranked Duos · Build")] // unknown codename: no guess
+    [InlineData("Playlist_DefaultSquad", null, "Battle Royale Squads · Build")]
+    [InlineData("Playlist_NoBuildBR_Trio", null, "Battle Royale Trios · Zero Build")]
+    [InlineData("Playlist_PunchBerryNoBuildSquad", null, "Reload Squads · Zero Build")]
+    [InlineData("Playlist_ShowdownTournament_RE_PiperBootSolo_PBM", null, "Tournament Reload Solo · Build")]
+    [InlineData("Playlist_ShowdownTournament_BlastBerryNoBuildDuo_PBM", null, "Tournament Reload Duos · Zero Build")]
     [InlineData("Playlist_VK_Play", null, "Creative")]
-    [InlineData("Playlist_Something_New", null, "Battle Royale")]
+    [InlineData("Playlist_Something_New", null, "Battle Royale · Build")]
     [InlineData(null, null, "Match")]
     public void Playlist_names(string? playlist, string? level, string expected) =>
         Assert.Equal(expected, PlaylistNames.Describe(playlist, level));

@@ -1,7 +1,7 @@
 <Project>
   <!-- Shared by every project: version and the file details Windows shows (and code signing checks). -->
   <PropertyGroup>
-    <Version>0.9.1</Version>
+    <Version>0.9.2</Version>
     <Product>Fortnite Tracker</Product>
     <Company>Fortnite Tracker contributors</Company>
     <Copyright>Copyright (c) 2026 Cocaillot. MIT License.</Copyright>

@@ -31,7 +31,7 @@ export function tp(n: number, one: string, many: string, vars?: Record<string, s
 const WORDS: [string, string][] = [
   ['Zero Build', 'Zéro construction'], ['Unranked', 'Non classé'], ['Platinum', 'Platine'],
   ['Creative', 'Créatif'], ['Diamond', 'Diamant'], ['Ranked', 'Classé'], ['Silver', 'Argent'],
-  ['Squads', 'Section'], ['Unreal', 'Irréel'], ['Build', 'Construction'], ['Elite', 'Élite'],
+  ['Squads', 'Section'], ['Tournament', 'Tournoi'], ['Build', 'Construction'], ['Elite', 'Élite'],
   ['Trios', 'Trio'], ['Duos', 'Duo'], ['Gold', 'Or'], ['Rank ', 'Rang '],
 ]
 

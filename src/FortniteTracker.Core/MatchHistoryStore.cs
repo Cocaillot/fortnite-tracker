@@ -109,7 +109,11 @@ public sealed class MatchHistoryStore
             if (!File.Exists(_path)) return;
             var file = JsonSerializer.Deserialize<HistoryFile>(File.ReadAllText(_path));
             if (file is null) return;
-            foreach (var m in file.Matches) _matches[m.StartedUtc] = m;
+            // Names are recomputed from the playlist, so older records get today's wording
+            // (e.g. "Ranked Duos" became "Ranked Reload Duos · Build"). Creative can also come from
+            // the map, so a record already marked Creative stays that way.
+            foreach (var m in file.Matches)
+                _matches[m.StartedUtc] = m.Playlist is null || m.Mode == "Creative" ? m : m with { Mode = PlaylistNames.Describe(m.Playlist) };
             if (file.Version >= FormatVersion) _importedFiles.UnionWith(file.ImportedFiles);
         }
         catch (Exception ex) when (ex is IOException or JsonException)

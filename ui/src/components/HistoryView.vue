@@ -317,6 +317,11 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
 .nemesis .big {
   color: var(--danger);
 }
+/* Mode names like "Ranked Reload Duos · Zero Build" get two lines rather than an ellipsis. */
+.tile.wide:not(.nemesis) .big {
+  white-space: normal;
+  font-size: 21px;
+}
 .small {
   font-size: 13px;
   color: var(--muted);

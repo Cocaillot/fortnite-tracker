@@ -26,7 +26,7 @@ public class SessionStateTests
         s.Apply(new MatchEnded { At = T0.AddMinutes(12) });
 
         var m = Assert.Single(matches);
-        Assert.Equal(new MatchRecord(T0, T0.AddMinutes(12), "Ranked Duos", "Playlist_Habanero_PiperBoot_Duos", 2, true), m with { PartyIds = null });
+        Assert.Equal(new MatchRecord(T0, T0.AddMinutes(12), "Ranked Reload Duos · Build", "Playlist_Habanero_PiperBoot_Duos", 2, true), m with { PartyIds = null });
         Assert.Equal([Mate], m.PartyIds!);
         Assert.False(s.InMatch);
     }
@@ -39,7 +39,7 @@ public class SessionStateTests
         s.Apply(new PlaylistSeen(Self, "Playlist_Habanero_PiperBoot_Duos"));
         s.Apply(new PlaylistSeen("ee3a0...08392", "Playlist_Habanero_RopeSmile_Solo"));
 
-        Assert.Equal("Ranked Duos", s.Mode);
+        Assert.Equal("Ranked Reload Duos · Build", s.Mode);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class SessionStateTests
         s.Apply(new PlaylistSeen(Self, "Playlist_Habanero_PunchBerry_Duos") { At = T0.AddSeconds(7) });
         s.Apply(new MatchEnded { At = T0.AddMinutes(5) });
 
-        Assert.Equal("Ranked Duos", Assert.Single(matches).Mode);
+        Assert.Equal("Ranked Reload Duos · Build", Assert.Single(matches).Mode);
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class SessionStateTests
         s.Apply(new PlaylistSeen(Self, "Playlist_VK_Play")); // e.g. the party leader queues something else
         s.Apply(new MatchEnded { At = T0.AddMinutes(5) });
 
-        Assert.Equal("Ranked Duos", Assert.Single(matches).Mode);
+        Assert.Equal("Ranked Reload Duos · Build", Assert.Single(matches).Mode);
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class SessionStateTests
         var m = Assert.Single(matches);
         Assert.False(m.Finished);
         Assert.Equal(T0.AddMinutes(1), m.EndedUtc);
-        Assert.Equal("Ranked Solo", m.Mode);
+        Assert.Equal("Ranked Reload Solo · Build", m.Mode);
     }
 
     [Fact]
