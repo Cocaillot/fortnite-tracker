@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { t } from '../i18n'
 import { theme } from '../composables/useTheme'
+import type { Settings } from '../bridge'
 
 export type Page = 'live' | 'leaderboard' | 'history' | 'me' | 'appearance' | 'settings'
 
@@ -8,7 +9,7 @@ defineProps<{
   page: Page | 'profile'
   status: { state: 'idle' | 'lobby' | 'live'; label: string; timer: string | null; detail: string | null }
   version: string | null
-  updateVersion: string | null
+  update: Settings['update'] | null
 }>()
 const emit = defineEmits<{ navigate: [page: Page]; applyUpdate: [] }>()
 
@@ -33,9 +34,11 @@ const items: { id: Page; label: string; icon: string }[] = [
     </ul>
 
     <div class="bottom">
-      <button v-if="updateVersion" type="button" class="update" @click="emit('applyUpdate')">
-        <span class="update-title">{{ t('Update ready') }}</span>
-        <span>{{ t('Restart to install {v}', { v: updateVersion }) }}</span>
+      <button v-if="update?.available" type="button" class="update" :disabled="update.installing" @click="emit('applyUpdate')">
+        <span class="update-title">{{ update.ready ? t('Update ready') : t('Update available') }}</span>
+        <span>{{
+          update.installing ? t('Updating…') : update.ready ? t('Restart to install {v}', { v: update.available }) : t('Install {v} · {p}% downloaded', { v: update.available, p: update.progress })
+        }}</span>
       </button>
 
       <div class="status" :class="status.state">

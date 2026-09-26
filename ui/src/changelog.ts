@@ -6,6 +6,27 @@ export interface Release {
 
 export const changelog: Release[] = [
   {
+    version: '0.9.5',
+    items: [
+      {
+        title: 'Update in one click',
+        text: 'A banner appears as soon as a new version is out. "Update now" installs it and restarts the app. You can also check yourself in Settings → Updates.',
+      },
+      {
+        title: 'Filters and rank points in History',
+        text: 'Filter matches by type, game and building, and see how many rank points each ranked match earned or cost.',
+      },
+      {
+        title: 'Clearer match names',
+        text: 'Each match says which game it was (Battle Royale, Reload, OG) and whether building was on.',
+      },
+      {
+        title: 'Reliable kill counts',
+        text: 'Kills per match are no longer counted twice when you play quick matches back to back.',
+      },
+    ],
+  },
+  {
     version: '0.9.0',
     items: [
       {

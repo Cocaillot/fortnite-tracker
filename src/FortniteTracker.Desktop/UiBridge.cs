@@ -84,7 +84,7 @@ public sealed class UiBridge
         _sessions.Changed += () => Post(SendSessions);
         _settings.Changed += _ => Post(SendSettings);
         _history.Changed += () => Post(SendHistory);
-        _updates.UpdateReady += () => Post(SendSettings);
+        _updates.Changed += () => Post(SendSettings);
     }
 
     /// <summary>Title bar actions of the custom window chrome: drag, minimize, maximize, fullscreen, close.</summary>
@@ -231,7 +231,10 @@ public sealed class UiBridge
                     Enum.TryParse<OverlayCorner>(msg.Corner, out var corner) ? corner : _settings.OverlayCorner);
                 break;
             case "applyUpdate":
-                _updates.ApplyAndRestart();
+                _updates.UpdateNow();
+                break;
+            case "checkUpdates":
+                Send("updateCheck", await _updates.CheckAsync() ? "found" : "none");
                 break;
             case "window" when msg.Action is "drag" or "minimize" or "maximize" or "fullscreen" or "close":
                 WindowCommand?.Invoke(msg.Action);
@@ -310,6 +313,14 @@ public sealed class UiBridge
         fortniteFound = System.IO.File.Exists(_tailer.LogPath),
         version = _updates.CurrentVersion,
         updateVersion = _updates.ReadyVersion,
+        update = new
+        {
+            enabled = _updates.Enabled,
+            available = _updates.AvailableVersion,
+            ready = _updates.ReadyVersion is not null,
+            progress = _updates.Progress,
+            installing = _updates.Installing,
+        },
     });
 
     // Sent raw: the UI parses its own format.

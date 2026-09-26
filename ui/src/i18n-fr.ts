@@ -500,7 +500,37 @@ export const FR: Record<string, string> = {
   Next: 'Suivant',
   Start: 'Commencer',
 
+  // Updates
+  'Version {v} is available': 'La version {v} est disponible',
+  'Update now': 'Mettre à jour',
+  'Updating…': 'Mise à jour…',
+  'Update available': 'Mise à jour dispo',
+  'Install {v} · {p}% downloaded': 'Installer la {v} · {p} % téléchargés',
+  'Downloading in the background… {p}%': 'Téléchargement en arrière-plan… {p} %',
+  'Downloaded and ready to install. It takes a few seconds.': "Téléchargée et prête. L'installation prend quelques secondes.",
+  'Downloading… {p}%, then the app restarts.': "Téléchargement… {p} %, puis l'app redémarre.",
+  'Installing… the app restarts in a moment.': "Installation… l'app redémarre dans un instant.",
+  Updates: 'Mises à jour',
+  'You have version {v}. The app checks for updates every 30 minutes and downloads them in the background.':
+    "Tu as la version {v}. L'app vérifie les mises à jour toutes les 30 minutes et les télécharge en arrière-plan.",
+  'Check for updates': 'Rechercher les mises à jour',
+  'Update to {v}': 'Passer à la {v}',
+  'Updates only work in the installed app.': "Les mises à jour ne fonctionnent que dans l'app installée.",
+  "You're up to date ✓": 'Tu es à jour ✓',
+
   // What's new
+  'Update in one click': 'Mise à jour en un clic',
+  'A banner appears as soon as a new version is out. "Update now" installs it and restarts the app. You can also check yourself in Settings → Updates.':
+    "Un bandeau apparaît dès qu'une nouvelle version sort. « Mettre à jour » l'installe et redémarre l'app. Tu peux aussi vérifier toi-même dans Paramètres → Mises à jour.",
+  'Filters and rank points in History': "Filtres et points de rang dans l'historique",
+  'Filter matches by type, game and building, and see how many rank points each ranked match earned or cost.':
+    "Filtre tes parties par type, jeu et construction, et vois combien de points de rang chaque partie classée t'a rapporté ou coûté.",
+  'Clearer match names': 'Des noms de partie plus clairs',
+  'Each match says which game it was (Battle Royale, Reload, OG) and whether building was on.':
+    'Chaque partie indique le jeu (Battle Royale, Reload, OG) et si la construction était activée.',
+  'Reliable kill counts': "Compteur d'éliminations fiable",
+  'Kills per match are no longer counted twice when you play quick matches back to back.':
+    "Les éliminations ne sont plus comptées deux fois quand tu enchaînes des parties courtes.",
   "What's new": 'Nouveautés',
   'Got it': 'Compris',
   'Privacy policy': 'Politique de confidentialité',

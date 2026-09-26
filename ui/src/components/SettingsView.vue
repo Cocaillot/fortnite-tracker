@@ -37,6 +37,20 @@ const checked = (e: Event) => (e.target as HTMLInputElement).checked
 
 const setHotkey = (which: 'window' | 'overlay', keys: string) => send({ type: 'setHotkeys', [which]: keys })
 
+// ---- Updates ----
+const checking = ref(false)
+const checkResult = ref<'found' | 'none' | null>(null)
+const offCheck = on('updateCheck', (r) => {
+  checking.value = false
+  checkResult.value = r
+})
+onUnmounted(offCheck)
+function checkUpdates() {
+  checking.value = true
+  checkResult.value = null
+  send({ type: 'checkUpdates' })
+}
+
 // ---- Export, backup, restore ----
 const dataResult = ref<string | null>(null)
 const busy = ref(false)
@@ -210,6 +224,23 @@ function runData(action: 'csv' | 'backup' | 'restore') {
       </div>
     </div>
 
+    <div class="panel option updates">
+      <span class="text">{{ t('Updates') }}</span>
+      <p class="hint flush">
+        {{ t('You have version {v}. The app checks for updates every 30 minutes and downloads them in the background.', { v: settings.version }) }}
+      </p>
+      <div class="row">
+        <button type="button" class="ghost" :disabled="checking || !settings.update.enabled" @click="checkUpdates">
+          {{ checking ? t('Checking…') : t('Check for updates') }}
+        </button>
+        <button v-if="settings.update.available" type="button" class="btn-primary" :disabled="settings.update.installing" @click="send({ type: 'applyUpdate' })">
+          {{ t('Update to {v}', { v: settings.update.available }) }}
+        </button>
+      </div>
+      <p v-if="!settings.update.enabled" class="result muted-result">{{ t('Updates only work in the installed app.') }}</p>
+      <p v-else-if="checkResult === 'none' && !settings.update.available" class="result">{{ t("You're up to date ✓") }}</p>
+    </div>
+
     <div class="panel option data">
       <span class="text">{{ t('Your data') }}</span>
       <p class="hint flush">{{ t('Export your matches to open them in Excel, or back up everything (history, ranks, notes, goals, theme, settings) to move it to another PC.') }}</p>
@@ -292,14 +323,19 @@ function runData(action: 'csv' | 'backup' | 'restore') {
   text-align: center;
 }
 .option .hint.flush,
+.updates .hint.flush,
 .shortcuts .hint.flush,
 .data .hint.flush {
   margin: var(--s2) 0 var(--s3);
 }
+.updates .row,
 .data .row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2);
+}
+.muted-result {
+  color: var(--muted);
 }
 .confirm {
   margin-top: var(--s3);

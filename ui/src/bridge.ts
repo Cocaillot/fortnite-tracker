@@ -178,6 +178,8 @@ export interface Settings {
   overlay: { enabled: boolean; corner: OverlayCorner }
   version: string
   updateVersion: string | null
+  /** A newer version: known as soon as it's found, then downloaded, then installed on "Update now". */
+  update: { enabled: boolean; available: string | null; ready: boolean; progress: number; installing: boolean }
   /** What the user picked; "auto" follows the Windows language. */
   language: 'en' | 'fr' | 'auto'
   /** The language in use. */
@@ -217,6 +219,8 @@ export interface HostMessages {
   apiKeyTest: 'ok' | 'invalid' | 'offline'
   /** Outcome of an export or backup, or null when the file dialog was cancelled. */
   dataResult: string | null
+  /** Answer to "Check for updates". */
+  updateCheck: 'found' | 'none'
 }
 
 export type UiMessage =
@@ -234,6 +238,7 @@ export type UiMessage =
   | { type: 'postRecap' }
   | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
+  | { type: 'checkUpdates' }
   | { type: 'window'; action: 'drag' | 'minimize' | 'maximize' | 'fullscreen' | 'close' }
   | { type: 'profile'; accountId?: string | null; name?: string | null }
   | { type: 'follow'; accountId?: string | null; name: string; enabled: boolean }

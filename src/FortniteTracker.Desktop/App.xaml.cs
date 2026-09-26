@@ -165,6 +165,8 @@ public partial class App : Application
             bridge.Toast(title, text, good);
         });
         updates.UpdateReady += () => Dispatcher.InvokeAsync(() => _tray.ShowUpdateReady(updates.ReadyVersion!));
+        // The process exits inside ApplyUpdatesAndRestart; don't leave a ghost tray icon.
+        updates.Restarting += () => Dispatcher.Invoke(() => _tray?.Dispose());
 
         // A second launch signals this instance to come to the front.
         ThreadPool.RegisterWaitForSingleObject(_showRequested,
@@ -214,8 +216,7 @@ public partial class App : Application
 
     private void ApplyUpdate()
     {
-        _tray?.Dispose(); // the process exits inside ApplyAndRestart; don't leave a ghost tray icon
-        _host?.Services.GetRequiredService<UpdateService>().ApplyAndRestart();
+        _host?.Services.GetRequiredService<UpdateService>().UpdateNow();
     }
 
     private void ExitApp()

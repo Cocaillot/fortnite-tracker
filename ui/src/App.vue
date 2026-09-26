@@ -14,6 +14,7 @@ import ProfilePanel from './components/ProfilePanel.vue'
 import AppearanceView from './components/AppearanceView.vue'
 import ToastHost from './components/ToastHost.vue'
 import MatchDrawer from './components/MatchDrawer.vue'
+import UpdateBanner from './components/UpdateBanner.vue'
 import OnboardingGuide from './components/OnboardingGuide.vue'
 import WhatsNew from './components/WhatsNew.vue'
 import { unseen } from './changelog'
@@ -128,13 +129,15 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
         :page="page"
         :status="status"
         :version="settings?.version ?? null"
-        :update-version="settings?.updateVersion ?? null"
+        :update="settings?.update ?? null"
         @navigate="navigate"
         @apply-update="applyUpdate"
       />
 
       <main ref="content" class="content">
         <p v-if="!isHosted" class="notice">{{ t('This page talks to the desktop app. Run it inside FortniteTracker.exe to see live data.') }}</p>
+
+        <UpdateBanner v-if="settings" :update="settings.update" />
 
         <div v-if="settings && !settings.hasApiKey && page !== 'settings' && page !== 'appearance'" class="key-banner">
           <ApiKeyForm :has-key="false" @save="saveApiKey" />
