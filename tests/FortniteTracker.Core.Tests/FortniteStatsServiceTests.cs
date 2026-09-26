@@ -21,6 +21,17 @@ public class FortniteStatsServiceTests
         """;
 
     [Fact]
+    public void Reads_when_Epic_last_recorded_a_match()
+    {
+        var json = StatsJson(170, 340, 12).Replace("\"winRate\":7.06}", "\"winRate\":7.06,\"lastModified\":\"2026-09-26T11:46:23Z\"}");
+
+        var s = FortniteStatsService.Parse(JsonDocument.Parse(json).RootElement, "abc", null);
+
+        Assert.Equal(new DateTime(2026, 9, 26, 11, 46, 23, DateTimeKind.Utc), s.Overall!.LastModified);
+        Assert.Equal(DateTimeKind.Utc, s.Overall.LastModified!.Value.Kind);
+    }
+
+    [Fact]
     public void Parses_overall_and_per_mode_stats()
     {
         var s = FortniteStatsService.Parse(JsonDocument.Parse(StatsJson(170, 340, 12)).RootElement, "abc", null);

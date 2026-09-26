@@ -12,7 +12,8 @@ public sealed class MatchHistoryStore
 
     // Bump when the importer learns something new, so old logs are read again (2: eliminators, 3: ranks,
     // 4: end time of matches left early, 5: every ranked season and rank history, 6: party per match).
-    private const int FormatVersion = 6;
+    // 7: kills and wins recorded before it could count one stats change for several matches, so they were cleared.
+    private const int FormatVersion = 7;
 
     private readonly string _path;
     private readonly object _gate = new();
@@ -112,8 +113,12 @@ public sealed class MatchHistoryStore
             // Names are recomputed from the playlist, so older records get today's wording
             // (e.g. "Ranked Duos" became "Ranked Reload Duos · Build"). Creative can also come from
             // the map, so a record already marked Creative stays that way.
-            foreach (var m in file.Matches)
-                _matches[m.StartedUtc] = m.Playlist is null || m.Mode == "Creative" ? m : m with { Mode = PlaylistNames.Describe(m.Playlist) };
+            foreach (var saved in file.Matches)
+            {
+                var m = saved.Playlist is null || saved.Mode == "Creative" ? saved : saved with { Mode = PlaylistNames.Describe(saved.Playlist) };
+                if (file.Version < 7) m = m with { Kills = null, Won = null };
+                _matches[m.StartedUtc] = m;
+            }
             if (file.Version >= FormatVersion) _importedFiles.UnionWith(file.ImportedFiles);
         }
         catch (Exception ex) when (ex is IOException or JsonException)

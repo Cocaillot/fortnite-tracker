@@ -184,7 +184,12 @@ public sealed class FortniteStatsService(HttpClient http, IMemoryCache cache, Se
             Top25: Int(m, "top25"),
             MinutesPlayed: Int(m, "minutesPlayed"),
             KillsPerMatch: Num(m, "killsPerMatch"),
-            Deaths: Int(m, "deaths"));
+            Deaths: Int(m, "deaths"),
+            // When Epic last recorded a match in this mode.
+            LastModified: m.TryGetProperty("lastModified", out var lm) && lm.ValueKind == JsonValueKind.String
+                && DateTime.TryParse(lm.GetString(), System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AdjustToUniversal | System.Globalization.DateTimeStyles.AssumeUniversal, out var at)
+                ? at : null);
 
     private static int Int(JsonElement m, string name) =>
         m.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : 0;

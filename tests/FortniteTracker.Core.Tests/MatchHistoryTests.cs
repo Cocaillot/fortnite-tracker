@@ -92,6 +92,22 @@ public sealed class MatchHistoryTests : IDisposable
         Assert.False(store.WasImported("FortniteGame-backup-x.log"));
     }
 
+    [Fact]
+    public void Kill_counts_from_before_version_7_are_cleared()
+    {
+        var path = Path.Combine(_dir, "history.json");
+        File.WriteAllText(path, """
+            {"Matches":[{"StartedUtc":"2026-09-26T11:29:00Z","EndedUtc":"2026-09-26T11:32:00Z","Mode":"Battle Royale Solo","Playlist":"Playlist_DefaultSolo","SquadSize":1,"Finished":true,"Kills":6,"Won":false}],
+             "ImportedFiles":[],"Version":6}
+            """);
+
+        var m = Assert.Single(new MatchHistoryStore(path).Recent(10));
+
+        Assert.Null(m.Kills);
+        Assert.Null(m.Won);
+        Assert.Equal("Battle Royale Solo · Build", m.Mode);
+    }
+
     [Theory]
     [InlineData("Playlist_Habanero_RopeSmile_Solo", null, "Ranked Reload Solo · Build")]
     [InlineData("Playlist_Habanero_NoBuild_PunchBerry_Solo", null, "Ranked Reload Solo · Zero Build")]

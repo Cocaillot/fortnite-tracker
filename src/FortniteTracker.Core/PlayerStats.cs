@@ -14,7 +14,8 @@ public enum StatsWindow { Season, Lifetime }
 
 public sealed record ModeStats(
     int Wins, double WinRate, double Kd, int Kills, int Matches,
-    int Top10 = 0, int Top25 = 0, int MinutesPlayed = 0, double KillsPerMatch = 0, int Deaths = 0)
+    int Top10 = 0, int Top25 = 0, int MinutesPlayed = 0, double KillsPerMatch = 0, int Deaths = 0,
+    DateTime? LastModified = null)
 {
     public Rarity KdRarity => StatGrades.ForKd(Kd);
     public Rarity WinRateRarity => StatGrades.ForWinRate(WinRate);

@@ -6,17 +6,18 @@ namespace FortniteTracker.Core;
 /// <summary>
 /// Adds details the log doesn't have to match history, using stats lookups:
 /// <list type="bullet">
-/// <item>Kills and win per match (experimental): your season stats are read when a live match
-/// starts and polled after it ends until the match shows up; the difference is that match.</item>
+/// <item>Kills and win per match (experimental): your season stats are read around live matches and
+/// each change is matched to the match that caused it (see <see cref="MatchResultLedger"/>).</item>
 /// <item>The eliminator's K/D and threat level, from the live eliminator card, and backfilled for
 /// older matches so the session dashboard can show which kind of player eliminates you.</item>
 /// </list>
 /// </summary>
 public sealed class MatchResultTracker
 {
-    // How long after a match to look for it in your stats. fortnite-api usually has it within a minute.
+    // How long after a match to look for it in your stats. fortnite-api usually has it within a few
+    // minutes; after the last delay it keeps checking at that pace until nothing is pending.
     private static readonly TimeSpan[] PollDelays =
-        [TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60), TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(4), TimeSpan.FromMinutes(8)];
+        [TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(60), TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(4)];
 
     private const int BackfillLimit = 60;
 
@@ -24,7 +25,11 @@ public sealed class MatchResultTracker
     private readonly MatchHistoryStore _history;
     private readonly SessionStore _sessions;
     private readonly ILogger<MatchResultTracker> _logger;
-    private readonly ConcurrentDictionary<DateTime, (string SelfId, Task<PlayerStats> Before)> _live = new();
+    private readonly MatchResultLedger _ledger = new();
+    private readonly ConcurrentDictionary<DateTime, string> _live = new();
+    private int _polling;
+    private string? _selfId;
+    private DateTime _lastStarted;
     private int _backfillRunning;
 
     public MatchResultTracker(
@@ -38,9 +43,8 @@ public sealed class MatchResultTracker
 
         tracker.LiveMatchStarted += (startedUtc, selfId) =>
         {
-            var before = _stats.GetFreshByAccountIdAsync(selfId, CancellationToken.None);
-            _live[startedUtc] = (selfId, before);
-            _ = before.ContinueWith(t => _sessions.MatchStarted(startedUtc, t.Result.Overall), TaskContinuationOptions.OnlyOnRanToCompletion);
+            _live[startedUtc] = selfId;
+            _ = ReadStartAsync(startedUtc, selfId);
         };
         tracker.MatchCompleted += OnMatchCompleted;
         tracker.Changed += OnSnapshot;
@@ -49,42 +53,71 @@ public sealed class MatchResultTracker
     /// <summary>Test hook: replaces real waiting between polls.</summary>
     public Func<TimeSpan, Task> Delay { get; init; } = Task.Delay;
 
-    private void OnMatchCompleted(MatchRecord match)
-    {
-        // Raised twice per match (placement, then eliminator); TryRemove makes it run once.
-        if (_live.TryRemove(match.StartedUtc, out var live))
-            _ = ResolveResultAsync(match.StartedUtc, live.SelfId, live.Before);
-    }
+    /// <summary>Test hook: the current time.</summary>
+    public Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
 
-    private async Task ResolveResultAsync(DateTime startedUtc, string selfId, Task<PlayerStats> beforeTask)
+    private async Task ReadStartAsync(DateTime startedUtc, string selfId)
     {
         try
         {
-            var before = (await beforeTask).Overall;
-            if (before is null) return;
-
-            foreach (var delay in PollDelays)
-            {
-                await Delay(delay);
-                var after = (await _stats.GetFreshByAccountIdAsync(selfId, CancellationToken.None)).Overall;
-                if (after is null || after.Matches == before.Matches) continue;
-                _sessions.StatsUpdated(startedUtc, after); // session totals don't need per-match attribution
-
-                // More than one new match (e.g. the previous one landed late): can't attribute it.
-                if (after.Matches - before.Matches != 1)
-                {
-                    _logger.LogInformation("Match {Start}: {Count} matches landed at once; result unknown", startedUtc, after.Matches - before.Matches);
-                    return;
-                }
-                _history.Update(startedUtc, m => m with { Kills = after.Kills - before.Kills, Won = after.Wins > before.Wins });
-                return;
-            }
-            _logger.LogInformation("Match {Start} never showed up in stats", startedUtc);
+            var before = await _stats.GetFreshByAccountIdAsync(selfId, CancellationToken.None);
+            _sessions.MatchStarted(startedUtc, before.Overall);
+            if (before.Overall is { } o) Apply(o);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not resolve the result of match {Start}", startedUtc);
+            _logger.LogWarning(ex, "Could not read stats at the start of match {Start}", startedUtc);
         }
+    }
+
+    private void OnMatchCompleted(MatchRecord match)
+    {
+        // Raised twice per match (placement, then eliminator); TryRemove makes it run once.
+        if (!_live.TryRemove(match.StartedUtc, out var selfId)) return;
+        // Creative doesn't count in Battle Royale stats, so it would never show up.
+        if (match.Mode == "Creative") return;
+        _selfId = selfId;
+        _lastStarted = match.StartedUtc;
+        _ledger.Finished(match.StartedUtc, match.EndedUtc ?? UtcNow());
+        StartPolling();
+    }
+
+    private void StartPolling()
+    {
+        if (Interlocked.Exchange(ref _polling, 1) == 0) _ = PollAsync();
+    }
+
+    // One loop for every pending match, so each stats change is only used once.
+    // The ledger drops matches that never show up, so the loop ends.
+    private async Task PollAsync()
+    {
+        try
+        {
+            for (var i = 0; _ledger.HasPending; i++)
+            {
+                await Delay(PollDelays[Math.Min(i, PollDelays.Length - 1)]);
+                var after = (await _stats.GetFreshByAccountIdAsync(_selfId!, CancellationToken.None)).Overall;
+                if (after is null) continue;
+                _sessions.StatsUpdated(_lastStarted, after); // session totals don't need per-match attribution
+                Apply(after);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not read match results");
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _polling, 0);
+        }
+        // A match may have finished just as the loop was ending.
+        if (_ledger.HasPending) StartPolling();
+    }
+
+    private void Apply(ModeStats stats)
+    {
+        foreach (var (started, kills, won) in _ledger.Observe(stats, UtcNow()))
+            _history.Update(started, m => m with { Kills = kills, Won = won });
     }
 
     private void OnSnapshot(LobbySnapshot s)
