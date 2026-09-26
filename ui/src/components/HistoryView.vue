@@ -30,6 +30,63 @@ const inRange = computed(() =>
   range.value === 'all' ? props.matches : props.matches.filter((m) => dayKey(m.startedUtc) === new Date().toDateString()),
 )
 
+// ---- Filters, from the mode name ("Ranked Reload Duos · Zero Build") ----
+type Kind = 'ranked' | 'normal' | 'tournament' | 'creative'
+type Game = 'Battle Royale' | 'Reload' | 'OG'
+type Build = 'build' | 'zb'
+const kindOf = (m: MatchRecord): Kind =>
+  m.mode === 'Creative' ? 'creative' : m.mode.startsWith('Ranked') ? 'ranked' : m.mode.startsWith('Tournament') ? 'tournament' : 'normal'
+const gameOf = (m: MatchRecord): Game | null => (['Reload', 'OG', 'Battle Royale'] as const).find((g) => m.mode.includes(g)) ?? null
+const buildOf = (m: MatchRecord): Build | null => (m.mode.endsWith('· Zero Build') ? 'zb' : m.mode.endsWith('· Build') ? 'build' : null)
+
+const kindLabels: Record<Kind, string> = { ranked: 'Ranked', normal: 'Unranked', tournament: 'Tournaments', creative: 'Creative' }
+const gameLabels: Record<Game, string> = { 'Battle Royale': 'Battle Royale', Reload: 'Reload', OG: 'OG' }
+const buildLabels: Record<Build, string> = { build: 'Build', zb: 'Zero Build' }
+
+const kind = ref<Kind | 'all'>('all')
+const game = ref<Game | 'all'>('all')
+const build = ref<Build | 'all'>('all')
+
+// Only the choices that exist in this period, with how many matches each has; a group with a
+// single choice isn't shown.
+function options<T extends string>(of: (m: MatchRecord) => T | null, labels: Record<T, string>) {
+  const counts = new Map<T, number>()
+  for (const m of inRange.value) {
+    const v = of(m)
+    if (v) counts.set(v, (counts.get(v) ?? 0) + 1)
+  }
+  return (Object.keys(labels) as T[]).filter((k) => counts.has(k)).map((k) => ({ id: k, label: labels[k], count: counts.get(k)! }))
+}
+const filterGroups = computed(() =>
+  [
+    { name: 'Type', model: kind, options: options(kindOf, kindLabels) },
+    { name: 'Game', model: game, options: options(gameOf, gameLabels) },
+    { name: 'Building', model: build, options: options(buildOf, buildLabels) },
+  ].filter((g) => g.options.length > 1),
+)
+// A choice that no longer exists in the period (e.g. after switching to Today) counts as "All".
+const active = <T extends string>(model: T | 'all', opts: { id: string }[]) => (opts.some((o) => o.id === model) ? model : 'all')
+const filtering = computed(() => filterGroups.value.some((g) => active(g.model.value, g.options) !== 'all'))
+function clearFilters() {
+  kind.value = 'all'
+  game.value = 'all'
+  build.value = 'all'
+}
+
+const shown = computed(() => {
+  const k = active(kind.value, options(kindOf, kindLabels))
+  const g = active(game.value, options(gameOf, gameLabels))
+  const b = active(build.value, options(buildOf, buildLabels))
+  return inRange.value.filter((m) => (k === 'all' || kindOf(m) === k) && (g === 'all' || gameOf(m) === g) && (b === 'all' || buildOf(m) === b))
+})
+
+const rankTitle = (r: NonNullable<MatchRecord['rank']>) =>
+  `${tn(r.afterName)} · ${tn(r.trackName)}` +
+  (r.matches > 1
+    ? `\n${t('For {n} matches: Fortnite only updated your rank after the last one ("Play again" skips the lobby).', { n: r.matches })}`
+    : '')
+const rankDelta = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : ''}${Math.abs(Math.round(d))} %`
+
 function mostCommon<T>(items: T[]): { value: T; count: number } | null {
   const counts = new Map<T, number>()
   for (const i of items) counts.set(i, (counts.get(i) ?? 0) + 1)
@@ -39,7 +96,8 @@ function mostCommon<T>(items: T[]): { value: T; count: number } | null {
 }
 
 const summary = computed(() => {
-  const ms = inRange.value
+  const ms = shown.value
+  const ranked = ms.filter((m) => m.rank)
   const tracked = ms.filter((m) => m.kills !== null)
   const eliminators = ms.map((m) => m.eliminatedBy).filter((n): n is string => !!n)
   const kds = ms.map((m) => m.eliminatorKd).filter((k): k is number => k !== null)
@@ -56,6 +114,8 @@ const summary = computed(() => {
     topThreat: mostCommon(ms.map((m) => m.eliminatorThreat).filter((t): t is Threat => !!t)),
     withThreat: ms.filter((m) => m.eliminatorThreat).length,
     avgEliminatorKd: kds.length ? kds.reduce((a, b) => a + b, 0) / kds.length : null,
+    rankedCount: ranked.length,
+    rankGain: ranked.reduce((sum, m) => sum + m.rank!.delta, 0),
   }
 })
 
@@ -83,11 +143,11 @@ const nemesis = computed(() => {
 const rows = computed(() => {
   const out: ({ kind: 'day'; label: string; count: number } | { kind: 'match'; m: MatchRecord })[] = []
   let current = ''
-  for (const m of inRange.value) {
+  for (const m of shown.value) {
     const key = dayKey(m.startedUtc)
     if (key !== current) {
       current = key
-      out.push({ kind: 'day', label: dayLabel(key), count: inRange.value.filter((x) => dayKey(x.startedUtc) === key).length })
+      out.push({ kind: 'day', label: dayLabel(key), count: shown.value.filter((x) => dayKey(x.startedUtc) === key).length })
     }
     out.push({ kind: 'match', m })
   }
@@ -149,6 +209,27 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
 
     <template v-else>
       <h2 class="period">{{ periodLabel }} <span class="faint">· {{ tp(summary.count, '{n} match', '{n} matches') }}</span></h2>
+
+      <div v-if="filterGroups.length" class="filters">
+        <div v-for="g in filterGroups" :key="g.name" class="seg small" role="radiogroup" :aria-label="t(g.name)">
+          <button type="button" role="radio" :aria-checked="active(g.model.value, g.options) === 'all'" :class="{ on: active(g.model.value, g.options) === 'all' }" @click="g.model.value = 'all'">
+            {{ t('All') }}
+          </button>
+          <button
+            v-for="o in g.options"
+            :key="o.id"
+            type="button"
+            role="radio"
+            :aria-checked="active(g.model.value, g.options) === o.id"
+            :class="{ on: active(g.model.value, g.options) === o.id }"
+            @click="g.model.value = o.id"
+          >
+            {{ t(o.label) }} <span class="count">{{ o.count }}</span>
+          </button>
+        </div>
+        <button v-if="filtering" type="button" class="clear" @click="clearFilters">{{ t('Clear filters') }}</button>
+      </div>
+
       <div class="tiles">
         <div class="tile"><span class="label">{{ t('Matches') }}</span><span class="value">{{ summary.count }}</span></div>
         <div class="tile"><span class="label">{{ t('Time in matches') }}</span><span class="value">{{ hours(summary.played) }}</span></div>
@@ -159,6 +240,11 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
         <div class="tile" :title="untracked">
           <span class="label">{{ t('Wins') }}</span><span class="value" :class="{ gold: summary.wins }">{{ summary.tracked ? summary.wins : '–' }}</span>
           <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : t('Counted from your next matches') }}</span>
+        </div>
+        <div v-if="summary.rankedCount" class="tile" :title="t('Rank progress in ranked matches, in % of a rank, as on Fortnite\'s end-of-match screen.')">
+          <span class="label">{{ t('Ranked progress') }}</span>
+          <span class="value" :class="summary.rankGain > 0 ? 'up' : summary.rankGain < 0 ? 'down' : ''">{{ rankDelta(summary.rankGain) }}</span>
+          <span class="small">{{ tp(summary.rankedCount, 'in {n} ranked match', 'in {n} ranked matches') }}</span>
         </div>
         <div class="tile wide">
           <span class="label">{{ t('Most played') }}</span>
@@ -183,7 +269,11 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
         </div>
       </div>
 
-      <div v-if="!inRange.length" class="card empty">
+      <div v-if="inRange.length && !shown.length" class="card empty">
+        {{ t('No matches match these filters.') }} <button type="button" class="link" @click="clearFilters">{{ t('Clear filters') }}</button>
+      </div>
+
+      <div v-else-if="!inRange.length" class="card empty">
         {{ range === 'today' ? t('No matches yet today.') : t("Matches appear here as you play. Older sessions are imported from Fortnite's recent logs.") }}
       </div>
 
@@ -196,6 +286,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
               <th>{{ t('Party') }}</th>
               <th>{{ t('Result') }}</th>
               <th class="num" :title="t('Kills are tracked for matches played with the app running')">{{ t('Kills') }}</th>
+              <th class="num" :title="t('Rank progress in ranked matches, in % of a rank, as on Fortnite\'s end-of-match screen.')">{{ t('Rank') }}</th>
               <th class="num">{{ t('Duration') }}</th>
               <th>{{ t('Eliminated by') }}</th>
             </tr>
@@ -203,7 +294,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
           <tbody>
             <template v-for="(row, i) in rows" :key="i">
               <tr v-if="row.kind === 'day'" class="day">
-                <td colspan="7">{{ row.label }} <span class="faint">· {{ tp(row.count, '{n} match', '{n} matches') }}</span></td>
+                <td colspan="8">{{ row.label }} <span class="faint">· {{ tp(row.count, '{n} match', '{n} matches') }}</span></td>
               </tr>
               <tr
                 v-else
@@ -223,6 +314,17 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
                   <span v-else class="muted">{{ t('Eliminated') }}</span>
                 </td>
                 <td class="num" :title="row.m.kills === null ? untracked : undefined">{{ row.m.kills ?? '–' }}</td>
+                <td class="num">
+                  <span
+                    v-if="row.m.rank"
+                    class="rank-delta"
+                    :class="row.m.rank.delta > 0 ? 'up' : row.m.rank.delta < 0 ? 'down' : ''"
+                    :title="rankTitle(row.m.rank)"
+                  >
+                    {{ rankDelta(row.m.rank.delta) }}<small v-if="row.m.rank.matches > 1" class="covers"> ×{{ row.m.rank.matches }}</small>
+                  </span>
+                  <span v-else class="faint">–</span>
+                </td>
                 <td class="num muted">{{ duration(row.m) }}</td>
                 <td>
                   <template v-if="row.m.eliminatedBy">
@@ -250,6 +352,50 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
 </template>
 
 <style scoped>
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  margin-top: var(--s3);
+}
+.seg.small button {
+  font-size: 13px;
+  padding: 5px 10px;
+}
+.count {
+  margin-left: 4px;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+.clear {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--muted);
+  font-size: 13px;
+  text-decoration: underline;
+}
+.clear:hover {
+  color: var(--accent);
+}
+.rank-delta,
+.value.up,
+.value.down {
+  font-family: var(--display);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.covers {
+  font-size: 11px;
+  opacity: 0.75;
+}
+.up {
+  color: var(--live);
+}
+.down {
+  color: var(--danger);
+}
 .controls {
   display: flex;
   gap: var(--s3);

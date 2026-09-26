@@ -76,7 +76,11 @@ public sealed class UiBridge
             Send("snapshot", s);
             SendSquadRanks();
         });
-        _ranks.Changed += () => Post(SendSquadRanks);
+        _ranks.Changed += () => Post(() =>
+        {
+            SendSquadRanks();
+            SendHistory(); // rank changes per match
+        });
         _sessions.Changed += () => Post(SendSessions);
         _settings.Changed += _ => Post(SendSettings);
         _history.Changed += () => Post(SendHistory);
@@ -319,7 +323,15 @@ public sealed class UiBridge
     private void SendGoals() =>
         _web?.PostWebMessageAsJson($"{{\"type\":\"goals\",\"data\":{_goals.Json}}}");
 
-    private void SendHistory() => Send("history", _history.Recent(HistoryCount));
+    // Each match plus, for ranked ones, how your rank moved ("+32%", like the end-of-match screen).
+    private void SendHistory() => Send("history", _history.Recent(HistoryCount).Select(m =>
+    {
+        var node = JsonSerializer.SerializeToNode(m, Json)!.AsObject();
+        // Unreal has a leaderboard position instead of progress, so there's no percentage to show.
+        if (_insights.RankMoveFor(m) is { Before.Current: < RankNames.Unreal } move)
+            node["rank"] = JsonSerializer.SerializeToNode(new { delta = move.Delta, trackName = move.TrackName, afterName = move.AfterName, matches = move.Matches }, Json);
+        return node;
+    }).ToList());
 
     private void SendSessions() => Send("sessions", _sessions.All.Reverse().Take(50).ToList());
 

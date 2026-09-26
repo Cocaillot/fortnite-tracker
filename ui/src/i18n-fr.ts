@@ -198,6 +198,27 @@ export const FR: Record<string, string> = {
   'Left early': 'Quittée',
   Eliminated: 'Éliminé',
 
+  // History filters and ranked progress
+  All: 'Tout',
+  Ranked: 'Classé',
+  Unranked: 'Non classé',
+  Tournaments: 'Tournois',
+  Creative: 'Créatif',
+  Build: 'Construction',
+  'Zero Build': 'Zéro construction',
+  Type: 'Type',
+  Game: 'Jeu',
+  Building: 'Construction',
+  'Clear filters': 'Effacer les filtres',
+  'No matches match these filters.': 'Aucune partie ne correspond à ces filtres.',
+  'Ranked progress': 'Progression classée',
+  'For {n} matches: Fortnite only updated your rank after the last one ("Play again" skips the lobby).':
+    "Sur {n} parties : Fortnite n'a mis à jour ton rang qu'après la dernière (« Rejouer » saute le salon).",
+  'in {n} ranked match': 'sur {n} partie classée',
+  'in {n} ranked matches': 'sur {n} parties classées',
+  "Rank progress in ranked matches, in % of a rank, as on Fortnite's end-of-match screen.":
+    "Progression de rang en classé, en % d'un rang, comme sur l'écran de fin de partie de Fortnite.",
+
   // Sessions
   'Sessions appear here as you play.': 'Les sessions apparaissent ici au fil du jeu.',
   Now: 'En cours',

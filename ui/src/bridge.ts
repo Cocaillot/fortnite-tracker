@@ -121,6 +121,9 @@ export interface MatchRecord {
   eliminatorThreat: Threat | null
   /** Your party members at the start of the match (you excluded). */
   partyIds: string[] | null
+  /** Ranked matches: how your rank moved, in % of a rank (like Fortnite's "+32%"). */
+  /** matches > 1: Fortnite only updated the rank after several matches in a row ("Play again"). */
+  rank?: { delta: number; trackName: string; afterName: string; matches: number } | null
 }
 
 export interface StatsDay {

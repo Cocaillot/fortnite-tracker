@@ -33,6 +33,9 @@ public sealed record RankProgress(
 /// <summary>Fortnite's 18 ranks (Bronze I … Unreal) and the ranked tracks we can name.</summary>
 public static class RankNames
 {
+    /// <summary>Index of the top rank, which shows a leaderboard position instead of progress.</summary>
+    public const int Unreal = 17;
+
     // Seasons last about three months; a rank updated within this window is treated as current.
     public static readonly TimeSpan CurrentSeasonWindow = TimeSpan.FromDays(120);
 

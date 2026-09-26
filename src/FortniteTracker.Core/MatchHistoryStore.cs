@@ -38,6 +38,18 @@ public sealed class MatchHistoryStore
         lock (_gate) return _matches.GetValueOrDefault(startedUtc);
     }
 
+    /// <summary>Matches that started in [from, to), oldest first.</summary>
+    public IReadOnlyList<MatchRecord> StartedBetween(DateTime fromUtc, DateTime toUtc)
+    {
+        lock (_gate) return _matches.Values.Where(m => m.StartedUtc >= fromUtc && m.StartedUtc < toUtc).ToList();
+    }
+
+    /// <summary>The match started right after this one, if any.</summary>
+    public MatchRecord? Next(DateTime startedUtc)
+    {
+        lock (_gate) return _matches.Values.FirstOrDefault(m => m.StartedUtc > startedUtc);
+    }
+
     /// <summary>Changes a stored match in place (e.g. adding kills); no-op if it isn't stored.</summary>
     public bool Update(DateTime startedUtc, Func<MatchRecord, MatchRecord> change)
     {

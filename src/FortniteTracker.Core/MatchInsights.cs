@@ -1,7 +1,11 @@
 namespace FortniteTracker.Core;
 
 /// <summary>How your rank moved in one match, from the rank updates just before and after it.</summary>
-public sealed record RankMove(string Track, string TrackName, RankPoint Before, RankPoint After)
+/// <remarks>
+/// <see cref="Matches"/> is more than 1 when Fortnite only updated the rank after several ranked
+/// matches in a row ("Play again" skips the lobby, where ranks are refreshed): the change covers them all.
+/// </remarks>
+public sealed record RankMove(string Track, string TrackName, RankPoint Before, RankPoint After, int Matches = 1)
 {
     public string BeforeName => RankNames.Name(Before.Current);
     public string AfterName => RankNames.Name(After.Current);
@@ -51,20 +55,45 @@ public sealed class MatchInsights(MatchHistoryStore history, RankBook ranks, For
         return new MatchDetail(match, eliminator, party, RankMoveFor(match));
     }
 
+    // Epic's rank timestamp can be a little earlier than the end we read from the log.
+    private static readonly TimeSpan EndSlack = TimeSpan.FromMinutes(1);
+
+    private static readonly string[] Games = ["Reload", "Battle Royale", "OG"];
+
+    // "Ranked Reload Duos · Build" and the "Reload" track are the same game; unknown on either side matches.
+    private static bool SameGame(string mode, string trackName)
+    {
+        var a = Games.FirstOrDefault(g => mode.Contains(g, StringComparison.Ordinal));
+        var b = Games.FirstOrDefault(g => trackName.StartsWith(g, StringComparison.Ordinal));
+        return a is null || b is null || a == b;
+    }
+
+    public static bool IsRanked(MatchRecord m) =>
+        m.Playlist?.Contains("Habanero", StringComparison.OrdinalIgnoreCase) ?? m.Mode.StartsWith("Ranked", StringComparison.Ordinal);
+
     /// <summary>
-    /// The mode whose rank updated right after the match is the one it was played in; its last
-    /// update before the match is the starting point.
+    /// How a ranked match moved your rank. Rank points carry Epic's own update time, so the update
+    /// that belongs to a match is the first one after it ends and before the next match starts
+    /// (after that, it belongs to a later match). The change is measured from the previous update.
     /// </summary>
     public RankMove? RankMoveFor(MatchRecord match)
     {
-        if (tracker.SelfId is not { } self || match.EndedUtc is not { } ended) return null;
+        if (tracker.SelfId is not { } self || match.EndedUtc is not { } ended || !IsRanked(match)) return null;
+        var limit = ended + RankUpdateWindow;
+        if (history.Next(match.StartedUtc) is { } next && next.StartedUtc < limit) limit = next.StartedUtc;
+
         foreach (var season in ranks.Seasons(self))
         {
+            var trackName = RankNames.TrackName(season.Track);
+            if (!SameGame(match.Mode, trackName)) continue;
             var points = ranks.History(self, season.Track, season.TrackGuid);
-            var after = points.FirstOrDefault(p => p.At >= ended && p.At <= ended + RankUpdateWindow);
-            var before = points.LastOrDefault(p => p.At <= match.StartedUtc);
-            if (after is not null && before is not null)
-                return new RankMove(season.Track, RankNames.TrackName(season.Track), before, after);
+            var i = points.ToList().FindIndex(p => p.At >= ended - EndSlack && p.At > match.StartedUtc && p.At < limit);
+            if (i <= 0) continue; // no update for this match here, or nothing to compare it with
+            var before = points[i - 1];
+            var after = points[i];
+            // Ranked matches since the previous update that got no update of their own share this one.
+            var covered = history.StartedBetween(before.At, match.StartedUtc).Count(m => IsRanked(m) && SameGame(m.Mode, trackName)) + 1;
+            return new RankMove(season.Track, trackName, before, after, covered);
         }
         return null;
     }
