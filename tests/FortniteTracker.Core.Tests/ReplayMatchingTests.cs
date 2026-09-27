@@ -39,6 +39,60 @@ public sealed class ReplayMatchingTests
     }
 
     [Fact]
+    public void A_replay_Fortnite_is_still_writing_is_left_alone()
+    {
+        var dir = Directory.CreateTempSubdirectory("ft-tests-").FullName;
+        try
+        {
+            var path = Path.Combine(dir, "UnsavedReplay-test.replay");
+            using (var writer = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.Read))
+            {
+                writer.Write(new byte[64]);
+                Assert.True(ReplayParser.IsBeingWritten(path));
+                Assert.Null(ReplayParser.Read(path));
+            }
+            Assert.False(ReplayParser.IsBeingWritten(path));
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void An_unreadable_replay_is_retried_before_being_given_up()
+    {
+        // 0.9.7 gave up on a replay after one failed read, which happened while Fortnite was still writing it.
+        var dir = Directory.CreateTempSubdirectory("ft-tests-").FullName;
+        try
+        {
+            var demos = Directory.CreateDirectory(Path.Combine(dir, "demos")).FullName;
+            File.WriteAllBytes(Path.Combine(demos, "UnsavedReplay-broken.replay"), new byte[64]);
+            var state = Path.Combine(dir, "replays-read.json");
+            var watcher = new ReplayWatcher(
+                new MatchHistoryStore(Path.Combine(dir, "history.json")),
+                new SettingsStore(settingsPath: Path.Combine(dir, "settings.json")),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ReplayWatcher>.Instance)
+            {
+                Directory = demos,
+                StatePath = state,
+            };
+
+            watcher.Scan(T0);
+            watcher.Scan(T0.AddMinutes(1));
+            Assert.False(File.Exists(state)); // not given up yet: it will be tried again
+
+            watcher.Scan(T0.AddDays(2));
+            Assert.Contains("UnsavedReplay-broken.replay", File.ReadAllText(state));
+            Assert.True(File.Exists(Path.Combine(demos, "UnsavedReplay-broken.replay"))); // never deleted unread
+        }
+        finally
+        {
+            Directory.Delete(dir, recursive: true);
+        }
+    }
+
+    [Fact]
     public void The_log_merging_the_match_again_keeps_the_replay_and_its_eliminator()
     {
         var dir = Directory.CreateTempSubdirectory("ft-tests-").FullName;

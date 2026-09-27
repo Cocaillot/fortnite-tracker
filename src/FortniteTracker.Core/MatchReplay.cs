@@ -38,6 +38,7 @@ public static class ReplayParser
     /// </summary>
     public static ParsedReplay? Read(string path)
     {
+        if (IsBeingWritten(path)) return null;
         FortniteReplay replay;
         try
         {
@@ -50,6 +51,23 @@ public static class ReplayParser
             return null;
         }
         return Summarise(replay);
+    }
+
+    /// <summary>
+    /// True while Fortnite still has the file open for writing. A half-written replay can fail to
+    /// parse in several ways, so it isn't even tried.
+    /// </summary>
+    public static bool IsBeingWritten(string path)
+    {
+        try
+        {
+            using var _ = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return false;
+        }
+        catch (IOException)
+        {
+            return true;
+        }
     }
 
     internal static ParsedReplay? Summarise(FortniteReplay replay)

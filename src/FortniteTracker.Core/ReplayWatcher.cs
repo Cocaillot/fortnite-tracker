@@ -74,14 +74,14 @@ public sealed class ReplayWatcher(MatchHistoryStore history, SettingsStore setti
             }
             catch (Exception ex)
             {
-                // A replay the reader can't handle (e.g. a new Fortnite format): don't retry it forever.
+                // Retried at the next pass (it may be a moment Fortnite was reopening the file);
+                // a replay the reader really can't handle is given up on below.
                 logger.LogWarning(ex, "Could not read replay {File}", name);
-                MarkDone(name, file, delete: false);
-                continue;
+                parsed = null;
             }
             if (parsed is null)
             {
-                // Still being written, or never finalised (e.g. the game crashed).
+                // Still being written, never finalised (e.g. the game crashed) or unreadable.
                 if (nowUtc - firstSeen > GiveUpReading) MarkDone(name, file, delete: false);
                 continue;
             }

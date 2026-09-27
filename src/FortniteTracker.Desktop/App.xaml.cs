@@ -86,7 +86,8 @@ public partial class App : Application
                 services.AddSingleton(sp => new ReplayWatcher(
                     sp.GetRequiredService<MatchHistoryStore>(), sp.GetRequiredService<SettingsStore>(), sp.GetRequiredService<ILogger<ReplayWatcher>>())
                 {
-                    StatePath = Path.Combine(storage, "replays.json"),
+                    // "replays.json" from 0.9.7 could list replays skipped by mistake; a new list starts over.
+                    StatePath = Path.Combine(storage, "replays-read.json"),
                 });
                 services.AddHostedService(sp => sp.GetRequiredService<ReplayWatcher>());
                 services.AddSingleton<UiBridge>();
