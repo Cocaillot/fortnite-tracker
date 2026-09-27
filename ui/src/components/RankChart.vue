@@ -2,32 +2,27 @@
 import { t, tn, locale } from '../i18n'
 import { computed } from 'vue'
 import type { RankPoint } from '../bridge'
+import { ladderFor, tierBands } from '../ranks'
 
 // Rank over time for one season: a line through (time, rank + progress) over bands for each tier.
-const props = defineProps<{ points: RankPoint[] }>()
+const props = defineProps<{ points: RankPoint[]; track: string }>()
 
 const W = 640
 const H = 220
 const PAD = { left: 76, right: 16, top: 12, bottom: 26 }
 
-const tiers = [
-  { name: 'Bronze', from: 0, to: 3 },
-  { name: 'Silver', from: 3, to: 6 },
-  { name: 'Gold', from: 6, to: 9 },
-  { name: 'Platinum', from: 9, to: 12 },
-  { name: 'Diamond', from: 12, to: 15 },
-  { name: 'Elite', from: 15, to: 16 },
-  { name: 'Champion', from: 16, to: 17 },
-  { name: 'Unreal', from: 17, to: 18 },
-]
+// Tier bands of this track's ladder (18 ranks, or 22 since Elite and Champion got divisions).
+const ladder = computed(() => ladderFor(props.track, Math.max(0, ...props.points.map((p) => p.current))))
+const top = computed(() => ladder.value.length)
+const tiers = computed(() => tierBands(ladder.value))
 
-const values = computed(() => props.points.map((p) => ({ t: Date.parse(p.at), v: Math.min(18, p.current + p.progress) })))
+const values = computed(() => props.points.map((p) => ({ t: Date.parse(p.at), v: Math.min(top.value, p.current + p.progress) })))
 
 // Show the tiers the line passes through, plus one on each side for context.
 const range = computed(() => {
   const vs = values.value.map((p) => p.v)
   const lo = Math.max(0, Math.floor(Math.min(...vs)) - 1)
-  const hi = Math.min(18, Math.ceil(Math.max(...vs)) + 1)
+  const hi = Math.min(top.value, Math.ceil(Math.max(...vs)) + 1)
   return { lo, hi: Math.max(hi, lo + 2) }
 })
 
@@ -40,7 +35,7 @@ const x = (t: number) => {
 const y = (v: number) => PAD.top + (1 - (v - range.value.lo) / (range.value.hi - range.value.lo)) * (H - PAD.top - PAD.bottom)
 
 const bands = computed(() =>
-  tiers
+  tiers.value
     .filter((t) => t.to > range.value.lo && t.from < range.value.hi)
     .map((t) => {
       const top = y(Math.min(t.to, range.value.hi))

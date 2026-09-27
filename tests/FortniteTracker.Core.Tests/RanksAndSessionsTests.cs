@@ -38,12 +38,33 @@ public sealed class RanksAndSessionsTests : IDisposable
     }
 
     [Theory]
-    [InlineData(0, "Bronze I")]
-    [InlineData(8, "Gold III")]
-    [InlineData(15, "Elite")]
-    [InlineData(16, "Champion")]
-    [InlineData(21, "Rank 21")] // seen on 2026 combined tracks; not guessed
-    public void Rank_names(int rank, string expected) => Assert.Equal(expected, RankNames.Name(rank));
+    // Older seasons: 18 ranks.
+    [InlineData(0, "ranked-zb", "Bronze I")]
+    [InlineData(8, "ranked-br", "Gold III")]
+    [InlineData(15, "ranked-br", "Elite")]
+    [InlineData(16, "ranked_blastberry_build", "Champion")]
+    [InlineData(17, "ranked_blastberry_build", "Unreal")]
+    // v40.20 ladder on the 2026 "combined" tracks: Elite and Champion have three divisions.
+    [InlineData(8, "ranked-blastberry-combined", "Gold III")]
+    [InlineData(15, "ranked-br-combined", "Elite I")]
+    [InlineData(17, "ranked-blastberry-combined", "Elite III")]
+    [InlineData(20, "ranked-blastberry-combined", "Champion III")]
+    [InlineData(21, "ranked-br-combined", "Unreal")]
+    // A value past the old top rank means the new ladder, whatever the track.
+    [InlineData(19, "ranked-something-new", "Champion II")]
+    [InlineData(25, "ranked-br-combined", "Rank 25")] // unknown: not guessed
+    public void Rank_names(int rank, string track, string expected) => Assert.Equal(expected, RankNames.Name(rank, track));
+
+    [Fact]
+    public void Unreal_shows_its_leaderboard_position_on_both_ladders()
+    {
+        var now = DateTime.UtcNow;
+        Assert.Equal("Unreal #812", new RankProgress(Self, "ranked-br", 17, 17, 0, 812, now).RankName);
+        Assert.Equal("Unreal #45", new RankProgress(Self, "ranked-br-combined", 21, 21, 0, 45, now).RankName);
+        // Elite III on the new ladder is not Unreal, even with a position field.
+        Assert.Equal("Elite III", new RankProgress(Self, "ranked-br-combined", 17, 17, 0.75, 3, now).RankName);
+        Assert.Equal(22, new RankProgress(Self, "ranked-br-combined", 3, 3, 0, null, now).LadderSize);
+    }
 
     [Fact]
     public void Rank_book_keeps_the_newest_entry_and_persists()

@@ -93,6 +93,23 @@ public sealed class MatchHistoryTests : IDisposable
     }
 
     [Fact]
+    public void Ranked_kill_counts_from_version_7_are_cleared_but_others_kept()
+    {
+        var path = Path.Combine(_dir, "history.json");
+        File.WriteAllText(path, """
+            {"Matches":[
+              {"StartedUtc":"2026-09-26T12:25:47Z","EndedUtc":"2026-09-26T12:33:45Z","Mode":"Ranked Solo","Playlist":"Playlist_Habanero_NoBuild_PunchBerry_Solo","SquadSize":1,"Finished":true,"Kills":2,"Won":false},
+              {"StartedUtc":"2026-09-26T11:29:09Z","EndedUtc":"2026-09-26T11:32:02Z","Mode":"Battle Royale Solo","Playlist":"Playlist_DefaultSolo","SquadSize":1,"Finished":true,"Kills":3,"Won":false}],
+             "ImportedFiles":[],"Version":7}
+            """);
+
+        var store = new MatchHistoryStore(path);
+
+        Assert.Null(store.Get(new DateTime(2026, 9, 26, 12, 25, 47, DateTimeKind.Utc))!.Kills);
+        Assert.Equal(3, store.Get(new DateTime(2026, 9, 26, 11, 29, 9, DateTimeKind.Utc))!.Kills);
+    }
+
+    [Fact]
     public void Kill_counts_from_before_version_7_are_cleared()
     {
         var path = Path.Combine(_dir, "history.json");

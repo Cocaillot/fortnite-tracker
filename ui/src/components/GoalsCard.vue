@@ -3,7 +3,7 @@ import { t, tn } from '../i18n'
 import { computed, ref, watch } from 'vue'
 import type { LobbySnapshot, MatchRecord, RankProgress } from '../bridge'
 import { addGoal, describe, markDone, removeGoal, useGoalProgress, type Goal, type Period } from '../composables/goals'
-import { RANK_NAMES } from '../ranks'
+import { ladderFor } from '../ranks'
 
 const props = defineProps<{ snapshot: LobbySnapshot | null; ranks: RankProgress[]; history: MatchRecord[] }>()
 const emit = defineEmits<{ completed: [text: string] }>()
@@ -28,12 +28,14 @@ const kd = ref(1.5)
 const rankTracks = computed(() => props.ranks.filter((r) => r.isCurrentSeason))
 const track = ref<string>('')
 const rankTarget = ref(6)
+// The chosen mode's ranks (18, or 22 on this season's tracks).
+const rankChoices = computed(() => ladderFor(track.value))
 
 function openForm() {
   adding.value = true
   track.value = rankTracks.value[0]?.track ?? ''
   const r = rankTracks.value[0]
-  rankTarget.value = r ? Math.min(17, r.current + 1) : 6
+  rankTarget.value = r ? Math.min(ladderFor(r.track, r.current).length - 1, r.current + 1) : 6
 }
 
 function create() {
@@ -65,7 +67,7 @@ function create() {
       </select>
       <template v-if="kind === 'rank'">
         <select v-model.number="rankTarget" :aria-label="t('Target rank')">
-          <option v-for="(n, i) in RANK_NAMES" :key="n" :value="i">{{ tn(n) }}</option>
+          <option v-for="(n, i) in rankChoices" :key="n" :value="i">{{ tn(n) }}</option>
         </select>
         <span class="muted">{{ t('in') }}</span>
         <select v-model="track" :aria-label="t('Mode')">

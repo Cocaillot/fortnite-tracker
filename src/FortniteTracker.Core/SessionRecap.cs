@@ -64,7 +64,7 @@ public static class SessionRecaps
             if (before is null || after is null || after.At <= start) continue;
             var change = Math.Round(((after.Current + after.Progress) - (before.Current + before.Progress)) * 100);
             if (change == 0) continue;
-            list.Add($"{RankNames.TrackName(season.Track)}: {RankNames.Name(before.Current)} → {RankNames.Name(after.Current)} ({(change > 0 ? "+" : "")}{change}%)");
+            list.Add($"{RankNames.TrackName(season.Track)}: {RankNames.Name(before.Current, season.Track)} → {RankNames.Name(after.Current, season.Track)} ({(change > 0 ? "+" : "")}{change}%)");
         }
         return list;
     }

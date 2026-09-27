@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { on, send, statsFor, type LobbySnapshot, type MatchRecord, type RankProgress } from '../bridge'
-import { RANK_NAMES } from '../ranks'
+import { rankName } from '../ranks'
 import { t, tn } from '../i18n'
 
 // Personal goals. The host stores the list as-is (goals.json); progress is computed here from
@@ -46,7 +46,7 @@ const since = (period: Period) => {
 export function describe(g: Goal): string {
   switch (g.kind) {
     case 'rank':
-      return t('Reach {rank} in {mode}', { rank: tn(RANK_NAMES[g.target] ?? `Rank ${g.target}`), mode: tn(g.trackName) })
+      return t('Reach {rank} in {mode}', { rank: tn(rankName(g.target, g.track)), mode: tn(g.trackName) })
     case 'kd':
       return t('Season K/D of {kd}', { kd: g.target.toFixed(2) })
     default: {

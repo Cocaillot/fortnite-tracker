@@ -115,6 +115,7 @@ const summary = computed(() => {
     withThreat: ms.filter((m) => m.eliminatorThreat).length,
     avgEliminatorKd: kds.length ? kds.reduce((a, b) => a + b, 0) / kds.length : null,
     rankedCount: ranked.length,
+    allRanked: ms.length > 0 && ms.every((m) => kindOf(m) === 'ranked'),
     rankGain: ranked.reduce((sum, m) => sum + m.rank!.delta, 0),
   }
 })
@@ -175,6 +176,9 @@ const party = (size: number) => (size === 1 ? t('Solo / no party') : t('Party of
 const untracked = computed(() =>
   t('Kills and wins are measured from your stats before and after each match, so they only exist for matches played while the app was open.'),
 )
+// Epic's public stats leave out many ranked eliminations, so the app shows none rather than wrong ones.
+const rankedKills = computed(() => t("Fortnite's public stats leave out many eliminations in ranked, so they aren't shown for ranked matches. Recording replays will fix this later."))
+const killsTitle = (m: MatchRecord) => (m.kills !== null ? undefined : kindOf(m) === 'ranked' ? rankedKills.value : untracked.value)
 const periodLabel = computed(() => (range.value === 'today' ? t('Today') : t('All time')))
 
 const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}` : `${min} min`)
@@ -235,11 +239,11 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
         <div class="tile"><span class="label">{{ t('Time in matches') }}</span><span class="value">{{ hours(summary.played) }}</span></div>
         <div class="tile" :title="untracked">
           <span class="label">{{ t('Kills') }}</span><span class="value">{{ summary.kills ?? '–' }}</span>
-          <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : t('Counted from your next matches') }}</span>
+          <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : summary.allRanked ? t('Not available in ranked') : t('Counted from your next matches') }}</span>
         </div>
         <div class="tile" :title="untracked">
           <span class="label">{{ t('Wins') }}</span><span class="value" :class="{ gold: summary.wins }">{{ summary.tracked ? summary.wins : '–' }}</span>
-          <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : t('Counted from your next matches') }}</span>
+          <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : summary.allRanked ? t('Not available in ranked') : t('Counted from your next matches') }}</span>
         </div>
         <div v-if="summary.rankedCount" class="tile" :title="t('Rank progress in ranked matches, in % of a rank, as on Fortnite\'s end-of-match screen.')">
           <span class="label">{{ t('Ranked progress') }}</span>
@@ -313,7 +317,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
                   <span v-else-if="!row.m.finished" class="faint">{{ t('Left early') }}</span>
                   <span v-else class="muted">{{ t('Eliminated') }}</span>
                 </td>
-                <td class="num" :title="row.m.kills === null ? untracked : undefined">{{ row.m.kills ?? '–' }}</td>
+                <td class="num" :title="killsTitle(row.m)">{{ row.m.kills ?? '–' }}</td>
                 <td class="num">
                   <span
                     v-if="row.m.rank"

@@ -339,7 +339,7 @@ public sealed class UiBridge
     {
         var node = JsonSerializer.SerializeToNode(m, Json)!.AsObject();
         // Unreal has a leaderboard position instead of progress, so there's no percentage to show.
-        if (_insights.RankMoveFor(m) is { Before.Current: < RankNames.Unreal } move)
+        if (_insights.RankMoveFor(m) is { } move && move.Before.Current < RankNames.UnrealIndex(move.Track, move.Before.Current))
             node["rank"] = JsonSerializer.SerializeToNode(new { delta = move.Delta, trackName = move.TrackName, afterName = move.AfterName, matches = move.Matches }, Json);
         return node;
     }).ToList());

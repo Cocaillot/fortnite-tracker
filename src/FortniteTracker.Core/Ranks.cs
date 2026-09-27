@@ -22,7 +22,9 @@ public sealed record RankProgress(
     string TrackGuid = "")
 {
     public string RankName => RankNames.Name(this);
-    public string HighestName => LastUpdatedUtc is null ? "Unranked" : RankNames.Name(Highest);
+    public string HighestName => LastUpdatedUtc is null ? "Unranked" : RankNames.Name(Highest, Track);
+    /// <summary>18 ranks, or 22 on tracks using the v40.20 ladder (Elite and Champion in three divisions).</summary>
+    public int LadderSize => RankNames.Ladder(Track, Math.Max(Current, Highest)).Count;
     public string Tier => RankNames.Tier(this);
     public string TrackName => RankNames.TrackName(Track);
     /// <summary>False when the mode is only known by its codename (the name shown is derived from it).</summary>
@@ -33,32 +35,51 @@ public sealed record RankProgress(
 /// <summary>Fortnite's 18 ranks (Bronze I … Unreal) and the ranked tracks we can name.</summary>
 public static class RankNames
 {
-    /// <summary>Index of the top rank, which shows a leaderboard position instead of progress.</summary>
-    public const int Unreal = 17;
-
     // Seasons last about three months; a rank updated within this window is treated as current.
     public static readonly TimeSpan CurrentSeasonWindow = TimeSpan.FromDays(120);
 
-    private static readonly string[] Names =
+    private static readonly string[] Classic =
     [
         "Bronze I", "Bronze II", "Bronze III", "Silver I", "Silver II", "Silver III",
         "Gold I", "Gold II", "Gold III", "Platinum I", "Platinum II", "Platinum III",
         "Diamond I", "Diamond II", "Diamond III", "Elite", "Champion", "Unreal",
     ];
 
-    // Values above 17 appear on 2026 "combined" tracks; their names aren't known, so they show as numbers.
-    public static string Name(int rank) => rank < 0 ? "Unranked" : rank < Names.Length ? Names[rank] : $"Rank {rank}";
+    // Update v40.20 (2026) split Elite and Champion into three divisions: 22 ranks instead of 18.
+    private static readonly string[] Expanded =
+    [
+        "Bronze I", "Bronze II", "Bronze III", "Silver I", "Silver II", "Silver III",
+        "Gold I", "Gold II", "Gold III", "Platinum I", "Platinum II", "Platinum III",
+        "Diamond I", "Diamond II", "Diamond III", "Elite I", "Elite II", "Elite III",
+        "Champion I", "Champion II", "Champion III", "Unreal",
+    ];
+
+    /// <summary>
+    /// The rank names a track uses: the "combined" tracks introduced with the new ladder, or any
+    /// value past the old top rank, mean 22 ranks; older seasons have 18.
+    /// </summary>
+    public static IReadOnlyList<string> Ladder(string track, int value = 0) =>
+        track.Contains("combined", StringComparison.OrdinalIgnoreCase) || value >= Classic.Length ? Expanded : Classic;
+
+    /// <summary>Index of the top rank on a track, which shows a leaderboard position instead of progress.</summary>
+    public static int UnrealIndex(string track, int value = 0) => Ladder(track, value).Count - 1;
+
+    public static string Name(int rank, string track)
+    {
+        var ladder = Ladder(track, rank);
+        return rank < 0 ? "Unranked" : rank < ladder.Count ? ladder[rank] : $"Rank {rank}";
+    }
 
     public static string Name(RankProgress p) =>
         p.LastUpdatedUtc is null ? "Unranked"
-        : p is { Current: 17, Position: { } pos } ? $"Unreal #{pos}"
-        : Name(p.Current);
+        : p.Position is { } pos && p.Current == UnrealIndex(p.Track, Math.Max(p.Current, p.Highest)) ? $"Unreal #{pos}"
+        : Name(p.Current, p.Track);
 
     /// <summary>"Bronze", "Silver"… used for the rank colour.</summary>
     public static string Tier(RankProgress p) =>
         p.LastUpdatedUtc is null ? "Unranked"
-        : p.Current >= Names.Length ? "Beyond"
-        : Name(p.Current).Split(' ')[0];
+        : p.Current >= Ladder(p.Track, p.Current).Count ? "Beyond"
+        : Name(p.Current, p.Track).Split(' ')[0];
 
     // Codenames with a confirmed name (Epic's codenames, as documented by the Fortnite wiki).
     // Others (e.g. "bling", "RadiantToothpick") get a readable name derived from the codename.

@@ -13,7 +13,8 @@ public sealed class MatchHistoryStore
     // Bump when the importer learns something new, so old logs are read again (2: eliminators, 3: ranks,
     // 4: end time of matches left early, 5: every ranked season and rank history, 6: party per match).
     // 7: kills and wins recorded before it could count one stats change for several matches, so they were cleared.
-    private const int FormatVersion = 7;
+    // 8: kills from Epic's stats are incomplete in ranked, so ranked matches have none.
+    private const int FormatVersion = 8;
 
     private readonly string _path;
     private readonly object _gate = new();
@@ -128,7 +129,7 @@ public sealed class MatchHistoryStore
             foreach (var saved in file.Matches)
             {
                 var m = saved.Playlist is null || saved.Mode == "Creative" ? saved : saved with { Mode = PlaylistNames.Describe(saved.Playlist) };
-                if (file.Version < 7) m = m with { Kills = null, Won = null };
+                if (file.Version < 7 || (file.Version < 8 && MatchInsights.IsRanked(m))) m = m with { Kills = null, Won = null };
                 _matches[m.StartedUtc] = m;
             }
             if (file.Version >= FormatVersion) _importedFiles.UnionWith(file.ImportedFiles);

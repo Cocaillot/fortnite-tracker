@@ -116,8 +116,11 @@ public sealed class MatchResultTracker
 
     private void Apply(ModeStats stats)
     {
+        // Ranked matches still go through the ledger (their stats changes must not be given to
+        // other matches), but Epic's public stats leave out many ranked eliminations (e.g. 7 on the
+        // end screen, +2 in the stats), so no number is shown for them rather than a wrong one.
         foreach (var (started, kills, won) in _ledger.Observe(stats, UtcNow()))
-            _history.Update(started, m => m with { Kills = kills, Won = won });
+            _history.Update(started, m => MatchInsights.IsRanked(m) ? m : m with { Kills = kills, Won = won });
     }
 
     private void OnSnapshot(LobbySnapshot s)

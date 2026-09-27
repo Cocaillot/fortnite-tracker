@@ -6,7 +6,7 @@ import RankBadge from './RankBadge.vue'
 import PlayerAvatar from './PlayerAvatar.vue'
 import RankChart from './RankChart.vue'
 import NoteEditor from './NoteEditor.vue'
-import { RANK_NAMES } from '../ranks'
+import { rankName } from '../ranks'
 
 const props = defineProps<{ profile: PlayerProfile | null; loadingName: string | null; canGoBack: boolean }>()
 const emit = defineEmits<{ close: []; follow: [accountId: string | null, name: string, enabled: boolean] }>()
@@ -52,7 +52,7 @@ const neverPlayed = computed(() => (props.profile?.ranks ?? []).filter((r) => !r
 function bestEver(track: string) {
   const seasons = (props.profile?.seasons ?? []).filter((s) => s.track === track)
   const best = seasons.reduce<(typeof seasons)[number] | null>((b, s) => (!b || s.highest > b.highest ? s : b), null)
-  return best ? { name: tn(RANK_NAMES[best.highest] ?? `Rank ${best.highest}`), when: best.lastUpdatedUtc!, seasons: seasons.length } : null
+  return best ? { name: tn(rankName(best.highest, track)), when: best.lastUpdatedUtc!, seasons: seasons.length } : null
 }
 
 // Modes with enough rank updates this season to draw a graph.
@@ -179,7 +179,7 @@ const monthYear = (iso: string) => new Date(iso).toLocaleDateString(locale(), { 
             </select>
             <span v-else class="muted">{{ tn(activeChart.trackName) }}</span>
           </div>
-          <RankChart :points="chartPoints" />
+          <RankChart :points="chartPoints" :track="activeChart.track" />
           <p class="note">{{ t('{n} rank updates this season, recorded after matches. Hover a point for its time.', { n: chartPoints.length }) }}</p>
       </section>
 

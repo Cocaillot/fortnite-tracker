@@ -19,8 +19,10 @@ export interface RankProgress {
   trackGuid: string
   rankName: string
   highestName: string
-  /** Bronze, Silver, … Unreal; "Beyond" for 2026 values above Unreal; "Unranked". */
+  /** Bronze, Silver, … Unreal; "Beyond" for values past the ladder; "Unranked". */
   tier: string
+  /** 18 ranks, or 22 on tracks with the v40.20 ladder (Elite and Champion in three divisions). */
+  ladderSize: number
   trackName: string
   /** False when only the codename is known (the name is derived from it). */
   trackNameConfirmed: boolean

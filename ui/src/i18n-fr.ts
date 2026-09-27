@@ -212,6 +212,9 @@ export const FR: Record<string, string> = {
   'Clear filters': 'Effacer les filtres',
   'No matches match these filters.': 'Aucune partie ne correspond à ces filtres.',
   'Ranked progress': 'Progression classée',
+  "Fortnite's public stats leave out many eliminations in ranked, so they aren't shown for ranked matches. Recording replays will fix this later.":
+    "Les stats publiques de Fortnite oublient beaucoup d'éliminations en classé : elles ne sont donc pas affichées pour les parties classées. L'enregistrement des replays corrigera ça plus tard.",
+  'Not available in ranked': 'Pas disponible en classé',
   'For {n} matches: Fortnite only updated your rank after the last one ("Play again" skips the lobby).':
     "Sur {n} parties : Fortnite n'a mis à jour ton rang qu'après la dernière (« Rejouer » saute le salon).",
   'in {n} ranked match': 'sur {n} partie classée',
@@ -519,6 +522,12 @@ export const FR: Record<string, string> = {
   "You're up to date ✓": 'Tu es à jour ✓',
 
   // What's new
+  'The new ranks': 'Les nouveaux rangs',
+  'Elite and Champion now have three divisions each, as in Fortnite since this season, and Unreal is shown correctly again.':
+    'Élite et Champion ont maintenant trois divisions chacun, comme dans Fortnite depuis cette saison, et Unreal est de nouveau bien affiché.',
+  'Honest kill counts in ranked': "Des éliminations honnêtes en classé",
+  "Fortnite's public stats leave out many ranked eliminations, so ranked matches show no kill count rather than a wrong one.":
+    "Les stats publiques de Fortnite oublient beaucoup d'éliminations en classé : les parties classées n'affichent donc plus de chiffre plutôt qu'un chiffre faux.",
   'Update in one click': 'Mise à jour en un clic',
   'A banner appears as soon as a new version is out. "Update now" installs it and restarts the app. You can also check yourself in Settings → Updates.':
     "Un bandeau apparaît dès qu'une nouvelle version sort. « Mettre à jour » l'installe et redémarre l'app. Tu peux aussi vérifier toi-même dans Paramètres → Mises à jour.",

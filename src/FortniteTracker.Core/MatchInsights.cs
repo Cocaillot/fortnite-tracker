@@ -7,8 +7,8 @@ namespace FortniteTracker.Core;
 /// </remarks>
 public sealed record RankMove(string Track, string TrackName, RankPoint Before, RankPoint After, int Matches = 1)
 {
-    public string BeforeName => RankNames.Name(Before.Current);
-    public string AfterName => RankNames.Name(After.Current);
+    public string BeforeName => RankNames.Name(Before.Current, Track);
+    public string AfterName => RankNames.Name(After.Current, Track);
     /// <summary>Progress change in percentage points, counting a whole rank as 100.</summary>
     public double Delta => Math.Round(((After.Current + After.Progress) - (Before.Current + Before.Progress)) * 100, 1);
 }

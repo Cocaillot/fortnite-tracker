@@ -6,6 +6,19 @@ export interface Release {
 
 export const changelog: Release[] = [
   {
+    version: '0.9.6',
+    items: [
+      {
+        title: 'The new ranks',
+        text: 'Elite and Champion now have three divisions each, as in Fortnite since this season, and Unreal is shown correctly again.',
+      },
+      {
+        title: 'Honest kill counts in ranked',
+        text: "Fortnite's public stats leave out many ranked eliminations, so ranked matches show no kill count rather than a wrong one.",
+      },
+    ],
+  },
+  {
     version: '0.9.5',
     items: [
       {
