@@ -109,6 +109,29 @@ export interface LobbySnapshot {
   lastMatchEndedUtc: string | null
 }
 
+/** A player your team eliminated, from the match replay. */
+export interface EliminatedPlayer {
+  name: string
+  /** Null for bots. */
+  accountId: string | null
+  byYou: boolean
+  /** The teammate (or you) who eliminated them. */
+  by: string | null
+  bot: boolean
+}
+
+/** What Fortnite's replay of the match says (same numbers as its end screen). */
+export interface ReplayDetails {
+  placement: number | null
+  players: number | null
+  kills: number
+  assists: number
+  damageToPlayers: number
+  accuracy: number
+  eliminatedBy: string | null
+  eliminated: EliminatedPlayer[]
+}
+
 export interface MatchRecord {
   startedUtc: string
   endedUtc: string | null
@@ -123,6 +146,8 @@ export interface MatchRecord {
   eliminatorThreat: Threat | null
   /** Your party members at the start of the match (you excluded). */
   partyIds: string[] | null
+  /** From the match replay, when Fortnite recorded one. */
+  replay?: ReplayDetails | null
   /** Ranked matches: how your rank moved, in % of a rank (like Fortnite's "+32%"). */
   /** matches > 1: Fortnite only updated the rank after several matches in a row ("Play again"). */
   rank?: { delta: number; trackName: string; afterName: string; matches: number } | null
@@ -158,6 +183,8 @@ export interface MatchDetail {
   eliminator: PlayerStats | null
   party: { accountId: string; name: string | null; stats: PlayerStats }[]
   rank: RankMove | null
+  /** Players your team eliminated (from the replay), with their public stats when known. */
+  eliminated: { player: EliminatedPlayer; stats: PlayerStats | null }[]
 }
 
 export interface TeammateSummary {
@@ -188,6 +215,8 @@ export interface Settings {
   effectiveLanguage: 'en' | 'fr'
   /** Global shortcuts as text ("Ctrl+Shift+F"), and whether Windows accepted them. */
   hotkeys: { window: string; overlay: string; windowOk: boolean; overlayOk: boolean }
+  /** Fortnite replays the app reads for kills, placement and eliminated players. */
+  replays: { deleteAfterReading: boolean; lastReadUtc: string | null; folderExists: boolean }
   /** Open the app by itself when Fortnite starts. */
   launchWithFortnite: boolean
   /** False until the first-run guide is finished or skipped. */
@@ -249,6 +278,7 @@ export type UiMessage =
   | { type: 'setLanguage'; lang: 'en' | 'fr' | 'auto' }
   | { type: 'setHotkeys'; window?: string; overlay?: string }
   | { type: 'setLaunchWithFortnite'; enabled: boolean }
+  | { type: 'setDeleteReplays'; enabled: boolean }
   | { type: 'onboardingDone' }
   | { type: 'seenVersion' }
   | { type: 'testApiKey'; key: string }

@@ -222,6 +222,31 @@ export const FR: Record<string, string> = {
   "Rank progress in ranked matches, in % of a rank, as on Fortnite's end-of-match screen.":
     "Progression de rang en classé, en % d'un rang, comme sur l'écran de fin de partie de Fortnite.",
 
+  // Replays
+  Place: 'Place',
+  "Your team's final placement, from the match replay": "Place finale de ton équipe, d'après le replay de la partie",
+  '{place} of {players}': '{place}ᵉ sur {players}',
+  "Fortnite's public stats leave out many eliminations in ranked. Turn on Record Replays in Fortnite (Settings → Gameplay → Replays) and your next matches get their real eliminations.":
+    "Les stats publiques de Fortnite oublient beaucoup d'éliminations en classé. Active « Enregistrer les replays » dans Fortnite (Paramètres → Jouabilité → Replays) et tes prochaines parties auront leurs vraies éliminations.",
+  'Needs replays (see Settings)': 'Nécessite les replays (voir Paramètres)',
+  Assists: 'Assistances',
+  'Damage to players': 'Dégâts aux joueurs',
+  Accuracy: 'Précision',
+  'Eliminated by your team': 'Éliminés par ton équipe',
+  'by you': 'par toi',
+  'by {name}': 'par {name}',
+  Bot: 'Bot',
+  'Fortnite marks this player as an AI (bot) in the replay, even if it has a player-like name.':
+    "Fortnite indique dans le replay que ce joueur est une IA (bot), même s'il a un pseudo de joueur.",
+  'Turn on Record Replays in Fortnite (Settings → Gameplay → Replays) to see your eliminations, placement and the players you eliminated.':
+    'Active « Enregistrer les replays » dans Fortnite (Paramètres → Jouabilité → Replays) pour voir tes éliminations, ta place et les joueurs éliminés.',
+  'Delete replays after reading': 'Supprimer les replays après lecture',
+  "The app reads your eliminations, placement and the players you eliminated from Fortnite's replays, then deletes them so they don't pile up. Replays you saved under a name in Fortnite are never deleted.":
+    "L'app lit tes éliminations, ta place et les joueurs éliminés dans les replays de Fortnite, puis les supprime pour qu'ils ne s'entassent pas. Les replays que tu as enregistrés sous un nom dans Fortnite ne sont jamais supprimés.",
+  'Last replay read: {when}': 'Dernier replay lu : {when}',
+  'No replay read yet. In Fortnite: Settings → Gameplay → Replays → Record Replays: On.':
+    'Aucun replay lu pour le moment. Dans Fortnite : Paramètres → Jouabilité → Replays → Enregistrer les replays : Activé.',
+
   // Sessions
   'Sessions appear here as you play.': 'Les sessions apparaissent ici au fil du jeu.',
   Now: 'En cours',
@@ -522,6 +547,9 @@ export const FR: Record<string, string> = {
   "You're up to date ✓": 'Tu es à jour ✓',
 
   // What's new
+  'Your real eliminations, from replays': 'Tes vraies éliminations, grâce aux replays',
+  'With Record Replays on in Fortnite, each match gets your real eliminations, your placement, your true eliminator and the players your team eliminated (click a match). Replays are deleted once read.':
+    "Avec « Enregistrer les replays » activé dans Fortnite, chaque partie a tes vraies éliminations, ta place, ton vrai éliminateur et les joueurs éliminés par ton équipe (clique sur une partie). Les replays sont supprimés une fois lus.",
   'The new ranks': 'Les nouveaux rangs',
   'Elite and Champion now have three divisions each, as in Fortnite since this season, and Unreal is shown correctly again.':
     'Élite et Champion ont maintenant trois divisions chacun, comme dans Fortnite depuis cette saison, et Unreal est de nouveau bien affiché.',

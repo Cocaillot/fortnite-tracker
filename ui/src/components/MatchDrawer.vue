@@ -38,6 +38,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
       <div class="facts">
         <div class="fact" :class="{ win: match.won, left: !match.finished }"><span>{{ t('Result') }}</span><strong>{{ result }}</strong></div>
         <div class="fact"><span>{{ t('Kills') }}</span><strong>{{ match.kills ?? '–' }}</strong></div>
+        <div class="fact"><span>{{ t('Place') }}</span><strong>{{ match.replay?.placement ? `#${match.replay.placement}` : '–' }}<small v-if="match.replay?.players"> / {{ match.replay.players }}</small></strong></div>
         <div class="fact"><span>{{ t('Duration') }}</span><strong>{{ minutes !== null ? `${minutes} min` : '–' }}</strong></div>
         <div class="fact"><span>{{ t('Party') }}</span><strong>{{ match.squadSize === 1 ? t('Solo') : match.squadSize }}</strong></div>
       </div>
@@ -54,6 +55,32 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
             <strong class="delta">{{ detail.rank.delta > 0 ? '+' : '' }}{{ detail.rank.delta }}%</strong>
           </div>
         </section>
+
+        <section v-if="match.replay" class="replay-facts">
+          <span>{{ t('Assists') }} <strong>{{ match.replay.assists }}</strong></span>
+          <span>{{ t('Damage to players') }} <strong>{{ match.replay.damageToPlayers }}</strong></span>
+          <span>{{ t('Accuracy') }} <strong>{{ Math.round(match.replay.accuracy * 100) }} %</strong></span>
+        </section>
+
+        <section v-if="detail.eliminated.length">
+          <h3 class="card-title">{{ t('Eliminated by your team') }}</h3>
+          <ul class="party">
+            <li v-for="(e, i) in detail.eliminated" :key="i">
+              <button type="button" :disabled="e.player.bot" @click="emit('open', e.player.accountId, e.player.accountId ? null : e.player.name)">
+                <PlayerAvatar :name="e.player.name" :size="36" />
+                <span class="mate-name">
+                  {{ e.player.name }}
+                  <small class="by" :class="{ you: e.player.byYou }">{{ e.player.byYou ? t('by you') : t('by {name}', { name: e.player.by ?? '?' }) }}</small>
+                </span>
+                <span v-if="e.player.bot" class="bot" :title="t('Fortnite marks this player as an AI (bot) in the replay, even if it has a player-like name.')">{{ t('Bot') }}</span>
+                <span v-else-if="e.stats?.overall" class="stat-value" :class="`r-${e.stats.overall.kdRarity}`">{{ e.stats.overall.kd.toFixed(2) }} <small>K/D</small></span>
+              </button>
+            </li>
+          </ul>
+        </section>
+        <p v-else-if="!match.replay" class="muted replay-hint">
+          {{ t('Turn on Record Replays in Fortnite (Settings → Gameplay → Replays) to see your eliminations, placement and the players you eliminated.') }}
+        </p>
 
         <section v-if="detail.eliminator">
           <h3 class="card-title">{{ t('Eliminated by') }}</h3>
@@ -134,7 +161,7 @@ h2 {
 }
 .facts {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--s2);
 }
 .fact {
@@ -200,6 +227,51 @@ h2 {
   margin-left: auto;
   color: var(--d);
   font-size: 26px;
+}
+.fact strong small {
+  font-size: 13px;
+  color: var(--muted);
+}
+.replay-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s5);
+  color: var(--muted);
+  font-size: 14px;
+}
+.replay-facts strong {
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 17px;
+  margin-left: 4px;
+}
+.by {
+  display: block;
+  font-family: var(--body);
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--muted);
+}
+.by.you {
+  color: var(--live);
+}
+.bot {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.party button:disabled {
+  cursor: default;
+}
+.party button:disabled:hover {
+  border-color: var(--border);
+}
+.replay-hint {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
 }
 .party {
   list-style: none;

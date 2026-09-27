@@ -6,6 +6,15 @@ export interface Release {
 
 export const changelog: Release[] = [
   {
+    version: '0.9.7',
+    items: [
+      {
+        title: 'Your real eliminations, from replays',
+        text: 'With Record Replays on in Fortnite, each match gets your real eliminations, your placement, your true eliminator and the players your team eliminated (click a match). Replays are deleted once read.',
+      },
+    ],
+  },
+  {
     version: '0.9.6',
     items: [
       {

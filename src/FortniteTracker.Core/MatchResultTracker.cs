@@ -120,7 +120,7 @@ public sealed class MatchResultTracker
         // other matches), but Epic's public stats leave out many ranked eliminations (e.g. 7 on the
         // end screen, +2 in the stats), so no number is shown for them rather than a wrong one.
         foreach (var (started, kills, won) in _ledger.Observe(stats, UtcNow()))
-            _history.Update(started, m => MatchInsights.IsRanked(m) ? m : m with { Kills = kills, Won = won });
+            _history.Update(started, m => MatchInsights.IsRanked(m) || m.Replay is not null ? m : m with { Kills = kills, Won = won });
     }
 
     private void OnSnapshot(LobbySnapshot s)

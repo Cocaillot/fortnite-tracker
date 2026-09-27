@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { t, keysLabel, langChoice, setLanguage, type LangChoice } from '../i18n'
+import { t, keysLabel, langChoice, locale, setLanguage, type LangChoice } from '../i18n'
 import type { OverlayCorner, Settings } from '../bridge'
 import { ref } from 'vue'
 import ApiKeyForm from './ApiKeyForm.vue'
@@ -222,6 +222,21 @@ function runData(action: 'csv' | 'backup' | 'restore') {
         />
         <div class="fixed-key"><span class="keys">F11</span><span>{{ t('Full screen') }}</span></div>
       </div>
+    </div>
+
+    <div class="panel option">
+      <label class="switch">
+        <input type="checkbox" :checked="settings.replays.deleteAfterReading" @change="send({ type: 'setDeleteReplays', enabled: checked($event) })" />
+        <span class="track" aria-hidden="true" />
+        <span class="text">{{ t('Delete replays after reading') }}</span>
+      </label>
+      <p class="hint">
+        {{ t('The app reads your eliminations, placement and the players you eliminated from Fortnite\'s replays, then deletes them so they don\'t pile up. Replays you saved under a name in Fortnite are never deleted.') }}
+      </p>
+      <p class="hint">
+        <template v-if="settings.replays.lastReadUtc">{{ t('Last replay read: {when}', { when: new Date(settings.replays.lastReadUtc).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) }) }}</template>
+        <template v-else>{{ t('No replay read yet. In Fortnite: Settings → Gameplay → Replays → Record Replays: On.') }}</template>
+      </p>
     </div>
 
     <div class="panel option updates">

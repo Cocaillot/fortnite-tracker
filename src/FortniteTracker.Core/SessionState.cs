@@ -14,7 +14,9 @@ public sealed record MatchRecord(
     double? EliminatorKd = null,
     Threat? EliminatorThreat = null,
     // Account IDs of your party members at the start of the match (you excluded).
-    IReadOnlyList<string>? PartyIds = null);
+    IReadOnlyList<string>? PartyIds = null,
+    // From the match replay, when Fortnite recorded one: the end-screen numbers. Wins over the above.
+    ReplayDetails? Replay = null);
 
 /// <summary>Raised by the log tailer when it starts reading a (new) log file, i.e. a new game session.</summary>
 public sealed record LogFileOpened : GameEvent;

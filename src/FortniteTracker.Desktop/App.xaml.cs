@@ -83,6 +83,12 @@ public partial class App : Application
                 services.AddHostedService(sp => sp.GetRequiredService<UpdateService>());
                 services.AddSingleton<DiscordPresenceService>();
                 services.AddSingleton<MatchResultTracker>();
+                services.AddSingleton(sp => new ReplayWatcher(
+                    sp.GetRequiredService<MatchHistoryStore>(), sp.GetRequiredService<SettingsStore>(), sp.GetRequiredService<ILogger<ReplayWatcher>>())
+                {
+                    StatePath = Path.Combine(storage, "replays.json"),
+                });
+                services.AddHostedService(sp => sp.GetRequiredService<ReplayWatcher>());
                 services.AddSingleton<UiBridge>();
                 services.AddSingleton<MainWindow>();
             })
@@ -118,6 +124,8 @@ public partial class App : Application
             ?? (System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "fr" ? "fr" : "en");
         ApplyLanguage();
         var results = services.GetRequiredService<MatchResultTracker>(); // follows the tracker from here on
+        // A replay can correct the eliminator; look up the new one's stats.
+        services.GetRequiredService<ReplayWatcher>().ReplayApplied += () => _ = results.BackfillEliminatorsAsync(CancellationToken.None);
         settings.Changed += apiKeyChanged =>
         {
             if (!apiKeyChanged) return;

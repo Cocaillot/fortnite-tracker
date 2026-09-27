@@ -15,11 +15,15 @@ public sealed record RankMove(string Track, string TrackName, RankPoint Before, 
 
 public sealed record Teammate(string AccountId, string? Name, PlayerStats Stats);
 
+/// <summary>A player your team eliminated (from the replay), with their public stats when known.</summary>
+public sealed record EliminatedWithStats(EliminatedPlayer Player, PlayerStats? Stats);
+
 public sealed record MatchDetail(
     MatchRecord Match,
     PlayerStats? Eliminator,
     IReadOnlyList<Teammate> Party,
-    RankMove? Rank);
+    RankMove? Rank,
+    IReadOnlyList<EliminatedWithStats> Eliminated);
 
 /// <summary>Your record with one party member, from match history.</summary>
 public sealed record TeammateSummary(
@@ -52,7 +56,11 @@ public sealed class MatchInsights(MatchHistoryStore history, RankBook ranks, For
             return new Teammate(id, s.EpicName, s);
         }));
 
-        return new MatchDetail(match, eliminator, party, RankMoveFor(match));
+        // Bots have no stats; the rest are looked up (cached and rate-limited by the stats service).
+        var eliminated = await Task.WhenAll((match.Replay?.Eliminated ?? []).Select(async p =>
+            new EliminatedWithStats(p, p is { Bot: false, AccountId: { } id } ? await stats.GetByAccountIdAsync(id, ct) : null)));
+
+        return new MatchDetail(match, eliminator, party, RankMoveFor(match), eliminated);
     }
 
     // Epic's rank timestamp can be a little earlier than the end we read from the log.

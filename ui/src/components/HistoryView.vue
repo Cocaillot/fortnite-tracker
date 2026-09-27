@@ -177,7 +177,7 @@ const untracked = computed(() =>
   t('Kills and wins are measured from your stats before and after each match, so they only exist for matches played while the app was open.'),
 )
 // Epic's public stats leave out many ranked eliminations, so the app shows none rather than wrong ones.
-const rankedKills = computed(() => t("Fortnite's public stats leave out many eliminations in ranked, so they aren't shown for ranked matches. Recording replays will fix this later."))
+const rankedKills = computed(() => t("Fortnite's public stats leave out many eliminations in ranked. Turn on Record Replays in Fortnite (Settings → Gameplay → Replays) and your next matches get their real eliminations."))
 const killsTitle = (m: MatchRecord) => (m.kills !== null ? undefined : kindOf(m) === 'ranked' ? rankedKills.value : untracked.value)
 const periodLabel = computed(() => (range.value === 'today' ? t('Today') : t('All time')))
 
@@ -239,7 +239,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
         <div class="tile"><span class="label">{{ t('Time in matches') }}</span><span class="value">{{ hours(summary.played) }}</span></div>
         <div class="tile" :title="untracked">
           <span class="label">{{ t('Kills') }}</span><span class="value">{{ summary.kills ?? '–' }}</span>
-          <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : summary.allRanked ? t('Not available in ranked') : t('Counted from your next matches') }}</span>
+          <span class="small">{{ summary.tracked ? t('in {n} of {total} matches', { n: summary.tracked, total: summary.count }) : summary.allRanked ? t('Needs replays (see Settings)') : t('Counted from your next matches') }}</span>
         </div>
         <div class="tile" :title="untracked">
           <span class="label">{{ t('Wins') }}</span><span class="value" :class="{ gold: summary.wins }">{{ summary.tracked ? summary.wins : '–' }}</span>
@@ -290,6 +290,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
               <th>{{ t('Party') }}</th>
               <th>{{ t('Result') }}</th>
               <th class="num" :title="t('Kills are tracked for matches played with the app running')">{{ t('Kills') }}</th>
+              <th class="num" :title="t('Your team\'s final placement, from the match replay')">{{ t('Place') }}</th>
               <th class="num" :title="t('Rank progress in ranked matches, in % of a rank, as on Fortnite\'s end-of-match screen.')">{{ t('Rank') }}</th>
               <th class="num">{{ t('Duration') }}</th>
               <th>{{ t('Eliminated by') }}</th>
@@ -298,7 +299,7 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
           <tbody>
             <template v-for="(row, i) in rows" :key="i">
               <tr v-if="row.kind === 'day'" class="day">
-                <td colspan="8">{{ row.label }} <span class="faint">· {{ tp(row.count, '{n} match', '{n} matches') }}</span></td>
+                <td colspan="9">{{ row.label }} <span class="faint">· {{ tp(row.count, '{n} match', '{n} matches') }}</span></td>
               </tr>
               <tr
                 v-else
@@ -318,6 +319,12 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
                   <span v-else class="muted">{{ t('Eliminated') }}</span>
                 </td>
                 <td class="num" :title="killsTitle(row.m)">{{ row.m.kills ?? '–' }}</td>
+                <td class="num">
+                  <span v-if="row.m.replay?.placement" :class="{ top: row.m.replay.placement <= 10 }" :title="t('{place} of {players}', { place: row.m.replay.placement, players: row.m.replay.players ?? '?' })">
+                    #{{ row.m.replay.placement }}
+                  </span>
+                  <span v-else class="faint">–</span>
+                </td>
                 <td class="num">
                   <span
                     v-if="row.m.rank"
@@ -396,6 +403,10 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
 }
 .up {
   color: var(--live);
+}
+.top {
+  color: var(--rarity-legendary);
+  font-weight: 700;
 }
 .down {
   color: var(--danger);

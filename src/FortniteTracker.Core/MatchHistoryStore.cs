@@ -89,6 +89,9 @@ public sealed class MatchHistoryStore
                     if (!IsBetter(m, existing)) continue;
                     _matches[m.StartedUtc] = m with
                     {
+                        // The replay knows who really eliminated you; the log only guesses.
+                        EliminatedBy = existing.Replay is not null ? existing.EliminatedBy : m.EliminatedBy,
+                        Replay = m.Replay ?? existing.Replay,
                         Kills = m.Kills ?? existing.Kills,
                         Won = m.Won ?? existing.Won,
                         EliminatorKd = m.EliminatorKd ?? existing.EliminatorKd,

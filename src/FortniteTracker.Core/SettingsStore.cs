@@ -56,6 +56,10 @@ public sealed class SettingsStore
     public bool LaunchWithFortnite => _settings.LaunchWithFortnite;
     public void SetLaunchWithFortnite(bool enabled) => Update(s => s with { LaunchWithFortnite = enabled }, apiKeyChanged: false);
 
+    /// <summary>Delete Fortnite's automatic replay recordings once the app has read them.</summary>
+    public bool DeleteReplaysAfterReading => _settings.DeleteReplaysAfterReading;
+    public void SetDeleteReplaysAfterReading(bool enabled) => Update(s => s with { DeleteReplaysAfterReading = enabled }, apiKeyChanged: false);
+
     /// <summary>Whether the first-run guide was completed or skipped.</summary>
     public bool OnboardingDone => _settings.OnboardingDone ?? true;
     public void SetOnboardingDone() => Update(s => s with { OnboardingDone = true }, apiKeyChanged: false);
@@ -147,5 +151,6 @@ public sealed class SettingsStore
         string? OverlayHotkey = null,
         bool LaunchWithFortnite = false,
         bool? OnboardingDone = null,
-        string? LastSeenVersion = null);
+        string? LastSeenVersion = null,
+        bool DeleteReplaysAfterReading = true);
 }

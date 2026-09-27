@@ -40,6 +40,7 @@ public sealed class UiBridge
     private readonly DiscordRecapPoster _recap;
     private readonly FortniteLogTailer _tailer;
     private readonly DataPaths _paths;
+    private readonly ReplayWatcher _replays;
     private CancellationTokenSource? _leaderboardRun;
     private CoreWebView2? _web;
     private Dispatcher? _dispatcher;
@@ -49,8 +50,10 @@ public sealed class UiBridge
         MatchHistoryStore history, UpdateService updates, DiscordPresenceService presence,
         RankBook ranks, SessionStore sessions, PlayerDirectory directory, ThemeStore theme, MatchInsights insights,
         PlayerNotes notes, StatsHistory statsHistory, GoalStore goals, DiscordRecapPoster recap,
-        FortniteLogTailer tailer, DataPaths paths)
+        FortniteLogTailer tailer, DataPaths paths, ReplayWatcher replays)
     {
+        _replays = replays;
+        _replays.ReplayApplied += () => Post(SendSettings);
         _tailer = tailer;
         _paths = paths;
         _recap = recap;
@@ -159,6 +162,9 @@ public sealed class UiBridge
                 if (msg.Window is { } w && !HotkeyText.TryParse(w, out _, out _)) break;
                 if (msg.Overlay is { } o && !HotkeyText.TryParse(o, out _, out _)) break;
                 _settings.SetHotkeys(msg.Window, msg.Overlay);
+                break;
+            case "setDeleteReplays" when msg.Enabled is { } deleteReplays:
+                _settings.SetDeleteReplaysAfterReading(deleteReplays);
                 break;
             case "setLaunchWithFortnite" when msg.Enabled is { } launch:
                 _settings.SetLaunchWithFortnite(launch);
@@ -308,6 +314,12 @@ public sealed class UiBridge
             overlayOk = HotkeyStatusProvider?.Invoke().Overlay ?? true,
         },
         launchWithFortnite = _settings.LaunchWithFortnite,
+        replays = new
+        {
+            deleteAfterReading = _settings.DeleteReplaysAfterReading,
+            lastReadUtc = _replays.LastReadUtc,
+            folderExists = _replays.DirectoryExists,
+        },
         onboardingDone = _settings.OnboardingDone,
         lastSeenVersion = _settings.LastSeenVersion,
         fortniteFound = System.IO.File.Exists(_tailer.LogPath),
