@@ -81,7 +81,7 @@ function toggle() {
   letter-spacing: 0.04em;
   padding: 7px 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm, 6px);
+  border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
   text-align: center;

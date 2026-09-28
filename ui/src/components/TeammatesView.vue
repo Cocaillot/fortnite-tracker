@@ -53,10 +53,6 @@ const day = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: '
 </template>
 
 <style scoped>
-.empty {
-  color: var(--muted);
-  text-align: center;
-}
 .who {
   display: flex;
   align-items: center;

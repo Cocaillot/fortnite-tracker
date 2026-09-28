@@ -378,16 +378,6 @@ footer {
 .skip:hover {
   color: var(--text);
 }
-.ghost {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 .step-enter-active,
 .step-leave-active {
   transition: opacity 0.18s ease, transform 0.18s ease;

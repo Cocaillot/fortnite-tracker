@@ -67,6 +67,9 @@
   --s7: 48px;
   --radius: 12px;
   --radius-sm: calc(var(--radius) * 0.7);
+  --radius-xs: calc(var(--radius) * 0.35);
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
   font-family: var(--body);
   font-size: 15px;
@@ -110,9 +113,33 @@ input {
 input::placeholder {
   color: var(--faint);
 }
+input,
+select {
+  transition: border-color 0.15s ease;
+}
+/* :where() keeps these at zero specificity, so any component's own styling wins. */
+:where(input:hover, select:hover) {
+  border-color: color-mix(in srgb, var(--text) 22%, var(--border));
+}
+:where(input:focus-visible, select:focus-visible) {
+  border-color: var(--accent);
+}
 button {
   cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, filter 0.15s ease, transform 0.1s ease;
 }
+:where(button:not(:disabled):hover) {
+  background-color: var(--surface-2);
+}
+:where(button:not(:disabled):active) {
+  transform: translateY(1px);
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Main action. */
 .btn-primary {
   background: var(--accent);
   color: var(--accent-ink);
@@ -124,12 +151,35 @@ button {
   text-transform: uppercase;
   padding: 7px 14px;
 }
-.btn-primary:hover {
+.btn-primary:not(:disabled):hover {
   filter: brightness(1.1);
 }
-button:disabled {
-  opacity: 0.55;
-  cursor: default;
+
+/* Secondary action: same size as .btn-primary so the two line up side by side. */
+.ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.ghost:not(:disabled):hover {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.ghost.small {
+  font-size: 13px;
+  padding: 4px 10px;
 }
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -151,7 +201,7 @@ button:disabled {
 .panel {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 14px;
 }
 .row {
@@ -217,6 +267,25 @@ button:disabled {
   border-radius: var(--radius);
   padding: var(--s5);
 }
+/* Placeholder for a list or table with nothing in it yet. */
+.empty-state,
+.card.empty {
+  margin: 0;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
+  padding: var(--s6) var(--s5);
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+.empty-state p {
+  margin: 0 0 var(--s1);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--text);
+}
 .card-title {
   margin: 0 0 var(--s4);
   font-family: var(--display);
@@ -239,7 +308,8 @@ button:disabled {
 .seg button {
   border: none;
   background: none;
-  border-radius: 7px;
+  /* Nested inside .seg's 3px padding, so the corners stay concentric. */
+  border-radius: calc(var(--radius-sm) - 3px);
   padding: 6px 14px;
   color: var(--muted);
   font-family: var(--display);
@@ -359,7 +429,7 @@ table.data tbody tr.clickable:hover td {
   background: linear-gradient(90deg, var(--surface-2) 0%, var(--border) 50%, var(--surface-2) 100%);
   background-size: 200% 100%;
   animation: shimmer 1.2s ease-in-out infinite;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
 }
 @keyframes shimmer {
   from { background-position: 100% 0; }
@@ -367,9 +437,16 @@ table.data tbody tr.clickable:hover td {
 }
 
 /* Scrollbars that fit the dark theme. */
-::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb:hover { background: var(--faint); }
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner { background: transparent; }
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+  color: var(--text);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -417,7 +494,7 @@ table.data tbody tr.clickable:hover td {
   height: 16px;
   border-radius: 50%;
   background: var(--muted);
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition: transform 0.2s var(--ease-out), background 0.2s ease;
 }
 .switch input:checked + .track {
   background: var(--accent);

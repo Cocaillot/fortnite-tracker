@@ -499,10 +499,6 @@ const hours = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${String(
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.empty {
-  color: var(--muted);
-  text-align: center;
-}
 tr.day td {
   background: var(--surface-2);
   font-family: var(--display);

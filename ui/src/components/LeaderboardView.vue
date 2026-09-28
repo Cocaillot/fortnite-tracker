@@ -296,10 +296,6 @@ const arrow = (key: string) => (activeSort.value === key ? (sortDesc.value ? ' â
   background: var(--accent);
   transition: width 0.3s ease;
 }
-.empty {
-  color: var(--muted);
-  text-align: center;
-}
 th.pos,
 td.pos {
   width: 56px;

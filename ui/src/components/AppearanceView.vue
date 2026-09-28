@@ -235,29 +235,6 @@ const fontIds = Object.keys(fonts) as FontId[]
 </template>
 
 <style scoped>
-.ghost {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 7px 14px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-}
-.ghost:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.ghost.small {
-  font-size: 13px;
-  padding: 4px 10px;
-}
 .alert {
   margin: 0;
   padding: var(--s3) var(--s4);

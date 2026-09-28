@@ -251,7 +251,7 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
   color: var(--muted);
   font-size: 13px;
   border: 1px dashed var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: var(--s2) var(--s3);
 }
 </style>

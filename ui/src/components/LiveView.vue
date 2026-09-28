@@ -269,23 +269,6 @@ const subtitle = computed(() => {
   text-transform: uppercase;
   color: var(--faint);
 }
-.empty-state {
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
-  padding: var(--s6) var(--s5);
-  text-align: center;
-  color: var(--muted);
-}
-.empty-state p {
-  margin: 0 0 var(--s1);
-  font-family: var(--display);
-  font-weight: 800;
-  font-size: 20px;
-  color: var(--text);
-}
-.empty-state span {
-  font-size: 14px;
-}
 
 /* The eliminator card slides in from the right when you die. */
 .slide-enter-active {

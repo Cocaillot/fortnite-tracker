@@ -297,21 +297,6 @@ function runData(action: 'csv' | 'backup' | 'restore') {
 .small-text {
   font-size: 15px;
 }
-.ghost {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: var(--display);
-  font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 6px 12px;
-}
-.ghost:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
 .result {
   margin: var(--s3) 0 0;
   color: var(--accent);
