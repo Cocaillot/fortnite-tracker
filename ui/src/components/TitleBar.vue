@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { t, keysLabel } from '../i18n'
+import { t } from '../i18n'
 import { ref } from 'vue'
 import { send } from '../bridge'
 import { theme } from '../composables/useTheme'
 
-defineProps<{ overlayOn: boolean; overlayKeys: string; maximized: boolean; fullscreen: boolean }>()
-const emit = defineEmits<{ toggleOverlay: []; search: [name: string] }>()
+defineProps<{ maximized: boolean; fullscreen: boolean }>()
+const emit = defineEmits<{ search: [name: string] }>()
 
 const query = ref('')
 
@@ -43,19 +43,6 @@ function submit() {
     </form>
 
     <div class="buttons" @mousedown.stop @dblclick.stop>
-      <button
-        type="button"
-        class="icon"
-        :class="{ on: overlayOn }"
-        :aria-pressed="overlayOn"
-        :title="t('In-game overlay ({keys})', { keys: keysLabel(overlayKeys) })"
-        @click="emit('toggleOverlay')"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8" />
-          <rect x="12" y="7.5" width="6.5" height="4" rx="1" />
-        </svg>
-      </button>
       <button type="button" class="icon" :title="fullscreen ? t('Exit full screen (F11)') : t('Full screen (F11)')" @click="send({ type: 'window', action: 'fullscreen' })">
         <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <path v-if="!fullscreen" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />

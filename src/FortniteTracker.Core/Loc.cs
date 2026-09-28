@@ -3,7 +3,7 @@ using System.Globalization;
 namespace FortniteTracker.Core;
 
 /// <summary>
-/// Translations for text produced outside the web UI (notifications, tray menu, overlay, Discord
+/// Translations for text produced outside the web UI (notifications, tray menu, Discord
 /// recap). Keys are the English text; untranslated text stays in English.
 /// </summary>
 public static class Loc
@@ -44,7 +44,6 @@ public static class Loc
     {
         // Tray
         ["Show / hide  ({0})"] = "Afficher / masquer  ({0})",
-        ["In-game overlay  ({0})"] = "Overlay en jeu  ({0})",
         ["Restart to update"] = "Redémarrer pour mettre à jour",
         ["Restart to update to {0}"] = "Redémarrer pour passer à la {0}",
         ["Exit"] = "Quitter",
@@ -83,8 +82,6 @@ public static class Loc
         ["is in your party"] = "est dans ton groupe",
         ["eliminated you"] = "t'a éliminé",
         ["is in this match"] = "est dans cette partie",
-        // Overlay
-        ["ELIMINATED BY"] = "ÉLIMINÉ PAR",
         ["In lobby"] = "Dans le salon",
         // Discord Rich Presence
         ["solo"] = "solo",

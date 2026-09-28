@@ -4,7 +4,7 @@ using System.Windows.Media;
 
 namespace FortniteTracker.Desktop;
 
-/// <summary>Colours the native parts (window frame, overlay) take from the UI theme.</summary>
+/// <summary>Colours the native parts (window frame) take from the UI theme.</summary>
 public sealed record ThemeColors(Color Background, Color Surface, Color Text, Color Accent)
 {
     public static readonly ThemeColors Default = new(

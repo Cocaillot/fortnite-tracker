@@ -47,7 +47,6 @@ const {
   setRichPresence,
   setNotify,
   setNotifyRanks,
-  setOverlay,
   applyUpdate,
 } = useTracker()
 
@@ -109,18 +108,14 @@ const whatsNew = computed(() =>
   settings.value?.onboardingDone ? unseen(settings.value.version, settings.value.lastSeenVersion) : [],
 )
 
-const overlayOn = computed(() => settings.value?.overlay.enabled ?? false)
 const profileShown = computed(() => page.value === 'profile' || (page.value === 'me' && (profile.value || profileLoading.value)))
 </script>
 
 <template>
   <div class="app">
     <TitleBar
-      :overlay-on="overlayOn"
-      :overlay-keys="settings?.hotkeys.overlay ?? 'Ctrl+Shift+O'"
       :maximized="windowState.maximized"
       :fullscreen="windowState.fullscreen"
-      @toggle-overlay="setOverlay(!overlayOn)"
       @search="(name) => showProfile(null, name)"
     />
 
@@ -191,7 +186,6 @@ const profileShown = computed(() => page.value === 'profile' || (page.value === 
           @notify-ranks="setNotifyRanks"
           @discord-recap="setDiscordRecap"
           @post-recap="postRecap"
-          @overlay="setOverlay"
         />
         </Transition>
       </main>

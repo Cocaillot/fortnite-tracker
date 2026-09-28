@@ -6,6 +6,15 @@ export interface Release {
 
 export const changelog: Release[] = [
   {
+    version: '0.9.11',
+    items: [
+      {
+        title: 'No more in-game overlay',
+        text: 'The bar over the game is gone: everything is in the app window, which you can still bring up in game with your shortcut.',
+      },
+    ],
+  },
+  {
     version: '0.9.7',
     items: [
       {

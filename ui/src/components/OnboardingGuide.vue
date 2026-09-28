@@ -45,12 +45,10 @@ function saveAnyway() {
 const launch = ref(true)
 const notify = ref(props.settings.notifyOnElimination)
 const ranks = ref(props.settings.notifyRankChanges)
-const overlay = ref(props.settings.overlay.enabled)
 function savePrefs() {
   send({ type: 'setLaunchWithFortnite', enabled: launch.value })
   send({ type: 'setNotify', enabled: notify.value })
   send({ type: 'setNotifyRanks', enabled: ranks.value })
-  send({ type: 'setOverlay', enabled: overlay.value })
 }
 
 function next() {
@@ -151,18 +149,13 @@ const finish = () => send({ type: 'onboardingDone' })
             <input v-model="ranks" type="checkbox" /><span class="track" aria-hidden="true" />
             <span><strong>{{ t('Rank change alerts') }}</strong><small>{{ t('When you or a friend rank up.') }}</small></span>
           </label>
-          <label class="switch pref">
-            <input v-model="overlay" type="checkbox" /><span class="track" aria-hidden="true" />
-            <span><strong>{{ t('In-game overlay') }}</strong><small>{{ t('A small bar over the game with your squad\'s K/D.') }}</small></span>
-          </label>
         </section>
 
         <section v-else key="done">
           <h1>{{ t('You\'re all set') }}</h1>
-          <p class="lead">{{ t('Play a match and everything fills in. Two shortcuts work even in game:') }}</p>
+          <p class="lead">{{ t('Play a match and everything fills in. This shortcut works even in game:') }}</p>
           <dl class="keys">
             <dt>{{ keysLabel(settings.hotkeys.window) }}</dt><dd>{{ t('Show or hide this window, even in game') }}</dd>
-            <dt>{{ keysLabel(settings.hotkeys.overlay) }}</dt><dd>{{ t('Turn the in-game overlay on or off') }}</dd>
           </dl>
           <p class="muted">{{ t('You can change all of this later in Settings.') }}</p>
         </section>

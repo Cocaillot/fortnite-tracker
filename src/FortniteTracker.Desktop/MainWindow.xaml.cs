@@ -35,9 +35,6 @@ public partial class MainWindow : Window
         Loaded += async (_, _) => await InitWebViewAsync();
     }
 
-    /// <summary>The overlay shortcut was pressed (works while Fortnite has focus).</summary>
-    public event Action? OverlayHotkey;
-
     /// <summary>Set before a real exit; otherwise closing only hides the window.</summary>
     public bool AllowClose { get; set; }
 
@@ -178,7 +175,6 @@ public partial class MainWindow : Window
     // ---- Win32: global hotkeys, title bar drag, rounded corners, maximised size ----
 
     private const int HotkeyId = 0x4654;
-    private const int OverlayHotkeyId = 0x4655;
     private const int WmHotkey = 0x0312;
     private const int WmGetMinMaxInfo = 0x0024;
     private const int WmNcLButtonDown = 0xA1, HtCaption = 2;
@@ -186,23 +182,22 @@ public partial class MainWindow : Window
     private const int MonitorDefaultToNearest = 2;
     private const uint ModNoRepeat = 0x4000;
 
-    private (string Window, string Overlay) _hotkeys = (Core.SettingsStore.DefaultWindowHotkey, Core.SettingsStore.DefaultOverlayHotkey);
+    private string _hotkey = Core.SettingsStore.DefaultWindowHotkey;
 
-    /// <summary>Whether each shortcut could be registered (another app may already use it).</summary>
-    public (bool Window, bool Overlay) HotkeyStatus { get; private set; }
+    /// <summary>Whether the shortcut could be registered (another app may already use it).</summary>
+    public bool HotkeyRegistered { get; private set; } = true;
 
     /// <summary>Raised after the shortcuts were (re)registered.</summary>
     public event Action? HotkeysApplied;
 
-    /// <summary>Registers the two global shortcuts, e.g. "Ctrl+Shift+F", replacing the previous ones.</summary>
-    public void SetHotkeys(string window, string overlay)
+    /// <summary>Registers the global show/hide shortcut, e.g. "Ctrl+Shift+F", replacing the previous one.</summary>
+    public void SetHotkey(string keys)
     {
-        _hotkeys = (window, overlay);
+        _hotkey = keys;
         var handle = new WindowInteropHelper(this).Handle;
         if (handle == IntPtr.Zero) return; // registered once the window exists
         UnregisterHotKey(handle, HotkeyId);
-        UnregisterHotKey(handle, OverlayHotkeyId);
-        HotkeyStatus = (Register(handle, HotkeyId, window), Register(handle, OverlayHotkeyId, overlay));
+        HotkeyRegistered = Register(handle, HotkeyId, keys);
         HotkeysApplied?.Invoke();
     }
 
@@ -252,7 +247,7 @@ public partial class MainWindow : Window
         base.OnSourceInitialized(e);
         var handle = new WindowInteropHelper(this).Handle;
         HwndSource.FromHwnd(handle)?.AddHook(WndProc);
-        SetHotkeys(_hotkeys.Window, _hotkeys.Overlay);
+        SetHotkey(_hotkey);
         // Rounded corners on Windows 11 (ignored on Windows 10).
         var round = DwmwcpRound;
         DwmSetWindowAttribute(handle, DwmwaWindowCornerPreference, ref round, sizeof(int));
@@ -262,7 +257,6 @@ public partial class MainWindow : Window
     {
         var handle = new WindowInteropHelper(this).Handle;
         UnregisterHotKey(handle, HotkeyId);
-        UnregisterHotKey(handle, OverlayHotkeyId);
         base.OnClosed(e);
     }
 
@@ -272,10 +266,6 @@ public partial class MainWindow : Window
         {
             case WmHotkey when wParam.ToInt32() == HotkeyId:
                 ToggleVisibility();
-                handled = true;
-                break;
-            case WmHotkey when wParam.ToInt32() == OverlayHotkeyId:
-                OverlayHotkey?.Invoke();
                 handled = true;
                 break;
             case WmGetMinMaxInfo:

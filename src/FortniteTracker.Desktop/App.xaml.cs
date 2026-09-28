@@ -21,7 +21,6 @@ public partial class App : Application
     private IHost? _host;
     private TrayIcon? _tray;
     private MainWindow? _window;
-    private OverlayController? _overlay;
 
     public App(EventWaitHandle showRequested)
     {
@@ -140,28 +139,24 @@ public partial class App : Application
 
         _window = services.GetRequiredService<MainWindow>();
         var theme = services.GetRequiredService<ThemeStore>();
-        _overlay = new OverlayController(settings, tracker, theme, Dispatcher);
         _window.ApplyTheme(theme.Colors);
         theme.Changed += () => Dispatcher.InvokeAsync(() => _window.ApplyTheme(theme.Colors));
-        _tray = new TrayIcon(_window.ToggleVisibility, _overlay.Toggle, ApplyUpdate, ExitApp);
-        _tray.SetOverlayChecked(settings.OverlayEnabled);
+        _tray = new TrayIcon(_window.ToggleVisibility, ApplyUpdate, ExitApp);
         AutoStart.Apply(settings.LaunchWithFortnite);
-        _window.SetHotkeys(settings.WindowHotkey, settings.OverlayHotkey);
-        _tray.SetHotkeys(settings.WindowHotkey, settings.OverlayHotkey);
+        _window.SetHotkey(settings.WindowHotkey);
+        _tray.SetHotkey(settings.WindowHotkey);
         settings.Changed += _ => Dispatcher.InvokeAsync(() =>
         {
             ApplyLanguage();
             _tray.ApplyLanguage();
-            _tray.SetOverlayChecked(settings.OverlayEnabled);
             AutoStart.Apply(settings.LaunchWithFortnite);
-            _window.SetHotkeys(settings.WindowHotkey, settings.OverlayHotkey);
-            _tray.SetHotkeys(settings.WindowHotkey, settings.OverlayHotkey);
+            _window.SetHotkey(settings.WindowHotkey);
+            _tray.SetHotkey(settings.WindowHotkey);
         });
-        _window.OverlayHotkey += _overlay.Toggle;
         _window.HiddenToTray += _tray.ShowStillRunningHint;
         _ = new EliminationNotifier(tracker, settings, (title, text) => Dispatcher.InvokeAsync(() => _tray.Notify(title, text)));
         var bridge = services.GetRequiredService<UiBridge>();
-        bridge.HotkeyStatusProvider = () => _window.HotkeyStatus;
+        bridge.HotkeyStatusProvider = () => _window.HotkeyRegistered;
         _window.HotkeysApplied += bridge.RefreshSettings;
         bridge.RestartRequested += Restart;
         _ = new NoteAlerts(tracker, services.GetRequiredService<PlayerNotes>(), (title, text) =>
@@ -238,7 +233,6 @@ public partial class App : Application
     protected override async void OnExit(ExitEventArgs e)
     {
         _tray?.Dispose();
-        _overlay?.Close();
         if (_host is not null)
         {
             _host.Services.GetRequiredService<DiscordPresenceService>().Dispose();

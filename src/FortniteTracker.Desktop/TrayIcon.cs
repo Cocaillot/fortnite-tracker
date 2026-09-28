@@ -10,23 +10,20 @@ public sealed class TrayIcon : IDisposable
 {
     private readonly NotifyIcon _icon;
     private readonly ToolStripMenuItem _updateItem;
-    private readonly ToolStripMenuItem _overlayItem;
     private readonly ToolStripMenuItem _showItem;
     private readonly ToolStripMenuItem _exitItem;
     private string? _updateVersion;
-    private (string Window, string Overlay) _keys = (SettingsStore.DefaultWindowHotkey, SettingsStore.DefaultOverlayHotkey);
+    private string _keys = SettingsStore.DefaultWindowHotkey;
     private bool _hintShown;
 
-    public TrayIcon(Action toggleWindow, Action toggleOverlay, Action applyUpdate, Action exit)
+    public TrayIcon(Action toggleWindow, Action applyUpdate, Action exit)
     {
         _updateItem = new ToolStripMenuItem("", null, (_, _) => applyUpdate()) { Visible = false };
-        _overlayItem = new ToolStripMenuItem("", null, (_, _) => toggleOverlay());
         _showItem = new ToolStripMenuItem("", null, (_, _) => toggleWindow());
         _exitItem = new ToolStripMenuItem("", null, (_, _) => exit());
 
         var menu = new ContextMenuStrip();
         menu.Items.Add(_showItem);
-        menu.Items.Add(_overlayItem);
         menu.Items.Add(_updateItem);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add(_exitItem);
@@ -45,19 +42,16 @@ public sealed class TrayIcon : IDisposable
         };
     }
 
-    public void SetOverlayChecked(bool on) => _overlayItem.Checked = on;
-
-    public void SetHotkeys(string window, string overlay)
+    public void SetHotkey(string keys)
     {
-        _keys = (window, overlay);
+        _keys = keys;
         ApplyLanguage();
     }
 
     /// <summary>Menu labels in the current language (see <see cref="Loc"/>).</summary>
     public void ApplyLanguage()
     {
-        _showItem.Text = Loc.T("Show / hide  ({0})", Loc.Keys(_keys.Window));
-        _overlayItem.Text = Loc.T("In-game overlay  ({0})", Loc.Keys(_keys.Overlay));
+        _showItem.Text = Loc.T("Show / hide  ({0})", Loc.Keys(_keys));
         _exitItem.Text = Loc.T("Exit");
         _updateItem.Text = _updateVersion is null ? Loc.T("Restart to update") : Loc.T("Restart to update to {0}", _updateVersion);
     }

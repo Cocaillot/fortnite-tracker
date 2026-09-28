@@ -2,7 +2,7 @@ import { reactive, watch } from 'vue'
 import { on, send } from '../bridge'
 
 // Everything the Appearance page can change. Stored by the host in theme.json (see ThemeStore.cs,
-// which reads background/surface/text/accent for the window frame and overlay).
+// which reads background/surface/text/accent for the window frame).
 export interface Theme {
   version: 1
   background: string

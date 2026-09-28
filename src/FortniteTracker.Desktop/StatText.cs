@@ -3,7 +3,7 @@ using FortniteTracker.Core;
 
 namespace FortniteTracker.Desktop;
 
-/// <summary>Shared wording and colours for native surfaces (overlay, notifications, Discord).</summary>
+/// <summary>Shared wording and colours for native surfaces (notifications, Discord).</summary>
 public static class StatText
 {
     // Same palette as the Vue UI (--rarity-* in App.vue).

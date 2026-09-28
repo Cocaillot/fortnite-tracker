@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { t, keysLabel, langChoice, locale, setLanguage, type LangChoice } from '../i18n'
-import type { OverlayCorner, Settings } from '../bridge'
+import { t, langChoice, locale, setLanguage, type LangChoice } from '../i18n'
+import type { Settings } from '../bridge'
 import { ref } from 'vue'
 import ApiKeyForm from './ApiKeyForm.vue'
 import HotkeyInput from './HotkeyInput.vue'
@@ -16,7 +16,6 @@ const emit = defineEmits<{
   notifyRanks: [enabled: boolean]
   discordRecap: [url: string | null, autoPost: boolean]
   postRecap: []
-  overlay: [enabled?: boolean, corner?: OverlayCorner]
 }>()
 
 const languages: { id: LangChoice; label: string }[] = [
@@ -25,17 +24,9 @@ const languages: { id: LangChoice; label: string }[] = [
   { id: 'fr', label: 'Français' },
 ]
 
-// Labels are English keys, translated where shown.
-const corners: { id: OverlayCorner; label: string }[] = [
-  { id: 'TopLeft', label: 'Top left' },
-  { id: 'TopRight', label: 'Top right' },
-  { id: 'BottomLeft', label: 'Bottom left' },
-  { id: 'BottomRight', label: 'Bottom right' },
-]
-
 const checked = (e: Event) => (e.target as HTMLInputElement).checked
 
-const setHotkey = (which: 'window' | 'overlay', keys: string) => send({ type: 'setHotkeys', [which]: keys })
+const setHotkey = (keys: string) => send({ type: 'setHotkeys', window: keys })
 
 // ---- Updates ----
 const checking = ref(false)
@@ -94,7 +85,7 @@ function runData(action: 'csv' | 'backup' | 'restore') {
           {{ l.id === 'auto' ? t(l.label) : l.label }}
         </button>
       </div>
-      <p class="hint flush">{{ t('Also used for notifications, the overlay and Discord recaps.') }}</p>
+      <p class="hint flush">{{ t('Also used for notifications and Discord recaps.') }}</p>
     </div>
 
     <div class="panel option">
@@ -106,32 +97,6 @@ function runData(action: 'csv' | 'backup' | 'restore') {
       <p class="hint">
         {{ t('The app starts quietly with Windows, waits in the tray, and opens by itself when Fortnite starts. It uses almost no memory while waiting.') }}
       </p>
-    </div>
-
-    <div class="panel option">
-      <label class="switch">
-        <input type="checkbox" :checked="settings.overlay.enabled" @change="emit('overlay', checked($event))" />
-        <span class="track" aria-hidden="true" />
-        <span class="text">{{ t('In-game overlay') }}</span>
-      </label>
-      <p class="hint">
-        {{ t("A small bar with your squad's K/D, and your eliminator after a death. Clicks go through it. Shows while Fortnite runs in") }}
-        <strong>{{ t('Windowed Fullscreen') }}</strong>. {{ t('Shortcut: {keys}.', { keys: keysLabel(settings.hotkeys.overlay) }) }}
-      </p>
-      <div class="corners" role="radiogroup" :aria-label="t('Overlay position')">
-        <button
-          v-for="c in corners"
-          :key="c.id"
-          type="button"
-          role="radio"
-          :aria-checked="settings.overlay.corner === c.id"
-          :class="['corner', c.id, { on: settings.overlay.corner === c.id }]"
-          :title="t(c.label)"
-          @click="emit('overlay', undefined, c.id)"
-        >
-          <span class="dot" />
-        </button>
-      </div>
     </div>
 
     <div class="panel option">
@@ -204,21 +169,14 @@ function runData(action: 'csv' | 'backup' | 'restore') {
 
     <div class="panel option shortcuts">
       <span class="text">{{ t('Shortcuts') }}</span>
-      <p class="hint flush">{{ t('Click a shortcut, then press the keys you want. They work even while Fortnite has focus.') }}</p>
+      <p class="hint flush">{{ t('Click the shortcut, then press the keys you want. It works even while Fortnite has focus.') }}</p>
       <div class="hotkeys">
         <HotkeyInput
           :value="settings.hotkeys.window"
           :ok="settings.hotkeys.windowOk"
           fallback="Ctrl+Shift+F"
           :label="t('Show or hide this window, even in game')"
-          @change="setHotkey('window', $event)"
-        />
-        <HotkeyInput
-          :value="settings.hotkeys.overlay"
-          :ok="settings.hotkeys.overlayOk"
-          fallback="Ctrl+Shift+O"
-          :label="t('Turn the in-game overlay on or off')"
-          @change="setHotkey('overlay', $event)"
+          @change="setHotkey($event)"
         />
         <div class="fixed-key"><span class="keys">F11</span><span>{{ t('Full screen') }}</span></div>
       </div>
@@ -374,45 +332,6 @@ function runData(action: 'csv' | 'backup' | 'restore') {
   font-size: 17px;
   letter-spacing: 0.02em;
 }
-
-/* Overlay position picker: a tiny screen with a dot per corner. */
-.corners {
-  margin: 10px 0 0 52px;
-  width: 108px;
-  height: 64px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  position: relative;
-}
-.corner {
-  position: absolute;
-  width: 30px;
-  height: 22px;
-  padding: 0;
-  border: none;
-  background: none;
-  display: grid;
-  place-items: center;
-}
-.corner .dot {
-  width: 18px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-}
-.corner:hover .dot {
-  border-color: var(--muted);
-}
-.corner.on .dot {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-.TopLeft { top: 2px; left: 2px; }
-.TopRight { top: 2px; right: 2px; }
-.BottomLeft { bottom: 2px; left: 2px; }
-.BottomRight { bottom: 2px; right: 2px; }
 
 .about {
   color: var(--faint);

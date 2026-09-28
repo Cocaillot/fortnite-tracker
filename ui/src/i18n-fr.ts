@@ -473,6 +473,10 @@ export const FR: Record<string, string> = {
     "L'app démarre discrètement avec Windows, attend dans la barre des tâches et s'ouvre toute seule quand Fortnite démarre. Elle ne consomme presque rien en attendant.",
   'Shortcut: {keys}.': 'Raccourci : {keys}.',
   'In-game overlay ({keys})': 'Overlay en jeu ({keys})',
+  'Click the shortcut, then press the keys you want. It works even while Fortnite has focus.':
+    'Clique sur le raccourci, puis appuie sur les touches voulues. Il fonctionne même quand Fortnite est au premier plan.',
+  'Also used for notifications and Discord recaps.': 'Utilisée aussi pour les notifications et les récaps Discord.',
+  'Play a match and everything fills in. This shortcut works even in game:': 'Joue une partie et tout se remplit. Ce raccourci marche même en jeu :',
   'Click a shortcut, then press the keys you want. They work even while Fortnite has focus.':
     'Clique sur un raccourci, puis appuie sur les touches voulues. Ils fonctionnent même quand Fortnite est au premier plan.',
   'Press the keys…': 'Appuie sur les touches…',
@@ -547,6 +551,9 @@ export const FR: Record<string, string> = {
   "You're up to date ✓": 'Tu es à jour ✓',
 
   // What's new
+  'No more in-game overlay': "Fin de l'overlay en jeu",
+  'The bar over the game is gone: everything is in the app window, which you can still bring up in game with your shortcut.':
+    "La barre par-dessus le jeu disparaît : tout est dans la fenêtre de l'app, que tu peux toujours afficher en jeu avec ton raccourci.",
   'Your real eliminations, from replays': 'Tes vraies éliminations, grâce aux replays',
   'With Record Replays on in Fortnite, each match gets your real eliminations, your placement, your true eliminator and the players your team eliminated (click a match). Replays are deleted once read.':
     "Avec « Enregistrer les replays » activé dans Fortnite, chaque partie a tes vraies éliminations, ta place, ton vrai éliminateur et les joueurs éliminés par ton équipe (clique sur une partie). Les replays sont supprimés une fois lus.",

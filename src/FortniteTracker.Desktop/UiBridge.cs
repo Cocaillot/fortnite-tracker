@@ -10,7 +10,7 @@ namespace FortniteTracker.Desktop;
 /// Message protocol between the Vue UI and the .NET services (mirrored in ui/src/bridge.ts).
 /// Host → UI: snapshot, ranks, settings, history, sessions, lookupResult, profile, leaderboard, windowState, theme, toast,
 /// matchDetail, teammates, notes, statsHistory, goals, recapResult, apiKeyTest, dataResult.
-/// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, setOverlay, applyUpdate, window,
+/// UI → host: ready, lookup, setApiKey, setRichPresence, setNotify, applyUpdate, window,
 /// profile, follow, leaderboard, setTheme, match, teammates, setNote, setGoals, setDiscordRecap, postRecap,
 /// setLanguage, setHotkeys, setLaunchWithFortnite, onboardingDone, seenVersion, testApiKey, data.
 /// </summary>
@@ -97,7 +97,7 @@ public sealed class UiBridge
     public Func<(bool Maximized, bool Fullscreen)>? WindowStateProvider { get; set; }
 
     /// <summary>Set by the window: whether each global shortcut is registered.</summary>
-    public Func<(bool Window, bool Overlay)>? HotkeyStatusProvider { get; set; }
+    public Func<bool>? HotkeyStatusProvider { get; set; }
 
     /// <summary>Restarts the app (after a restore).</summary>
     public event Action? RestartRequested;
@@ -159,9 +159,8 @@ public sealed class UiBridge
                 _settings.SetLanguage(msg.Lang == "auto" ? null : msg.Lang);
                 break;
             case "setHotkeys":
-                if (msg.Window is { } w && !HotkeyText.TryParse(w, out _, out _)) break;
-                if (msg.Overlay is { } o && !HotkeyText.TryParse(o, out _, out _)) break;
-                _settings.SetHotkeys(msg.Window, msg.Overlay);
+                if (msg.Window is not { } w || !HotkeyText.TryParse(w, out _, out _)) break;
+                _settings.SetWindowHotkey(w);
                 break;
             case "setDeleteReplays" when msg.Enabled is { } deleteReplays:
                 _settings.SetDeleteReplaysAfterReading(deleteReplays);
@@ -230,11 +229,6 @@ public sealed class UiBridge
                 break;
             case "setNotifyRanks" when msg.Enabled is { } notifyRanks:
                 _settings.SetNotifyRankChanges(notifyRanks);
-                break;
-            case "setOverlay":
-                _settings.SetOverlay(
-                    msg.Enabled ?? _settings.OverlayEnabled,
-                    Enum.TryParse<OverlayCorner>(msg.Corner, out var corner) ? corner : _settings.OverlayCorner);
                 break;
             case "applyUpdate":
                 _updates.UpdateNow();
@@ -305,13 +299,10 @@ public sealed class UiBridge
         language = _settings.Language ?? "auto",
         effectiveLanguage = Loc.Language,
         discordRecap = new { hasWebhook = DiscordRecapPoster.IsWebhookUrl(_settings.DiscordWebhookUrl), autoPost = _settings.AutoPostRecap },
-        overlay = new { enabled = _settings.OverlayEnabled, corner = _settings.OverlayCorner.ToString() },
         hotkeys = new
         {
             window = _settings.WindowHotkey,
-            overlay = _settings.OverlayHotkey,
-            windowOk = HotkeyStatusProvider?.Invoke().Window ?? true,
-            overlayOk = HotkeyStatusProvider?.Invoke().Overlay ?? true,
+            windowOk = HotkeyStatusProvider?.Invoke() ?? true,
         },
         launchWithFortnite = _settings.LaunchWithFortnite,
         replays = new
@@ -384,6 +375,6 @@ public sealed class UiBridge
         _web?.PostWebMessageAsJson(JsonSerializer.Serialize(new { type, data }, Json));
 
     private sealed record UiMessage(
-        string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Corner, string? Action, string? AccountId,
-        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals, string? Url, string? Lang, string? Window, string? Overlay);
+        string Type, string? Name, string? Platform, string? Key, bool? Enabled, string? Action, string? AccountId,
+        JsonElement? Theme, DateTime? StartedUtc, string[]? Tags, string? Text, JsonElement? Goals, string? Url, string? Lang, string? Window);
 }

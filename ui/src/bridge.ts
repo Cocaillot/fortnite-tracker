@@ -4,7 +4,6 @@ export type StatsStatus = 'Ok' | 'Private' | 'NotFound' | 'NoApiKey' | 'Error' |
 export type Platform = 'epic' | 'psn' | 'xbl'
 export type Rarity = 'Common' | 'Uncommon' | 'Rare' | 'Epic' | 'Legendary'
 export type Threat = 'BotLikely' | 'Casual' | 'Average' | 'Skilled' | 'Sweat'
-export type OverlayCorner = 'TopLeft' | 'TopRight' | 'BottomLeft' | 'BottomRight'
 export type Relation = 'You' | 'Party' | 'Friend' | 'Followed' | 'Opponent'
 
 export interface RankProgress {
@@ -204,7 +203,6 @@ export interface Settings {
   notifyOnElimination: boolean
   notifyRankChanges: boolean
   discordRecap: { hasWebhook: boolean; autoPost: boolean }
-  overlay: { enabled: boolean; corner: OverlayCorner }
   version: string
   updateVersion: string | null
   /** A newer version: known as soon as it's found, then downloaded, then installed on "Update now". */
@@ -214,7 +212,7 @@ export interface Settings {
   /** The language in use. */
   effectiveLanguage: 'en' | 'fr'
   /** Global shortcuts as text ("Ctrl+Shift+F"), and whether Windows accepted them. */
-  hotkeys: { window: string; overlay: string; windowOk: boolean; overlayOk: boolean }
+  hotkeys: { window: string; windowOk: boolean }
   /** Fortnite replays the app reads for kills, placement and eliminated players. */
   replays: { deleteAfterReading: boolean; lastReadUtc: string | null; folderExists: boolean }
   /** Open the app by itself when Fortnite starts. */
@@ -267,7 +265,6 @@ export type UiMessage =
   | { type: 'setGoals'; goals: object[] }
   | { type: 'setDiscordRecap'; url: string | null; enabled: boolean }
   | { type: 'postRecap' }
-  | { type: 'setOverlay'; enabled?: boolean; corner?: OverlayCorner }
   | { type: 'applyUpdate' }
   | { type: 'checkUpdates' }
   | { type: 'window'; action: 'drag' | 'minimize' | 'maximize' | 'fullscreen' | 'close' }
@@ -276,7 +273,7 @@ export type UiMessage =
   | { type: 'leaderboard' }
   | { type: 'setTheme'; theme: object | null }
   | { type: 'setLanguage'; lang: 'en' | 'fr' | 'auto' }
-  | { type: 'setHotkeys'; window?: string; overlay?: string }
+  | { type: 'setHotkeys'; window: string }
   | { type: 'setLaunchWithFortnite'; enabled: boolean }
   | { type: 'setDeleteReplays'; enabled: boolean }
   | { type: 'onboardingDone' }

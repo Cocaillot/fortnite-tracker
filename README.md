@@ -13,8 +13,7 @@ own log file and shows:
 - each party member's season stats (K/D, win rate, wins, matches) for the mode you're playing,
   coloured by Fortnite item rarity, plus lookup of any player by name
 - the player who eliminated your team, with a threat level (Casual → Sweat) and how their K/D
-  compares to yours, as a card, a Windows notification and in the in-game overlay
-- a small click-through in-game overlay with your squad's K/D (Ctrl+Shift+O)
+  compares to yours, as a card and a Windows notification
 - match history with a session dashboard: time played, most-played mode, your nemesis, and
   (experimental) kills and wins per match
 - ranks for you, your party and your friends (current season, best rank, past seasons)

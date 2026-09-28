@@ -2,8 +2,6 @@ using System.Text.Json;
 
 namespace FortniteTracker.Core;
 
-public enum OverlayCorner { TopLeft, TopRight, BottomLeft, BottomRight }
-
 /// <summary>A player you follow on the leaderboard. AccountId is set once their stats were found.</summary>
 public sealed record FollowedPlayer(string? AccountId, string Name);
 
@@ -41,16 +39,10 @@ public sealed class SettingsStore
     public void SetLanguage(string? language) => Update(s => s with { Language = language }, apiKeyChanged: false);
 
     public const string DefaultWindowHotkey = "Ctrl+Shift+F";
-    public const string DefaultOverlayHotkey = "Ctrl+Shift+O";
     public string WindowHotkey => _settings.WindowHotkey ?? DefaultWindowHotkey;
-    public string OverlayHotkey => _settings.OverlayHotkey ?? DefaultOverlayHotkey;
 
-    /// <param name="window">null keeps the current one.</param>
-    public void SetHotkeys(string? window, string? overlay) => Update(s => s with
-    {
-        WindowHotkey = window ?? s.WindowHotkey,
-        OverlayHotkey = overlay ?? s.OverlayHotkey,
-    }, apiKeyChanged: false);
+    /// <summary>The global shortcut that shows or hides the window.</summary>
+    public void SetWindowHotkey(string window) => Update(s => s with { WindowHotkey = window }, apiKeyChanged: false);
 
     /// <summary>Open the app when Fortnite starts (a light background start at sign-in waits for it).</summary>
     public bool LaunchWithFortnite => _settings.LaunchWithFortnite;
@@ -79,8 +71,6 @@ public sealed class SettingsStore
 
     public void SetLastRecapPosted(DateTime sessionStartUtc) =>
         Update(s => s with { LastRecapPostedUtc = sessionStartUtc }, apiKeyChanged: false);
-    public bool OverlayEnabled => _settings.Overlay;
-    public OverlayCorner OverlayCorner => _settings.OverlayCorner;
     public IReadOnlyList<FollowedPlayer> Followed => _settings.Followed ?? [];
 
     public bool IsFollowed(string? accountId, string? name) => Followed.Any(f => Matches(f, accountId, name));
@@ -108,8 +98,6 @@ public sealed class SettingsStore
 
     public void SetNotifyRankChanges(bool enabled) => Update(s => s with { NotifyRankChanges = enabled }, apiKeyChanged: false);
 
-    public void SetOverlay(bool enabled, OverlayCorner corner) =>
-        Update(s => s with { Overlay = enabled, OverlayCorner = corner }, apiKeyChanged: false);
 
     private void Update(Func<Settings, Settings> change, bool apiKeyChanged)
     {
@@ -139,8 +127,6 @@ public sealed class SettingsStore
         string? FortniteApiKey = null,
         bool RichPresence = true,
         bool NotifyOnElimination = true,
-        bool Overlay = false,
-        OverlayCorner OverlayCorner = OverlayCorner.TopRight,
         List<FollowedPlayer>? Followed = null,
         bool NotifyRankChanges = true,
         string? DiscordWebhookUrl = null,
@@ -148,7 +134,6 @@ public sealed class SettingsStore
         DateTime? LastRecapPostedUtc = null,
         string? Language = null,
         string? WindowHotkey = null,
-        string? OverlayHotkey = null,
         bool LaunchWithFortnite = false,
         bool? OnboardingDone = null,
         string? LastSeenVersion = null,

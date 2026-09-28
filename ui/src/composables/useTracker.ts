@@ -5,7 +5,6 @@ import {
   type LeaderboardEntry,
   type LobbySnapshot,
   type MatchRecord,
-  type OverlayCorner,
   type Platform,
   type PlayerProfile,
   type PlayerStats,
@@ -130,7 +129,6 @@ export function useTracker() {
     setRichPresence: (enabled: boolean) => send({ type: 'setRichPresence', enabled }),
     setNotify: (enabled: boolean) => send({ type: 'setNotify', enabled }),
     setNotifyRanks: (enabled: boolean) => send({ type: 'setNotifyRanks', enabled }),
-    setOverlay: (enabled?: boolean, corner?: OverlayCorner) => send({ type: 'setOverlay', enabled, corner }),
     applyUpdate: () => send({ type: 'applyUpdate' }),
   }
 }
