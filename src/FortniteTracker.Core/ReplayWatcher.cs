@@ -27,6 +27,9 @@ public sealed class ReplayWatcher(MatchHistoryStore history, SettingsStore setti
     /// <summary>Where the names of replays already read are kept (for replays the user keeps).</summary>
     public string? StatePath { get; init; }
 
+    /// <summary>Your account ID and name (from the log), for replays that don't flag their owner.</summary>
+    public Func<(string? Id, string? Name)> Self { get; init; } = () => (null, null);
+
     public TimeSpan StartDelay { get; init; } = TimeSpan.FromSeconds(20);
     public TimeSpan Interval { get; init; } = TimeSpan.FromSeconds(20);
 
@@ -70,7 +73,8 @@ public sealed class ReplayWatcher(MatchHistoryStore history, SettingsStore setti
             ParsedReplay? parsed;
             try
             {
-                parsed = ReplayParser.Read(file);
+                var (selfId, selfName) = Self();
+                parsed = ReplayParser.Read(file, selfId, selfName);
             }
             catch (Exception ex)
             {

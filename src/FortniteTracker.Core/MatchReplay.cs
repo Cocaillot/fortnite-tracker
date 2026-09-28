@@ -36,7 +36,9 @@ public static class ReplayParser
     /// Null while Fortnite is still writing the file: it is only finalised (and its encryption key
     /// written) when the next match starts or the player goes back to the lobby.
     /// </summary>
-    public static ParsedReplay? Read(string path)
+    /// <param name="selfId">Your Epic account ID, for replays that don't flag their owner.</param>
+    /// <param name="selfName">Your display name, as a last resort for the same.</param>
+    public static ParsedReplay? Read(string path, string? selfId = null, string? selfName = null)
     {
         if (IsBeingWritten(path)) return null;
         FortniteReplay replay;
@@ -50,7 +52,7 @@ public static class ReplayParser
         {
             return null;
         }
-        return Summarise(replay);
+        return Summarise(replay, selfId, selfName);
     }
 
     /// <summary>
@@ -70,10 +72,14 @@ public static class ReplayParser
         }
     }
 
-    internal static ParsedReplay? Summarise(FortniteReplay replay)
+    internal static ParsedReplay? Summarise(FortniteReplay replay, string? selfId = null, string? selfName = null)
     {
         var players = replay.PlayerData?.ToList() ?? [];
-        if (players.FirstOrDefault(p => p.IsReplayOwner) is not { } me) return null;
+        // Some replays don't flag their owner (seen Sept 2026); then it's found by account ID or name.
+        var me = players.FirstOrDefault(p => p.IsReplayOwner)
+            ?? (selfId is null ? null : players.FirstOrDefault(p => string.Equals(p.EpicId, selfId, StringComparison.OrdinalIgnoreCase)))
+            ?? (selfName is null ? null : players.FirstOrDefault(p => p is { IsBot: false } && string.Equals(p.PlayerName, selfName, StringComparison.OrdinalIgnoreCase)));
+        if (me is null) return null;
         if ((replay.GameData?.UtcTimeStartedMatch ?? replay.Info?.Timestamp) is not { } started) return null;
 
         PlayerData? Find(string? id) =>

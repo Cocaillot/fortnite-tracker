@@ -88,6 +88,7 @@ public partial class App : Application
                 {
                     // "replays.json" from 0.9.7 could list replays skipped by mistake; a new list starts over.
                     StatePath = Path.Combine(storage, "replays-read.json"),
+                    Self = () => (sp.GetRequiredService<LobbyTracker>().SelfId, sp.GetRequiredService<LobbyTracker>().Last?.LocalName),
                 });
                 services.AddHostedService(sp => sp.GetRequiredService<ReplayWatcher>());
                 services.AddSingleton<UiBridge>();
